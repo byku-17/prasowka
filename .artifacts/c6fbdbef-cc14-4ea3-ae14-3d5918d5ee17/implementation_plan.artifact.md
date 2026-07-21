@@ -1,36 +1,38 @@
-# Plan: Nowa Tożsamość i Animowany Splash Screen
+# Plan Poprawy Stabilności i Optymalizacji (Hardening)
 
-Celem jest ulepszenie ikony aplikacji oraz stworzenie zaawansowanego, animowanego ekranu startowego z efektem zderzenia tekstu "Pra" i "sówka".
+Celem jest uodpornienie aplikacji na błędy sieciowe, wyścigi stanów oraz nieprzewidziane formaty danych z kanałów RSS.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Ograniczenia Techniczne Splash Screena:** Systemowy ekran startowy (ten, który pojawia się natychmiast po kliknięciu ikony) jest statyczny. Twoja animacja "zderzenia" zostanie zaimplementowana jako pierwszy ekran wewnątrz Fluttera. Oznacza to, że najpierw zobaczysz tło, a ułamek sekundy później ruszy animacja.
-
-> [!NOTE]
-> **Efekt Zderzenia:** Do symulacji "kurzu" i "zderzenia kamieni" użyję tzw. *Particle System* zaimplementowanego w kodzie (CustomPainter), aby nie obciążać aplikacji ciężkimi plikami wideo.
+> Dodanie timeoutów (10 sekund) sprawi, że aplikacja nie będzie "wisieć" na ekranie ładowania przy bardzo wolnym połączeniu, ale wyświetli błąd. Jest to pożądane zachowanie dla UX.
 
 ## Proponowane Zmiany
 
-### 1. Ikona Aplikacji (App Icon)
-#### [MODIFY] [pubspec.yaml](file:///D:/Apps/prasowka/pubspec.yaml)
-- Konfiguracja `adaptive_icon` dla Androida. Logo sowy zostanie wyśrodkowane i dopasowane do okręgu, unikając przycinania.
+### Logika Biznesowa (Services)
 
-### 2. Animowany Ekran Startowy (Custom Splash)
-#### [NEW] [splash_screen.dart](file:///D:/Apps/prasowka/lib/screens/splash_screen.dart)
-Zaimplementuję ekran z następującą logiką:
-- **Animacja:** Obrazek `Pra.png` wyjeżdża z lewej, `sówka.png` (lub `sówka 2.png`) z prawej.
-- **Kolizja:** W momencie zetknięcia następuje "potrząśnięcie" ekranem (`Shake effect`) oraz przejście w pełne logo.
-- **Efekty specjalne:** Wygenerowanie cząsteczek (kurz/odłamki) w miejscu zderzenia za pomocą `CustomPainter`.
-- **Zasoby:** Wykorzystam dostarczone pliki `Pra.png`, `sówka.png` oraz `sówka 2.png`.
+#### [MODIFY] [rss_service.dart](file:///D:/Apps/prasowka/lib/services/rss_service.dart)
+- Dodanie `timeout` do zapytań HTTP.
+- Rozszerzenie `_extractImageUrl` o obsługę tagów `<media:thumbnail>` i `<atom:link>`.
+- Ulepszenie `_parseRssDate` o dodatkowe formaty i `trim()`.
 
-### 3. Integracja
-#### [MODIFY] [main.dart](file:///D:/Apps/prasowka/lib/main.dart)
-- Zmiana `home` na `SplashScreen`, który po zakończeniu animacji automatycznie przełączy się na `MainScreen`.
+#### [MODIFY] [storage_service.dart](file:///D:/Apps/prasowka/lib/services/storage_service.dart)
+- Dodanie sprawdzenia `Hive.isBoxOpen`, aby uniknąć błędów przy wielokrotnej inicjalizacji.
+
+### Zarządzanie Stanem (Providers)
+
+#### [MODIFY] [news_provider.dart](file:///D:/Apps/prasowka/lib/providers/news_provider.dart)
+- Wprowadzenie `_lastRequestedCategoryId`. Jeśli dane z RSS wrócą, gdy użytkownik już zdążył zmienić kategorię na inną, wynik zostanie odrzucony (zapobieganie "miganiu" starej treści).
+- Obsługa błędów sieciowych (`SocketException`) z przyjaznym komunikatem.
+
+### Warstwa Prezentacji (UI)
+
+#### [MODIFY] [article_detail_screen.dart](file:///D:/Apps/prasowka/lib/screens/article_detail_screen.dart)
+- Poprawa czytelności: dodanie placeholderów dla brakującej treści i ulepszenie formatowania daty.
 
 ## Plan Weryfikacji
 
 ### Testy Manualne
-1. **Ikona:** Sprawdzenie na liście aplikacji, czy sowa wypełnia okrąg i nie jest ucięta.
-2. **Animacja:** Weryfikacja płynności zderzenia i czy efekt "kurzu" jest widoczny.
-3. **Przejście:** Upewnienie się, że po animacji aplikacja przechodzi do newsów bez opóźnień.
+1. **Test Wyścigu:** Szybkie klikanie w 3 różne kategorie pod rząd. Weryfikacja, czy finalnie wyświetlona lista odpowiada ostatniej klikniętej kategorii.
+2. **Test Offline:** Wyłączenie Wi-Fi i próba odświeżenia. Sprawdzenie, czy pojawia się komunikat o braku połączenia.
+3. **Test RSS Edge Cases:** Sprawdzenie, czy artykuły bez zdjęć nadal wyświetlają się poprawnie (bez pustych szarych bloków).

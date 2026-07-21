@@ -134,10 +134,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   children: [
                     Transform.translate(
                       offset: Offset(0, -60 + shakeOffset),
-                      child: Image.asset(
-                        'assets/logo.png',
-                        height: 100, // Jeszcze bardziej zmniejszona dla lepszego efektu
-                        fit: BoxFit.contain,
+                      child: Padding(
+                        padding: const EdgeInsets.all(36.0), // Jeszcze większy padding
+                        child: Image.asset(
+                          'assets/logo.png',
+                          height: 70, // Jeszcze mniejsza sowa dla efektu "lekkości"
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),

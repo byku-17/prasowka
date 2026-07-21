@@ -83,6 +83,7 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/logo.png"
   min_sdk_android: 21
+  # To tło zostanie użyte dla ikon adaptacyjnych (Android 8+)
   adaptive_icon_background: "#1B2A4A"
   adaptive_icon_foreground: "assets/logo.png"
 

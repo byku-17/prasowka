@@ -2,9 +2,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="prasowka"
+        android:label="Prasówka"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:roundIcon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"
