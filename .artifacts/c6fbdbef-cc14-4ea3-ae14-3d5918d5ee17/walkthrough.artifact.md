@@ -1,32 +1,29 @@
-# Nowa Tożsamość Wizualna - Prasówka
+# Wielka Rozbudowa Treści i Ustawień - Prasówka
 
-Zrealizowałem Twoją wizję animowanego wejścia do aplikacji oraz poprawiłem ikony, aby wyglądały profesjonalnie na każdym urządzeniu.
+Zakończyłem najbardziej obszerną aktualizację w historii projektu. **Prasówka** stała się teraz profesjonalnym, potężnym agregatorem treści, dysponującym bazą blisko **100 źródeł RSS** z najważniejszych dziedzin życia, nauki i technologii.
 
-## Co zostało zmienione?
+## Co nowego?
 
-### 1. Ikona Aplikacji (Perfect Fit)
-- Skonfigurowałem tzw. **Adaptive Icons** dla Androida. Teraz głowa sowy jest wyśrodkowana na granatowym tle i idealnie wypełnia okrągły przycisk, bez ucinania krawędzi.
-- Na iOS ikona również została odświeżona i dopasowana do standardów systemu.
+### 1. Nowe Kategorie Treści 🔬🏎️
+- **NAUKA:** Kompletne zestawienie światowej elity dzienników naukowych (*Nature*, *Science*, *Scientific American*) oraz medycznych (*The Lancet*, *NEJM*, *JAMA*). Dodaliśmy też polskie źródła jak *Kwantowo.pl* czy *Nauka w Polsce*.
+- **MOTORYZACJA:** Wszystko dla fanów aut — od testów (*Autocentrum*, *Autokult*) przez elektromobilność (*Elektrowóz*) po historię (*Automobilista*) i motorsport (*Sokół Około F1*).
 
-### 2. Systemowy Splash Screen
-- Zgodnie z prośbą, logo sowy na ekranie startowym (tym systemowym) zostało **zmniejszone**, dzięki czemu jest widoczne w całości i ma dużo oddechu.
+### 2. Profesjonalne Zarządzanie Źródłami (UX) ⚙️
+- **Grupowanie:** Na ekranie ustawień źródła są teraz elegancko pogrupowane według kategorii (rozwijane listy).
+- **Masowe Akcje:** Przy każdej kategorii znajdziesz przycisk **WŁĄCZ/WYŁĄCZ**, który jednym kliknięciem zarządza wszystkimi portalami w danej sekcji.
+- **Globalny Przełącznik:** Dodaliśmy opcję **"WSZYSTKO"** w prawym górnym rogu ustawień źródeł, pozwalającą na szybki reset całej bazy.
 
-### 3. Animacja Zderzenia (Custom Splash)
-To najbardziej efektowna część zmian. Stworzyłem dedykowany ekran `SplashScreen`, który:
-- **Wjazd z boków:** Obrazek `Pra.png` wjeżdża dynamicznie z lewej strony, a `sówka.png` z prawej.
-- **Efekt Kolizji:** W momencie zderzenia ekran wykonuje lekki **wstrząs (Shake effect)**, co nadaje animacji "ciężaru".
-- **Eksplozja Cząsteczek:** W miejscu zderzenia pojawia się **kurz i odłamki** (wygenerowane algorytmicznie cząsteczki w kolorach złota i szarości), co symuluje zderzenie twardych obiektów.
-- **Transformacja:** Po zderzeniu tekst zmienia się w finalną formę `sówka 2.png` (z Twoimi barwami), a następnie aplikacja płynnie przechodzi do czytnika newsów.
+### 3. Optymalizacja i Stabilność ⚡
+- **Inteligentne Filtrowanie:** Usprawniłem system priorytetyzacji ulubionych drużyn w sekcji Sport.
+- **Wydajność:** Mimo blisko 100 źródeł, sowa pobiera dane równolegle, co zapewnia szybkie odświeżanie nawet w widoku "WSZYSTKIE".
 
-## Jak to zobaczyć?
+## Jak sprawdzić zmiany?
 
-1. Zamknij całkowicie aplikację i uruchom ją ponownie.
-2. Zobaczysz granatowy ekran z małą sową (systemowy splash).
-3. Następnie ruszy animacja zderzenia "Pra" i "sówka" z efektami cząsteczek.
-4. Po ok. 3 sekundach znajdziesz się w aplikacji.
+1. **Przejdź do Ustawień:** Zobacz nowy, uporządkowany widok źródeł. Wypróbuj przyciski "WŁĄCZ" przy nowej kategorii **Nauka**.
+2. **Ekran Główny:** Sprawdź nowe zakładki na górnym pasku.
+3. **Widok "WSZYSTKIE":** Zobacz, jak newsy z prestiżowych czasopism naukowych mieszają się z testami nowych aut i wynikami NBA.
 
 > [!TIP]
-> Animacja jest zoptymalizowana pod kątem wydajności — cząsteczki są rysowane bezpośrednio na karcie graficznej (Canvas API), więc nie obciążają procesora.
+> Jeśli zakładka "WSZYSTKIE" zawiera zbyt dużo treści, użyj nowych funkcji masowego wyłączania w ustawieniach, aby zostawić tylko swoje absolutnie ulubione działy.
 
-## Pliki zasobów
-Wszystkie dostarczone pliki: `Pra.png`, `sówka.png`, `sówka 2.png` oraz `logo.png` zostały poprawnie dodane do projektu i są używane w animacji.
+**Prasówka jest teraz gotowa do rywalizacji z największymi aplikacjami newsowymi na rynku!** 🦉🏆📈🔬🏎️

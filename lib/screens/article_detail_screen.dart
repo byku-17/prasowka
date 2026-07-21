@@ -79,7 +79,9 @@ class ArticleDetailScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   
                   HtmlWidget(
-                    article.content.isNotEmpty ? article.content : article.description,
+                    article.content.isNotEmpty 
+                        ? article.content 
+                        : (article.description.isNotEmpty ? article.description : 'Brak treści artykułu.'),
                     textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontSize: 18,
                       height: 1.6,

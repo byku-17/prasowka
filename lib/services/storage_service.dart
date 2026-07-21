@@ -4,12 +4,14 @@ import '../models/article.dart';
 class StorageService {
   static const String articlesBoxName = 'articles';
 
-  /// Inicjalizacja Hive i otwarcie boxa
+  /// Inicjalizacja Hive i otwarcie boxa (bezpieczna)
   Future<void> init() async {
     if (!Hive.isAdapterRegistered(ArticleAdapter().typeId)) {
       Hive.registerAdapter(ArticleAdapter());
     }
-    await Hive.openBox<Article>(articlesBoxName);
+    if (!Hive.isBoxOpen(articlesBoxName)) {
+      await Hive.openBox<Article>(articlesBoxName);
+    }
   }
 
   /// Zapisuje lub usuwa artykuł z ulubionych

@@ -1,38 +1,47 @@
-# Plan Poprawy Stabilności i Optymalizacji (Hardening)
+# Plan: Rozbudowa Treści (Nauka i Motoryzacja) oraz Ulepszenie Ustawień
 
-Celem jest uodpornienie aplikacji na błędy sieciowe, wyścigi stanów oraz nieprzewidziane formaty danych z kanałów RSS.
-
-## User Review Required
-
-> [!IMPORTANT]
-> Dodanie timeoutów (10 sekund) sprawi, że aplikacja nie będzie "wisieć" na ekranie ładowania przy bardzo wolnym połączeniu, ale wyświetli błąd. Jest to pożądane zachowanie dla UX.
+Celem jest dodanie dwóch nowych, bogatych w treść kategorii (NAUKA i MOTORYZACJA) oraz znaczące ulepszenie ekranu ustawień poprzez grupowanie źródeł i dodanie funkcji "Zaznacz wszystkie".
 
 ## Proponowane Zmiany
 
-### Logika Biznesowa (Services)
+### 1. Nowe Kategorie i Źródła (Models)
 
-#### [MODIFY] [rss_service.dart](file:///D:/Apps/prasowka/lib/services/rss_service.dart)
-- Dodanie `timeout` do zapytań HTTP.
-- Rozszerzenie `_extractImageUrl` o obsługę tagów `<media:thumbnail>` i `<atom:link>`.
-- Ulepszenie `_parseRssDate` o dodatkowe formaty i `trim()`.
+#### [MODIFY] [news_category.dart](file:///D:/Apps/prasowka/lib/models/news_category.dart)
+Dodanie kategorii:
+- **Nauka** (ID: `science`, Ikona: `science`)
+- **Motoryzacja** (ID: `automotive`, Ikona: `directions_car`)
 
-#### [MODIFY] [storage_service.dart](file:///D:/Apps/prasowka/lib/services/storage_service.dart)
-- Dodanie sprawdzenia `Hive.isBoxOpen`, aby uniknąć błędów przy wielokrotnej inicjalizacji.
+#### [MODIFY] [news_source.dart](file:///D:/Apps/prasowka/lib/models/news_source.dart)
+Dodanie ponad 30 nowych źródeł:
 
-### Zarządzanie Stanem (Providers)
+**Kategoria NAUKA (Global & PL):**
+- **Global:** Nature, Science, PLOS ONE, Scientific American, NASA.
+- **Medycyna:** NEJM, The Lancet, JAMA, BMJ, Puls Medycyny.
+- **PL:** Nauka w Polsce (PAP), Kwantowo.pl, Projekt Pulsar, Dziennik Naukowy, Medycyna Praktyczna.
 
-#### [MODIFY] [news_provider.dart](file:///D:/Apps/prasowka/lib/providers/news_provider.dart)
-- Wprowadzenie `_lastRequestedCategoryId`. Jeśli dane z RSS wrócą, gdy użytkownik już zdążył zmienić kategorię na inną, wynik zostanie odrzucony (zapobieganie "miganiu" starej treści).
-- Obsługa błędów sieciowych (`SocketException`) z przyjaznym komunikatem.
+**Kategoria MOTORYZACJA (PL & Global):**
+- **Testy/Info:** Autocentrum, Autokult, Onet Moto, Moto.pl, Interia Motoryzacja.
+- **Prasa:** Auto Świat, Magazyn Auto (Motor), Top Gear (Global), Automobilista.
+- **E-mobility/Tech:** Elektrowóz, Autoblog.pl, GreenCarCongress.
+- **Biznes/Sport:** WRC, Sokół Około F1.
 
-### Warstwa Prezentacji (UI)
+### 2. Logika Biznesowa (SettingsProvider)
 
-#### [MODIFY] [article_detail_screen.dart](file:///D:/Apps/prasowka/lib/screens/article_detail_screen.dart)
-- Poprawa czytelności: dodanie placeholderów dla brakującej treści i ulepszenie formatowania daty.
+#### [MODIFY] [settings_provider.dart](file:///D:/Apps/prasowka/lib/providers/settings_provider.dart)
+- Dodanie metod `toggleAllSourcesInCategory(String categoryId, bool enable)` oraz `toggleAllSources(bool enable)`.
+- Usprawnienie zapisu do Hive, aby operacje masowe były wydajne.
+
+### 3. Interfejs Użytkownika (SettingsScreen)
+
+#### [MODIFY] [settings_screen.dart](file:///D:/Apps/prasowka/lib/screens/settings_screen.dart)
+- **Grupowanie:** Lista źródeł nie będzie już jedną długą listą, ale zostanie podzielona na sekcje (headers) odpowiadające kategoriom.
+- **Masowe akcje:** Przy każdym nagłówku kategorii pojawi się przycisk "Zaznacz wszystkie" / "Odznacz wszystkie".
+- **Dynamiczne UI:** Usprawnienie przełączników, aby reagowały natychmiast na zmiany masowe.
 
 ## Plan Weryfikacji
 
 ### Testy Manualne
-1. **Test Wyścigu:** Szybkie klikanie w 3 różne kategorie pod rząd. Weryfikacja, czy finalnie wyświetlona lista odpowiada ostatniej klikniętej kategorii.
-2. **Test Offline:** Wyłączenie Wi-Fi i próba odświeżenia. Sprawdzenie, czy pojawia się komunikat o braku połączenia.
-3. **Test RSS Edge Cases:** Sprawdzenie, czy artykuły bez zdjęć nadal wyświetlają się poprawnie (bez pustych szarych bloków).
+1. **Grupowanie:** Sprawdzenie w ustawieniach, czy źródła o tematyce F1 są pod nagłówkiem "Sport", a Nature pod "Nauka".
+2. **Masowe Zaznaczanie:** Kliknięcie "Zaznacz wszystkie" w kategorii Motoryzacja i weryfikacja na ekranie głównym, czy wszystkie portale (Autocentrum, Autokult itd.) są aktywne.
+3. **Nowe Zakładki:** Sprawdzenie, czy na ekranie głównym pojawiły się zakładki NAUKA i MOTORYZACJA.
+4. **Wydajność:** Upewnienie się, że pobieranie z tak ogromnej bazy (ok. 100 źródeł) nie powoduje błędów "timeout" (optymalizacja równoległa).

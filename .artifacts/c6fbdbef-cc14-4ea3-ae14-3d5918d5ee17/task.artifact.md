@@ -1,10 +1,7 @@
-# Zadania: Animowany Splash Screen i Ikona
+# Zadania: Wielka Rozbudowa (Nauka, Motoryzacja, UX)
 
-- [x] Aktualizacja `pubspec.yaml` (zasoby i ikony)
-- [x] Implementacja `SplashScreen` (`lib/screens/splash_screen.dart`)
-    - [x] Animacja wjazdu `Pra.png` i `sówka.png`
-    - [x] Efekt kolizji (wstrząs)
-    - [x] Efekt cząsteczek (kurz)
-- [x] Aktualizacja `main.dart` (nowy punkt startowy)
-- [x] Przebudowa ikon aplikacji (`flutter_launcher_icons`)
-- [x] Przebudowa systemowego splash screena (`flutter_native_splash`)
+- [x] Aktualizacja kategorii w `NewsCategory` (Nauka i Motoryzacja)
+- [x] Masowe uzupełnienie `NewsSource` (ok. 100 źródeł łącznie)
+- [x] Rozbudowa `SettingsProvider` (logika masowego zaznaczania)
+- [x] Przebudowa `SettingsScreen` (grupowanie i "Zaznacz wszystko")
+- [x] Weryfikacja końcowa całego systemu treści
