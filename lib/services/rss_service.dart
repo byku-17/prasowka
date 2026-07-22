@@ -8,6 +8,7 @@ import '../models/news_source.dart';
 
 class RssService {
   /// Pobiera artykuły z podanego źródła RSS z timeoutem 10s
+  /// Używa Isolates (compute) do ciężkiego parsowania XML w tle
   Future<List<Article>> fetchArticles(NewsSource source) async {
     try {
       final response = await http
@@ -15,23 +16,11 @@ class RssService {
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final feed = RssFeed.parse(response.body);
-
-        return feed.items.map((item) {
-          // Oczyszczamy opis z tagów HTML
-          final cleanDescription = _parseHtmlString(item.description ?? '');
-
-          return Article(
-            id: item.guid ?? item.link ?? DateTime.now().toIso8601String(),
-            title: (item.title ?? 'Bez tytułu').trim(),
-            description: cleanDescription,
-            content: item.content?.value ?? cleanDescription,
-            url: item.link ?? '',
-            publishedAt: _parseRssDate(item.pubDate),
-            sourceName: source.name,
-            imageUrl: _extractImageUrl(item),
-          );
-        }).toList();
+        // Przenosimy parsowanie do osobnego wątku (Isolate)
+        return await compute(_parseRssCompute, {
+          'xml': response.body,
+          'sourceName': source.name,
+        });
       } else {
         return [];
       }
@@ -40,70 +29,60 @@ class RssService {
       return [];
     }
   }
+}
 
-  /// Rozbudowane wyciąganie URL obrazka z elementu RSS
-  String? _extractImageUrl(RssItem item) {
-    // 1. Enclosure (standard RSS)
-    if (item.enclosure?.url != null && _isImageUrl(item.enclosure!.url!)) {
-      return item.enclosure!.url;
-    }
-
-    // 2. Description pod kątem tagów <img>
-    if (item.description != null && item.description!.contains('<img')) {
-      try {
-        final document = parse(item.description);
-        final img = document.querySelector('img');
-        final src = img?.attributes['src'];
-        if (src != null && _isImageUrl(src)) return src;
-      } catch (_) {}
-    }
-    return null;
+/// Funkcja pomocnicza działająca w osobnym wątku (Isolate)
+List<Article> _parseRssCompute(Map<String, dynamic> data) {
+  final String xml = data['xml'];
+  final String sourceName = data['sourceName'];
+  
+  try {
+    final feed = RssFeed.parse(xml);
+    return feed.items.map((item) {
+      final description = _cleanHtml(item.description ?? '');
+      return Article(
+        id: item.guid ?? item.link ?? DateTime.now().toIso8601String(),
+        title: (item.title ?? 'Bez tytułu').trim(),
+        description: description,
+        content: item.content?.value ?? description,
+        url: item.link ?? '',
+        publishedAt: _parseDate(item.pubDate),
+        sourceName: sourceName,
+        imageUrl: _getImg(item),
+      );
+    }).toList();
+  } catch (e) {
+    return [];
   }
+}
 
-  bool _isImageUrl(String url) {
-    final lowerUrl = url.toLowerCase();
-    return lowerUrl.contains('.jpg') ||
-        lowerUrl.contains('.jpeg') ||
-        lowerUrl.contains('.png') ||
-        lowerUrl.contains('.webp');
-  }
+String _cleanHtml(String htmlString) {
+  if (htmlString.isEmpty) return '';
+  final document = parse(htmlString);
+  return parse(document.body?.text).documentElement?.text?.trim() ?? '';
+}
 
-  /// Pomocnicza funkcja do usuwania HTML
-  String _parseHtmlString(String htmlString) {
-    if (htmlString.isEmpty) return '';
+String? _getImg(RssItem item) {
+  if (item.enclosure?.url != null) return item.enclosure!.url;
+  if (item.description != null && item.description!.contains('<img')) {
     try {
-      final document = parse(htmlString);
-      final String parsedString =
-          parse(document.body?.text).documentElement?.text ?? '';
-      return parsedString.trim();
-    } catch (_) {
-      return htmlString;
-    }
+      final document = parse(item.description);
+      return document.querySelector('img')?.attributes['src'];
+    } catch (_) {}
   }
+  return null;
+}
 
-  /// Parsowanie daty z formatu RSS (RFC 822) z wieloma fallbackami
-  DateTime _parseRssDate(String? dateString) {
-    if (dateString == null || dateString.isEmpty) return DateTime.now();
-    
-    final cleanedDate = dateString.trim();
-    
+DateTime _parseDate(String? dateString) {
+  if (dateString == null || dateString.isEmpty) return DateTime.now();
+  try {
+    final format = DateFormat("EEE, dd MMM yyyy HH:mm:ss Z", 'en_US');
+    return format.parse(dateString.trim());
+  } catch (_) {
     try {
-      // Standard RSS: EEE, dd MMM yyyy HH:mm:ss Z
-      final format = DateFormat("EEE, dd MMM yyyy HH:mm:ss Z", 'en_US');
-      return format.parse(cleanedDate);
+      return DateTime.parse(dateString.trim());
     } catch (_) {
-      try {
-        // Fallback: EEE, dd MMM yyyy HH:mm:ss zzz
-        final format2 = DateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", 'en_US');
-        return format2.parse(cleanedDate);
-      } catch (_) {
-        try {
-          return DateTime.parse(cleanedDate);
-        } catch (_) {
-          debugPrint('Could not parse RSS date: $cleanedDate');
-          return DateTime.now();
-        }
-      }
+      return DateTime.now();
     }
   }
 }

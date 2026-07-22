@@ -22,6 +22,8 @@ class NewsCategory {
     const NewsCategory(id: 'tech', name: 'Tech', icon: Icons.computer),
     const NewsCategory(id: 'science', name: 'Nauka', icon: Icons.science),
     const NewsCategory(id: 'automotive', name: 'Motoryzacja', icon: Icons.directions_car),
+    const NewsCategory(id: 'travel', name: 'Podróże', icon: Icons.flight_takeoff),
+    const NewsCategory(id: 'lifestyle', name: 'Lifestyle', icon: Icons.style),
     const NewsCategory(id: 'culture', name: 'Kultura', icon: Icons.theater_comedy),
   ];
 }

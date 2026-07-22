@@ -18,6 +18,38 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: ListView(
         children: [
+          // GLOBALNE ZARZĄDZANIE NA SAMEJ GÓRZE
+          Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.accentGold.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.accentGold.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ZARZĄDZANIE GLOBALNE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      Text('Włącz lub wyłącz wszystkie źródła naraz', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => settings.toggleAllSources(true),
+                  child: const Text('WŁĄCZ WSZYSTKO', style: TextStyle(fontSize: 11)),
+                ),
+                TextButton(
+                  onPressed: () => settings.toggleAllSources(false),
+                  child: const Text('WYŁĄCZ', style: TextStyle(fontSize: 11, color: Colors.red)),
+                ),
+              ],
+            ),
+          ),
+
           _buildHeader('MOTYW'),
           ListTile(
             leading: const Icon(Icons.palette_outlined),
@@ -74,20 +106,7 @@ class SettingsScreen extends StatelessWidget {
           ),
 
           const Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildHeader('ŹRÓDŁA WIADOMOŚCI'),
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0, top: 16.0),
-                child: TextButton.icon(
-                  icon: const Icon(Icons.select_all, size: 18),
-                  label: const Text('WSZYSTKO'),
-                  onPressed: () => _showGlobalToggle(context, settings),
-                ),
-              ),
-            ],
-          ),
+          _buildHeader('ŹRÓDŁA WIADOMOŚCI'),
           
           // Grupowanie źródeł wg kategorii
           ...NewsCategory.defaultCategories.where((c) => c.id != 'all').map((cat) {
@@ -122,7 +141,10 @@ class SettingsScreen extends StatelessWidget {
       leading: Icon(category.icon, color: AppTheme.accentGold, size: 20),
       title: Text(category.name.toUpperCase(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       trailing: TextButton(
-        child: Text(allActive ? 'WYŁĄCZ' : 'WŁĄCZ'),
+        child: Text(
+          allActive ? 'WYŁĄCZ WSZYSTKO' : 'WŁĄCZ WSZYSTKO',
+          style: TextStyle(fontSize: 10, color: allActive ? Colors.red : AppTheme.accentGold),
+        ),
         onPressed: () => settings.toggleAllSourcesInCategory(category.id, !allActive),
       ),
       children: sources.map((src) => SwitchListTile(
@@ -190,21 +212,6 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showGlobalToggle(BuildContext context, SettingsProvider settings) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Masowe zarządzanie'),
-        content: const Text('Czy chcesz włączyć lub wyłączyć wszystkie źródła wiadomości naraz?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ANULUJ')),
-          TextButton(onPressed: () { settings.toggleAllSources(false); Navigator.pop(context); }, child: const Text('WYŁĄCZ WSZYSTKO')),
-          TextButton(onPressed: () { settings.toggleAllSources(true); Navigator.pop(context); }, child: const Text('WŁĄCZ WSZYSTKO')),
-        ],
       ),
     );
   }

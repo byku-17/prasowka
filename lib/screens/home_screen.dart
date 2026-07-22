@@ -104,14 +104,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           'PRASÓWKA',
           style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
         ),
-        bottom: _tabController != null ? TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: AppTheme.accentGold,
-          labelColor: AppTheme.accentGold,
-          unselectedLabelColor: Colors.white70,
-          tabs: _activeCategories.map((cat) => Tab(text: cat.name.toUpperCase())).toList(),
-        ) : null,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48), // Wysokość TabBar + ewentualny progress bar
+          child: Column(
+            children: [
+              if (_tabController != null) TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                indicatorColor: AppTheme.accentGold,
+                labelColor: AppTheme.accentGold,
+                unselectedLabelColor: Colors.white70,
+                tabs: _activeCategories.map((cat) => Tab(text: cat.name.toUpperCase())).toList(),
+              ),
+              // Subtelny pasek ładowania w tle
+              Consumer<NewsProvider>(
+                builder: (context, provider, child) {
+                  return provider.isBackgroundLoading 
+                    ? const LinearProgressIndicator(
+                        backgroundColor: Colors.transparent,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentGold),
+                        minHeight: 2,
+                      )
+                    : const SizedBox(height: 2);
+                },
+              ),
+            ],
+          ),
+        ),
       ),
       body: Consumer<NewsProvider>(
         builder: (context, provider, child) {

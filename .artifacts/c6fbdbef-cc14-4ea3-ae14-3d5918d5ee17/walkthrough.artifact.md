@@ -1,29 +1,32 @@
-# Wielka Rozbudowa Treści i Ustawień - Prasówka
+# Ekstremalna Optymalizacja Wydajności (Speed & Cache) - Prasówka
 
-Zakończyłem najbardziej obszerną aktualizację w historii projektu. **Prasówka** stała się teraz profesjonalnym, potężnym agregatorem treści, dysponującym bazą blisko **100 źródeł RSS** z najważniejszych dziedzin życia, nauki i technologii.
+Zmieniłem fundamenty działania aplikacji, aby obsługa ponad 130 źródeł newsowych była błyskawiczna i płynna. Prasówka przeszła z modelu "pobierz i czekaj" na nowoczesną architekturę **Offline First**.
 
-## Co nowego?
+## Co się zmieniło? (Kluczowe ulepszenia)
 
-### 1. Nowe Kategorie Treści 🔬🏎️
-- **NAUKA:** Kompletne zestawienie światowej elity dzienników naukowych (*Nature*, *Science*, *Scientific American*) oraz medycznych (*The Lancet*, *NEJM*, *JAMA*). Dodaliśmy też polskie źródła jak *Kwantowo.pl* czy *Nauka w Polsce*.
-- **MOTORYZACJA:** Wszystko dla fanów aut — od testów (*Autocentrum*, *Autokult*) przez elektromobilność (*Elektrowóz*) po historię (*Automobilista*) i motorsport (*Sokół Około F1*).
+### 1. Instant UI (Cache-First) 🚀
+Wyeliminowałem nudne ekrany ładowania przy każdym przełączaniu zakładki.
+- **Jak to działa:** Sowa zapisuje ostatnio pobrane newsy w pamięci telefonu (Hive). Kiedy wchodzisz w kategorię "Sport" lub "Tech", newsy pojawiają się **NATYCHMIAST**.
+- **Background Refresh:** Dopiero gdy czytasz zcache'owane treści, sowa w tle dyskretnie sprawdza, czy są nowe artykuły i aktualizuje listę.
 
-### 2. Profesjonalne Zarządzanie Źródłami (UX) ⚙️
-- **Grupowanie:** Na ekranie ustawień źródła są teraz elegancko pogrupowane według kategorii (rozwijane listy).
-- **Masowe Akcje:** Przy każdej kategorii znajdziesz przycisk **WŁĄCZ/WYŁĄCZ**, który jednym kliknięciem zarządza wszystkimi portalami w danej sekcji.
-- **Globalny Przełącznik:** Dodaliśmy opcję **"WSZYSTKO"** w prawym górnym rogu ustawień źródeł, pozwalającą na szybki reset całej bazy.
+### 2. Wielowątkowość (Isolates) 🧠
+Ciężka praca procesora związana z przetwarzaniem setek plików XML została przeniesiona na osobny "tor" (Isolate).
+- **Efekt:** Animacje w aplikacji nie "haczą" (zero janku), nawet jeśli w tle sowa mieli ogromne ilości danych.
 
-### 3. Optymalizacja i Stabilność ⚡
-- **Inteligentne Filtrowanie:** Usprawniłem system priorytetyzacji ulubionych drużyn w sekcji Sport.
-- **Wydajność:** Mimo blisko 100 źródeł, sowa pobiera dane równolegle, co zapewnia szybkie odświeżanie nawet w widoku "WSZYSTKIE".
+### 3. Inteligentne Pobieranie (Batching) 📦
+Zamiast wysyłać 130 zapytań naraz (co mogło zatykać łącze), sowa pobiera dane w optymalnych paczkach po 10 źródeł. To znacząco poprawia stabilność na słabszym internecie.
 
-## Jak sprawdzić zmiany?
+### 4. Dyskretne ładowanie w UI 💠
+Usunąłem wielkiego Spinnera, który blokował ekran.
+- **Nowość:** Pod paskiem kategorii (TabBar) pojawił się cieniutki, złoty pasek postępu. Informuje on, że sowa właśnie dociąga świeże newsy, ale w ogóle nie przeszkadza Ci to w czytaniu tych, które już są na ekranie.
 
-1. **Przejdź do Ustawień:** Zobacz nowy, uporządkowany widok źródeł. Wypróbuj przyciski "WŁĄCZ" przy nowej kategorii **Nauka**.
-2. **Ekran Główny:** Sprawdź nowe zakładki na górnym pasku.
-3. **Widok "WSZYSTKIE":** Zobacz, jak newsy z prestiżowych czasopism naukowych mieszają się z testami nowych aut i wynikami NBA.
+## Jak poczuć różnicę?
+
+1. **Przełącz zakładkę:** Zobacz, że lista artykułów wskakuje natychmiast.
+2. **Spójrz pod AppBar:** Zobaczysz cienki złoty pasek ładowania — to sowa pracuje w tle.
+3. **Tryb samolotowy:** Wyłącz internet i otwórz aplikację. Wszystkie newsy z ostatniej sesji wciąż tam będą!
 
 > [!TIP]
-> Jeśli zakładka "WSZYSTKIE" zawiera zbyt dużo treści, użyj nowych funkcji masowego wyłączania w ustawieniach, aby zostawić tylko swoje absolutnie ulubione działy.
+> Przy pierwszym uruchomieniu po tej aktualizacji sowa musi raz pobrać wszystko od zera, aby zbudować cache. Każde kolejne otwarcie aplikacji będzie już "ekspresowe".
 
-**Prasówka jest teraz gotowa do rywalizacji z największymi aplikacjami newsowymi na rynku!** 🦉🏆📈🔬🏎️
+**Prasówka jest teraz tak szybka, jak to tylko możliwe w technologii RSS!** 🦉⚡️📱✨

@@ -1,47 +1,44 @@
-# Plan: Rozbudowa Treści (Nauka i Motoryzacja) oraz Ulepszenie Ustawień
+# Plan: Ekstremalna Optymalizacja Wydajności (Speed & Cache)
 
-Celem jest dodanie dwóch nowych, bogatych w treść kategorii (NAUKA i MOTORYZACJA) oraz znaczące ulepszenie ekranu ustawień poprzez grupowanie źródeł i dodanie funkcji "Zaznacz wszystkie".
+Użytkownik zgłosił bardzo powolne ładowanie artykułów. Przy blisko 130 źródłach RSS, obecny model "pobierz wszystko naraz i czekaj" paraliżuje łącze i procesor telefonu. Wprowadzimy architekturę **"Offline First"** oraz wielowątkowe przetwarzanie danych.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Zmiana zachowania UI:** Po zmianie zakładki newsy pojawią się **natychmiast** (z pamięci podręcznej), a kółko ładowania będzie kręcić się subtelnie w tle, aktualizując listę, gdy nowe dane spłyną z sieci.
+
+> [!WARNING]
+> Pierwsze uruchomienie po aktualizacji może zająć chwilę na migrację bazy danych Hive, ale każde kolejne będzie błyskawiczne.
 
 ## Proponowane Zmiany
 
-### 1. Nowe Kategorie i Źródła (Models)
+### 1. Warstwa Danych i Cache (StorageService)
 
-#### [MODIFY] [news_category.dart](file:///D:/Apps/prasowka/lib/models/news_category.dart)
-Dodanie kategorii:
-- **Nauka** (ID: `science`, Ikona: `science`)
-- **Motoryzacja** (ID: `automotive`, Ikona: `directions_car`)
+#### [MODIFY] [storage_service.dart](file:///D:/Apps/prasowka/lib/services/storage_service.dart)
+- Dodanie nowego "pudełka" Hive: `news_cache`.
+- Metody `saveToCache(String categoryId, List<Article> articles)` oraz `loadFromCache(String categoryId)`.
+- Automatyczne czyszczenie starych wpisów w cache, aby aplikacja nie zajmowała gigabajtów danych.
 
-#### [MODIFY] [news_source.dart](file:///D:/Apps/prasowka/lib/models/news_source.dart)
-Dodanie ponad 30 nowych źródeł:
+### 2. Wielowątkowość i Sieć (RssService)
 
-**Kategoria NAUKA (Global & PL):**
-- **Global:** Nature, Science, PLOS ONE, Scientific American, NASA.
-- **Medycyna:** NEJM, The Lancet, JAMA, BMJ, Puls Medycyny.
-- **PL:** Nauka w Polsce (PAP), Kwantowo.pl, Projekt Pulsar, Dziennik Naukowy, Medycyna Praktyczna.
+#### [MODIFY] [rss_service.dart](file:///D:/Apps/prasowka/lib/services/rss_service.dart)
+- **Isolates (Wielowątkowość):** Przeniesienie ciężkiego parsowania XML/RSS do osobnego wątku procesora (`compute`). Zapobiegnie to "zamrażaniu" animacji (jank) podczas ładowania 100+ newsów.
+- **Batching:** Implementacja pobierania w małych grupach (np. 5 źródeł jednocześnie), aby nie zapchać kolejki sieciowej systemu operacyjnego.
 
-**Kategoria MOTORYZACJA (PL & Global):**
-- **Testy/Info:** Autocentrum, Autokult, Onet Moto, Moto.pl, Interia Motoryzacja.
-- **Prasa:** Auto Świat, Magazyn Auto (Motor), Top Gear (Global), Automobilista.
-- **E-mobility/Tech:** Elektrowóz, Autoblog.pl, GreenCarCongress.
-- **Biznes/Sport:** WRC, Sokół Około F1.
+### 3. Logika "Instant UI" (NewsProvider)
 
-### 2. Logika Biznesowa (SettingsProvider)
+#### [MODIFY] [news_provider.dart](file:///D:/Apps/prasowka/lib/providers/news_provider.dart)
+- **Logika Cache First:** Podczas `fetchNews`, najpierw ładujemy dane z Hive i natychmiast robimy `notifyListeners()`. Użytkownik widzi treść w ułamku sekundy.
+- **Background Update:** Po wyświetleniu cache, sowa w tle pobiera świeże dane. Jeśli znajdzie nowsze artykuły, podmienia listę.
 
-#### [MODIFY] [settings_provider.dart](file:///D:/Apps/prasowka/lib/providers/settings_provider.dart)
-- Dodanie metod `toggleAllSourcesInCategory(String categoryId, bool enable)` oraz `toggleAllSources(bool enable)`.
-- Usprawnienie zapisu do Hive, aby operacje masowe były wydajne.
+### 4. Ulepszenia Interfejsu (UI)
 
-### 3. Interfejs Użytkownika (SettingsScreen)
-
-#### [MODIFY] [settings_screen.dart](file:///D:/Apps/prasowka/lib/screens/settings_screen.dart)
-- **Grupowanie:** Lista źródeł nie będzie już jedną długą listą, ale zostanie podzielona na sekcje (headers) odpowiadające kategoriom.
-- **Masowe akcje:** Przy każdym nagłówku kategorii pojawi się przycisk "Zaznacz wszystkie" / "Odznacz wszystkie".
-- **Dynamiczne UI:** Usprawnienie przełączników, aby reagowały natychmiast na zmiany masowe.
+#### [MODIFY] [home_screen.dart](file:///D:/Apps/prasowka/lib/screens/home_screen.dart)
+- Dodanie wizualnego wskaźnika ładowania w tle (np. mały pasek postępu pod AppBar), zamiast blokowania całego ekranu dużym Spinnerem.
 
 ## Plan Weryfikacji
 
 ### Testy Manualne
-1. **Grupowanie:** Sprawdzenie w ustawieniach, czy źródła o tematyce F1 są pod nagłówkiem "Sport", a Nature pod "Nauka".
-2. **Masowe Zaznaczanie:** Kliknięcie "Zaznacz wszystkie" w kategorii Motoryzacja i weryfikacja na ekranie głównym, czy wszystkie portale (Autocentrum, Autokult itd.) są aktywne.
-3. **Nowe Zakładki:** Sprawdzenie, czy na ekranie głównym pojawiły się zakładki NAUKA i MOTORYZACJA.
-4. **Wydajność:** Upewnienie się, że pobieranie z tak ogromnej bazy (ok. 100 źródeł) nie powoduje błędów "timeout" (optymalizacja równoległa).
+1. **Test Startu:** Zamknięcie aplikacji i ponowne otwarcie. Newsy na zakładce "Wszystkie" powinny pojawić się bez widocznego ładowania.
+2. **Test Płynności:** Przewijanie listy podczas gdy w tle trwa pobieranie nowych danych — weryfikacja braku przycięć (jank).
+3. **Test Offline:** Uruchomienie aplikacji bez internetu — sowa powinna pokazać ostatnio pobrane newsy z cache.
