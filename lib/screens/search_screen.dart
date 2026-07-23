@@ -19,8 +19,8 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<NewsProvider>();
     
-    // Filtrujemy artykuły, które są aktualnie w pamięci
-    final filtered = provider.articles.where((a) {
+    // Filtrujemy artykuły ze wszystkich załadowanych kategorii
+    final filtered = provider.allLoadedArticles.where((a) {
       return a.title.toLowerCase().contains(_query.toLowerCase()) ||
              a.description.toLowerCase().contains(_query.toLowerCase());
     }).toList();

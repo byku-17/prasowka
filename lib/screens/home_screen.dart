@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'article_detail_screen.dart';
-import '../providers/news_provider.dart';
-import '../providers/settings_provider.dart';
-import '../models/news_category.dart';
-import '../widgets/article_card.dart';
-import '../theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/models/news_category.dart';
+import 'package:prasowka/widgets/category_news_list.dart';
+import 'package:prasowka/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,43 +26,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _initTabs() {
     final settings = context.read<SettingsProvider>();
-    _activeCategories = settings.activeCategories;
+    final newActive = settings.activeCategories;
     
+    bool hasChanged = _activeCategories.length != newActive.length;
+    if (!hasChanged) {
+      for (int i = 0; i < _activeCategories.length; i++) {
+        if (_activeCategories[i].id != newActive[i].id) {
+          hasChanged = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasChanged && _tabController != null) return;
+
+    _activeCategories = List.from(newActive);
     _tabController?.dispose();
+    
     if (_activeCategories.isNotEmpty) {
       _tabController = TabController(length: _activeCategories.length, vsync: this);
-      
-      // Jeśli wybrana kategoria w NewsProvider nie jest na liście aktywnych, ustawiamy pierwszą dostępną
-      final newsProvider = context.read<NewsProvider>();
-      if (!_activeCategories.any((c) => c.id == newsProvider.selectedCategory.id)) {
-        newsProvider.setCategory(_activeCategories.first);
-      }
-
       _tabController!.addListener(() {
-        if (_tabController!.indexIsChanging) {
+        if (!_tabController!.indexIsChanging) {
           context.read<NewsProvider>().setCategory(_activeCategories[_tabController!.index]);
         }
       });
     }
-
-    // Pobieramy newsy na start
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NewsProvider>().fetchNews(
-        activeSourceIds: settings.activeSourceIds,
-        favoriteTeams: settings.favoriteTeams,
-      );
-    });
+    setState(() {});
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Sprawdzamy czy lista aktywnych kategorii się zmieniła
-    final newActive = context.watch<SettingsProvider>().activeCategories;
-    if (newActive.length != _activeCategories.length || 
-        !newActive.every((c) => _activeCategories.contains(c))) {
-      _initTabs();
-    }
+    _initTabs();
   }
 
   @override
@@ -73,25 +68,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
-    
     if (_activeCategories.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('PRASÓWKA')),
-        body: Center(
+        body: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.category_outlined, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              const Text('Wszystkie kategorie są wyłączone.'),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: () {
-                  // Możemy tu dodać nawigację do ustawień lub przycisk powrotu
-                },
-                child: const Text('Przejdź do ustawień'),
-              ),
+              Icon(Icons.category_outlined, size: 64, color: Colors.grey),
+              SizedBox(height: 16),
+              Text('Wszystkie kategorie są wyłączone.'),
+              SizedBox(height: 8),
+              Text('Zmień to w ustawieniach!', style: TextStyle(color: Colors.grey)),
             ],
           ),
         ),
@@ -100,93 +88,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'PRASÓWKA',
-          style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.w900),
+          style: GoogleFonts.syne(
+            letterSpacing: 2.0, 
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+          ),
         ),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48), // Wysokość TabBar + ewentualny progress bar
+          preferredSize: const Size.fromHeight(50),
           child: Column(
             children: [
-              if (_tabController != null) TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                indicatorColor: AppTheme.accentGold,
-                labelColor: AppTheme.accentGold,
-                unselectedLabelColor: Colors.white70,
-                tabs: _activeCategories.map((cat) => Tab(text: cat.name.toUpperCase())).toList(),
-              ),
-              // Subtelny pasek ładowania w tle
+              if (_tabController != null)
+                TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  indicatorColor: AppTheme.accentGold,
+                  labelColor: AppTheme.accentGold,
+                  unselectedLabelColor: Colors.white70,
+                  tabs: _activeCategories.map((cat) => Tab(text: cat.name.toUpperCase())).toList(),
+                ),
               Consumer<NewsProvider>(
                 builder: (context, provider, child) {
-                  return provider.isBackgroundLoading 
-                    ? const LinearProgressIndicator(
-                        backgroundColor: Colors.transparent,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentGold),
-                        minHeight: 2,
-                      )
-                    : const SizedBox(height: 2);
+                  return provider.isCategoryBgLoading(provider.selectedCategory.id)
+                      ? const LinearProgressIndicator(
+                          backgroundColor: Colors.transparent,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentGold),
+                          minHeight: 2,
+                        )
+                      : const SizedBox(height: 2);
                 },
               ),
             ],
           ),
         ),
       ),
-      body: Consumer<NewsProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (provider.errorMessage != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(provider.errorMessage!),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.fetchNews(
-                      activeSourceIds: settings.activeSourceIds,
-                      favoriteTeams: settings.favoriteTeams,
-                    ),
-                    child: const Text('Spróbuj ponownie'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (provider.articles.isEmpty) {
-            return const Center(child: Text('Brak artykułów.'));
-          }
-
-          return RefreshIndicator(
-            onRefresh: () => provider.fetchNews(
-              activeSourceIds: settings.activeSourceIds,
-              favoriteTeams: settings.favoriteTeams,
-            ),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: provider.articles.length,
-              itemBuilder: (context, index) {
-                final article = provider.articles[index];
-                return ArticleCard(
-                  article: article,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ArticleDetailScreen(article: article),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          );
-        },
-      ),
+      body: _tabController != null 
+        ? TabBarView(
+            controller: _tabController,
+            children: _activeCategories.map((cat) => CategoryNewsList(category: cat)).toList(),
+          )
+        : const Center(child: CircularProgressIndicator()),
     );
   }
 }

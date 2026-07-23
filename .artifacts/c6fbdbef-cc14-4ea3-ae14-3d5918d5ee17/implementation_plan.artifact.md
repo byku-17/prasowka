@@ -1,44 +1,40 @@
-# Plan: Ekstremalna Optymalizacja Wydajności (Speed & Cache)
+# Plan: Eliminacja napisu "Brak treści" i optymalizacja płynności
 
-Użytkownik zgłosił bardzo powolne ładowanie artykułów. Przy blisko 130 źródłach RSS, obecny model "pobierz wszystko naraz i czekaj" paraliżuje łącze i procesor telefonu. Wprowadzimy architekturę **"Offline First"** oraz wielowątkowe przetwarzanie danych.
+Celem jest usunięcie irytującego migania komunikatu "Brak treści" podczas ładowania oraz dalsze zwiększenie płynności interfejsu.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Zmiana zachowania UI:** Po zmianie zakładki newsy pojawią się **natychmiast** (z pamięci podręcznej), a kółko ładowania będzie kręcić się subtelnie w tle, aktualizując listę, gdy nowe dane spłyną z sieci.
-
-> [!WARNING]
-> Pierwsze uruchomienie po aktualizacji może zająć chwilę na migrację bazy danych Hive, ale każde kolejne będzie błyskawiczne.
+> **Koniec z miganiem:** Zmienimy logikę widoku tak, aby komunikat "Brak treści" pojawiał się **wyłącznie jako ostateczność**, gdy sowa na 100% potwierdzi, że internet jest pusty. W każdym innym przypadku ładowania (nawet po przełączeniu zakładki) zobaczysz profesjonalny efekt Shimmer.
+> **Persistence:** Upewnimy się, że stan "pierwszego ładowania" jest poprawnie zarządzany, aby sowa nie "zapominała", że już wcześniej coś pobrała.
 
 ## Proponowane Zmiany
 
-### 1. Warstwa Danych i Cache (StorageService)
+### 1. Naprawa logiki widoku (UI Logic)
 
-#### [MODIFY] [storage_service.dart](file:///D:/Apps/prasowka/lib/services/storage_service.dart)
-- Dodanie nowego "pudełka" Hive: `news_cache`.
-- Metody `saveToCache(String categoryId, List<Article> articles)` oraz `loadFromCache(String categoryId)`.
-- Automatyczne czyszczenie starych wpisów w cache, aby aplikacja nie zajmowała gigabajtów danych.
+#### [MODIFY] [widgets/category_news_list.dart](file:///D:/Apps/prasowka/lib/widgets/category_news_list.dart)
+- Zmiana kolejności sprawdzania stanów:
+    1. Jeśli są artykuły -> Pokaż listę.
+    2. Jeśli sowa pracuje (`isLoading`) -> **Zawsze** pokaż Shimmer (zamiast "Brak treści").
+    3. Jeśli sowa skończyła i nic nie ma -> Pokaż "Brak treści".
 
-### 2. Wielowątkowość i Sieć (RssService)
+### 2. Optymalizacja startu i sesji (NewsProvider)
 
-#### [MODIFY] [rss_service.dart](file:///D:/Apps/prasowka/lib/services/rss_service.dart)
-- **Isolates (Wielowątkowość):** Przeniesienie ciężkiego parsowania XML/RSS do osobnego wątku procesora (`compute`). Zapobiegnie to "zamrażaniu" animacji (jank) podczas ładowania 100+ newsów.
-- **Batching:** Implementacja pobierania w małych grupach (np. 5 źródeł jednocześnie), aby nie zapchać kolejki sieciowej systemu operacyjnego.
+#### [MODIFY] [providers/news_provider.dart](file:///D:/Apps/prasowka/lib/providers/news_provider.dart)
+- Ustawienie `_hasEverLoadedMap` na `true` również w przypadku błędów, aby uniknąć nieskończonego Shimmera.
+- Przyspieszenie pierwszego wejścia do kategorii poprzez natychmiastowe ładowanie z cache bez oczekiwania na asynchroniczne operacje Hive, jeśli to możliwe.
 
-### 3. Logika "Instant UI" (NewsProvider)
+### 3. "Lekkie" karty i reakcje (ArticleCard)
 
-#### [MODIFY] [news_provider.dart](file:///D:/Apps/prasowka/lib/providers/news_provider.dart)
-- **Logika Cache First:** Podczas `fetchNews`, najpierw ładujemy dane z Hive i natychmiast robimy `notifyListeners()`. Użytkownik widzi treść w ułamku sekundy.
-- **Background Update:** Po wyświetleniu cache, sowa w tle pobiera świeże dane. Jeśli znajdzie nowsze artykuły, podmienia listę.
-
-### 4. Ulepszenia Interfejsu (UI)
-
-#### [MODIFY] [home_screen.dart](file:///D:/Apps/prasowka/lib/screens/home_screen.dart)
-- Dodanie wizualnego wskaźnika ładowania w tle (np. mały pasek postępu pod AppBar), zamiast blokowania całego ekranu dużym Spinnerem.
+#### [MODIFY] [widgets/article_card.dart](file:///D:/Apps/prasowka/lib/widgets/article_card.dart)
+- Dalsze uproszczenie struktury reakcji.
+- Usunięcie zbędnych warstw `Material` i `InkWell` tam, gdzie wystarczy prosty `GestureDetector`, co odciąży procesor graficzny Twojego Samsunga.
 
 ## Plan Weryfikacji
 
-### Testy Manualne
-1. **Test Startu:** Zamknięcie aplikacji i ponowne otwarcie. Newsy na zakładce "Wszystkie" powinny pojawić się bez widocznego ładowania.
-2. **Test Płynności:** Przewijanie listy podczas gdy w tle trwa pobieranie nowych danych — weryfikacja braku przycięć (jank).
-3. **Test Offline:** Uruchomienie aplikacji bez internetu — sowa powinna pokazać ostatnio pobrane newsy z cache.
+### Testy wizualne
+1. **Switch Test:** Szybkie przełączanie między kategoriami (Biznes -> Sport -> Biznes). Oczekujemy: Shimmer lub artykuły, **brak** napisu "Brak treści" w trakcie ładowania.
+2. **First Run Test:** Wyczyszczenie cache i start. Oczekujemy: Shimmer przechodzący płynnie w newsy.
+
+### Testy wydajności
+1. **Samsung A52 Check:** Przewijanie długiej listy (50+ newsów) z włączonymi zdjęciami. Oczekujemy: stałe 60 FPS bez szarpnięć.

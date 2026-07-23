@@ -1,36 +1,96 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/article.dart';
+import 'package:prasowka/models/article.dart';
+import 'package:prasowka/models/news_source.dart';
 
 class StorageService {
+  static final StorageService _instance = StorageService._internal();
+  factory StorageService() => _instance;
+  StorageService._internal();
+
   static const String articlesBoxName = 'articles';
   static const String cacheBoxName = 'news_cache';
+  static const String notifiedBoxName = 'notified_ids';
 
-  /// Inicjalizacja Hive i otwarcie boxów
+  /// Inicjalizacja Hive i otwarcie boxów (z bezpiecznym mechanizmem ratunkowym)
   Future<void> init() async {
-    if (!Hive.isAdapterRegistered(ArticleAdapter().typeId)) {
-      Hive.registerAdapter(ArticleAdapter());
-    }
-    if (!Hive.isBoxOpen(articlesBoxName)) {
-      await Hive.openBox<Article>(articlesBoxName);
-    }
-    if (!Hive.isBoxOpen(cacheBoxName)) {
-      await Hive.openBox<List>(cacheBoxName); // Przechowujemy listy artykułów per kategoria
+    try {
+      if (!Hive.isAdapterRegistered(0)) {
+        Hive.registerAdapter(ArticleAdapter());
+      }
+      if (!Hive.isAdapterRegistered(1)) {
+        Hive.registerAdapter(NewsSourceAdapter());
+      }
+
+      await _openSafe(articlesBoxName);
+      await _openSafe(cacheBoxName);
+      await _openSafe(notifiedBoxName);
+      
+    } catch (e) {
+      debugPrint('Sowa Storage: Krytyczny błąd inicjalizacji ($e)');
     }
   }
 
-  /// --- CACHE NEWSÓW ---
-
-  /// Zapisuje listę artykułów dla konkretnej kategorii do cache'u
-  Future<void> saveCategoryCache(String categoryId, List<Article> articles) async {
-    final box = Hive.box<List>(cacheBoxName);
-    // Zapisujemy tylko top 50 artykułów per kategoria, żeby nie zapchać pamięci
-    final topArticles = articles.take(50).toList();
-    await box.put(categoryId, topArticles);
+  /// Próbuje otworzyć box, a w razie błędu czyści go (migracja/uszkodzenie)
+  Future<void> _openSafe(String name) async {
+    try {
+      if (!Hive.isBoxOpen(name)) {
+        await Hive.openBox(name);
+      }
+    } catch (e) {
+      debugPrint('Sowa Storage: Problem z boxem $name ($e). Próba naprawy...');
+      try {
+        // Zamiast usuwania pliku blokady (co rzuca błędy na Androidzie),
+        // próbujemy otworzyć box w trybie awaryjnym i wyczyścić go
+        final box = await Hive.openBox(name);
+        await box.clear();
+        debugPrint('Sowa Storage: Zawartość boxa $name została wyczyszczona.');
+      } catch (e2) {
+        debugPrint('Sowa Storage: Drastyczny reset boxa $name...');
+        try {
+          // Jeśli nawet to zawiedzie, omijamy usuwanie .lock i próbujemy usunąć samą bazę
+          await Hive.deleteBoxFromDisk(name);
+          await Hive.openBox(name);
+        } catch (e3) {
+          debugPrint('Sowa Storage: Nie udało się odzyskać boxa $name ($e3)');
+        }
+      }
+    }
   }
 
-  /// Pobiera listę artykułów z cache'u dla kategorii
+  /// Sprawdza czy artykuł został już powiadomiony
+  bool wasNotified(String id) {
+    if (!Hive.isBoxOpen(notifiedBoxName)) return false;
+    final box = Hive.box(notifiedBoxName);
+    return box.get(id, defaultValue: false) == true;
+  }
+
+  /// Markuje artykuł jako powiadomiony
+  Future<void> markAsNotified(String id) async {
+    if (!Hive.isBoxOpen(notifiedBoxName)) return;
+    final box = Hive.box(notifiedBoxName);
+    await box.put(id, true);
+  }
+
+  Future<void> saveCategoryCache(String categoryId, List<Article> newArticles) async {
+    if (!Hive.isBoxOpen(cacheBoxName)) return;
+    final box = Hive.box(cacheBoxName);
+    final currentCache = getCategoryCache(categoryId);
+    final Map<String, Article> uniqueArticles = {};
+    
+    for (var a in newArticles) { uniqueArticles[a.id] = a; }
+    for (var a in currentCache) { if (!uniqueArticles.containsKey(a.id)) { uniqueArticles[a.id] = a; } }
+    
+    final List<Article> combinedList = uniqueArticles.values.toList();
+    combinedList.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+    
+    final limitedList = combinedList.take(200).toList();
+    await box.put(categoryId, limitedList);
+  }
+
   List<Article> getCategoryCache(String categoryId) {
-    final box = Hive.box<List>(cacheBoxName);
+    if (!Hive.isBoxOpen(cacheBoxName)) return [];
+    final box = Hive.box(cacheBoxName);
     final cached = box.get(categoryId);
     if (cached != null) {
       return List<Article>.from(cached);
@@ -38,28 +98,27 @@ class StorageService {
     return [];
   }
 
-  /// Czyści stary cache (opcjonalnie wywoływane przy starcie)
-  Future<void> clearOldCache() async {
-    // Hive automatycznie nadpisuje dane per klucz, więc nie musimy czyścić ręcznie 
-    // chyba że chcemy skasować wszystko.
+  Future<void> clearAllCache() async {
+    if (Hive.isBoxOpen(cacheBoxName)) {
+      await Hive.box(cacheBoxName).clear();
+    }
   }
 
-  /// --- ULUBIONE I PRZECZYTAJ PÓŹNIEJ ---
   Future<void> toggleFavorite(Article article) async {
-    final box = Hive.box<Article>(articlesBoxName);
+    if (!Hive.isBoxOpen(articlesBoxName)) return;
+    final box = Hive.box(articlesBoxName);
     article.isFavorite = !article.isFavorite;
     
     if (article.isFavorite || article.readLater) {
       await box.put(article.id, article);
     } else {
-      // Jeśli nie jest ani ulubiony, ani do przeczytania później - usuwamy z bazy
       await box.delete(article.id);
     }
   }
 
-  /// Zapisuje lub usuwa artykuł z listy "do przeczytania"
   Future<void> toggleReadLater(Article article) async {
-    final box = Hive.box<Article>(articlesBoxName);
+    if (!Hive.isBoxOpen(articlesBoxName)) return;
+    final box = Hive.box(articlesBoxName);
     article.readLater = !article.readLater;
     
     if (article.isFavorite || article.readLater) {
@@ -69,25 +128,18 @@ class StorageService {
     }
   }
 
-  /// Pobiera wszystkie zapisane artykuły
   List<Article> getSavedArticles() {
-    final box = Hive.box<Article>(articlesBoxName);
-    return box.values.toList();
+    if (!Hive.isBoxOpen(articlesBoxName)) return [];
+    final box = Hive.box(articlesBoxName);
+    return box.values.cast<Article>().toList();
   }
 
-  /// Pobiera tylko ulubione
-  List<Article> getFavorites() {
-    return getSavedArticles().where((a) => a.isFavorite).toList();
-  }
+  List<Article> getFavorites() => getSavedArticles().where((a) => a.isFavorite).toList();
+  List<Article> getReadLater() => getSavedArticles().where((a) => a.readLater).toList();
 
-  /// Pobiera tylko do przeczytania
-  List<Article> getReadLater() {
-    return getSavedArticles().where((a) => a.readLater).toList();
-  }
-
-  /// Sprawdza czy dany artykuł jest już w bazie (np. żeby zaznaczyć ikonkę)
   Article? getStoredArticle(String id) {
-    final box = Hive.box<Article>(articlesBoxName);
-    return box.get(id);
+    if (!Hive.isBoxOpen(articlesBoxName)) return null;
+    final box = Hive.box(articlesBoxName);
+    return box.get(id) as Article?;
   }
 }

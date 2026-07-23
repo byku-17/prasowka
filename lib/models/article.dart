@@ -34,6 +34,41 @@ class Article extends HiveObject {
   @HiveField(9)
   bool readLater;
 
+  @HiveField(10)
+  String? fullContent;
+
+  @HiveField(11)
+  bool isLiked;
+
+  @HiveField(12)
+  bool isDisliked;
+
+  @HiveField(13)
+  String? translatedTitle;
+
+  @HiveField(14)
+  String? translatedDescription;
+
+  @HiveField(15)
+  String? translatedFullContent;
+
+  // Pola pomocnicze (niezapisywane w Hive)
+  List<String>? _cachedTags;
+  double? cachedScore;
+
+  List<String> get tags {
+    if (_cachedTags != null) return _cachedTags!;
+    final text = '$title $description'.toLowerCase();
+    final stopWords = {
+      'i', 'w', 'na', 'z', 'do', 'o', 'za', 'oraz', 'ze', 'po', 'przy', 'dla', 'nie', 'tak', 'co', 'jak', 'że', 'się', 'the', 'a', 'an', 'of', 'in', 'to', 'for', 'with'
+    };
+    _cachedTags = text.split(RegExp(r'[^a-ząćęłńóśźż]+'))
+        .where((w) => w.length > 3 && !stopWords.contains(w))
+        .toSet()
+        .toList();
+    return _cachedTags!;
+  }
+
   Article({
     required this.id,
     required this.title,
@@ -45,6 +80,12 @@ class Article extends HiveObject {
     this.imageUrl,
     this.isFavorite = false,
     this.readLater = false,
+    this.fullContent,
+    this.isLiked = false,
+    this.isDisliked = false,
+    this.translatedTitle,
+    this.translatedDescription,
+    this.translatedFullContent,
   });
 
   /// Oblicza przybliżony czas czytania (zakładając średnio 200 słów na minutę)

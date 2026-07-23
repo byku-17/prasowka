@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/news_provider.dart';
-import '../widgets/article_card.dart';
-import 'article_detail_screen.dart';
-import '../theme/app_theme.dart';
+import 'package:prasowka/models/article.dart';
+import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/widgets/article_card.dart';
+import 'package:prasowka/screens/article_detail_screen.dart';
+import 'package:prasowka/theme/app_theme.dart';
 
 class SavedScreen extends StatelessWidget {
   const SavedScreen({super.key});
@@ -11,8 +12,8 @@ class SavedScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<NewsProvider>();
-    final favorites = provider.favoriteArticles;
-    final readLater = provider.readLaterArticles;
+    final List<Article> favorites = provider.favoriteArticles;
+    final List<Article> readLater = provider.readLaterArticles;
 
     return DefaultTabController(
       length: 2,
@@ -29,22 +30,22 @@ class SavedScreen extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            _buildList(context, favorites, 'Brak ulubionych artykułów'),
-            _buildList(context, readLater, 'Brak artykułów na później'),
+            _buildArticleList(context, favorites, 'Brak ulubionych artykułów'),
+            _buildArticleList(context, readLater, 'Brak artykułów na później'),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildList(BuildContext context, List articles, String emptyMsg) {
-    if (articles.isEmpty) {
+  Widget _buildArticleList(BuildContext context, List<Article> items, String emptyMsg) {
+    if (items.isEmpty) {
       return Center(child: Text(emptyMsg));
     }
     return ListView.builder(
-      itemCount: articles.length,
+      itemCount: items.length,
       itemBuilder: (context, index) {
-        final article = articles[index];
+        final article = items[index];
         return ArticleCard(
           article: article,
           onTap: () => Navigator.push(

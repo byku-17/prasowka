@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Główne kolory marki
@@ -7,20 +8,22 @@ class AppTheme {
   
   // Kolory tła i tekstu
   static const Color lightBg = Color(0xFFF8F9FA);
-  static const Color darkBg = Color(0xFF0F172A);
+  static const Color darkBg = Color(0xFF0D0D0D); 
 
   /// Motyw Jasny
   static ThemeData get lightTheme {
+    final base = ThemeData.light();
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: primaryNavy,
+      textTheme: GoogleFonts.syneTextTheme(base.textTheme),
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryNavy,
         primary: primaryNavy,
         secondary: accentGold,
         surface: Colors.white,
-        background: lightBg,
+        error: Colors.redAccent,
       ),
       scaffoldBackgroundColor: lightBg,
       appBarTheme: const AppBarTheme(
@@ -34,68 +37,43 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         color: Colors.white,
       ),
-      textTheme: const TextTheme(
-        headlineMedium: TextStyle(
-          color: primaryNavy,
-          fontWeight: FontWeight.bold,
-          fontSize: 24,
-        ),
-        titleLarge: TextStyle(
-          color: primaryNavy,
-          fontWeight: FontWeight.w600,
-          fontSize: 18,
-        ),
-        bodyMedium: TextStyle(
-          color: Colors.black87,
-          fontSize: 16,
-          height: 1.5,
-        ),
-      ),
     );
   }
 
   /// Motyw Ciemny
   static ThemeData get darkTheme {
+    const Color deepBlack = Color(0xFF0D0D0D);
+    final base = ThemeData.dark();
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       primaryColor: primaryNavy,
+      textTheme: GoogleFonts.syneTextTheme(base.textTheme).apply(
+        bodyColor: Colors.white,
+        displayColor: Colors.white,
+      ),
       colorScheme: ColorScheme.fromSeed(
         brightness: Brightness.dark,
         seedColor: primaryNavy,
-        primary: accentGold, // Złoty lepiej wygląda jako główny akcent w dark mode
+        primary: accentGold,
         secondary: accentGold,
-        surface: const Color(0xFF1E293B),
-        background: darkBg,
+        surface: deepBlack,
+        error: Colors.redAccent,
       ),
-      scaffoldBackgroundColor: darkBg,
+      scaffoldBackgroundColor: deepBlack,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1E293B),
+        backgroundColor: deepBlack,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: const Color(0xFF1E293B),
-      ),
-      textTheme: const TextTheme(
-        headlineMedium: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 24,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
-        titleLarge: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-          fontSize: 18,
-        ),
-        bodyMedium: TextStyle(
-          color: Colors.white70,
-          fontSize: 16,
-          height: 1.5,
-        ),
+        color: deepBlack,
       ),
     );
   }

@@ -1,29 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'theme/app_theme.dart';
-import 'providers/news_provider.dart';
-import 'providers/settings_provider.dart';
-import 'screens/splash_screen.dart';
+import 'package:prasowka/theme/app_theme.dart';
+import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/screens/splash_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   
-  // Inicjalizacja Hive
   await Hive.initFlutter();
-  
-  // Tworzymy providery i inicjalizujemy je przed startem aplikacji
-  final settingsProvider = SettingsProvider();
-  await settingsProvider.init();
-  
-  final newsProvider = NewsProvider();
-  await newsProvider.init();
   
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: settingsProvider),
-        ChangeNotifierProvider.value(value: newsProvider),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => NewsProvider()),
       ],
       child: const PrasowkaApp(),
     ),
@@ -42,7 +36,7 @@ class PrasowkaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: settings.themeMode, // Teraz motyw zależy od ustawień
+      themeMode: settings.themeMode,
       home: const SplashScreen(),
     );
   }

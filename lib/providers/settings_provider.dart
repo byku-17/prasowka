@@ -1,144 +1,239 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/news_category.dart';
-import '../models/news_source.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:prasowka/models/news_category.dart';
+import 'package:prasowka/models/news_source.dart';
+import 'package:prasowka/services/storage_service.dart';
+import 'package:prasowka/services/background_service.dart';
 
 class SettingsProvider with ChangeNotifier {
   static const String settingsBoxName = 'settings';
+  static const String sourcesBoxName = 'news_sources_dynamic';
+  
   static const String themeKey = 'themeMode';
   static const String categoriesKey = 'activeCategories';
-  static const String sourcesKey = 'activeSources';
+  static const String sourcesEnabledKey = 'activeSourceIds';
   static const String teamsKey = 'favoriteTeams';
+  static const String categoryOrderKey = 'categoryOrder';
+  static const String notificationsKey = 'notificationsEnabled';
 
   ThemeMode _themeMode = ThemeMode.system;
   List<String> _activeCategoryIds = [];
-  List<String> _activeSourceIds = [];
+  List<String> _enabledSourceIds = [];
   List<String> _favoriteTeams = [];
+  List<String> _categoryOrder = [];
+  List<NewsSource> _allSources = [];
+  bool _notificationsEnabled = false;
 
   ThemeMode get themeMode => _themeMode;
   List<String> get activeCategoryIds => _activeCategoryIds;
-  List<String> get activeSourceIds => _activeSourceIds;
+  List<String> get enabledSourceIds => _enabledSourceIds;
   List<String> get favoriteTeams => _favoriteTeams;
+  List<NewsSource> get allSources => _allSources;
+  bool get notificationsEnabled => _notificationsEnabled;
 
-  /// Inicjalizacja ustawień z Hive
   Future<void> init() async {
-    final box = await Hive.openBox(settingsBoxName);
+    debugPrint('Sowa Settings: Inicjalizacja...');
+    final settingsBox = await Hive.openBox(settingsBoxName);
+    
+    await StorageService().init();
 
-    // 1. Motyw
-    final themeIndex = box.get(themeKey, defaultValue: ThemeMode.system.index);
+    final sourcesBox = await Hive.openBox(sourcesBoxName);
+
+    final themeIndex = settingsBox.get(themeKey, defaultValue: ThemeMode.system.index);
     _themeMode = ThemeMode.values[themeIndex];
 
-    // 2. Kategorie (domyślnie wszystkie)
-    _activeCategoryIds = List<String>.from(box.get(
+    final expectedCount = NewsSource.defaultSources.length;
+    if (sourcesBox.isEmpty || sourcesBox.length < (expectedCount * 0.9)) {
+      debugPrint('Sowa Settings: Wykryto brak źródeł (${sourcesBox.length}/$expectedCount). Resetuję...');
+      await resetToDefaultSources();
+    } else {
+      _allSources = List<NewsSource>.from(sourcesBox.values);
+      debugPrint('Sowa Settings: Wczytano ${_allSources.length} źródeł.');
+    }
+
+    _activeCategoryIds = List<String>.from(settingsBox.get(
       categoriesKey,
       defaultValue: NewsCategory.defaultCategories.map((c) => c.id).toList(),
     ));
 
-    // 3. Źródła (domyślnie wszystkie)
-    _activeSourceIds = List<String>.from(box.get(
-      sourcesKey,
-      defaultValue: NewsSource.defaultSources.map((s) => s.id).toList(),
+    _enabledSourceIds = List<String>.from(settingsBox.get(
+      sourcesEnabledKey,
+      defaultValue: _allSources.map((s) => s.id).toList(),
     ));
 
-    // 4. Ulubione drużyny
-    _favoriteTeams = List<String>.from(box.get(teamsKey, defaultValue: <String>[]));
+    if (_enabledSourceIds.isEmpty && _allSources.isNotEmpty) {
+      _enabledSourceIds = _allSources.map((s) => s.id).toList();
+      await saveEnabledSources();
+    }
 
+    _favoriteTeams = List<String>.from(settingsBox.get(teamsKey, defaultValue: <String>[]));
+    
+    _categoryOrder = List<String>.from(settingsBox.get(
+      categoryOrderKey,
+      defaultValue: NewsCategory.defaultCategories.map((c) => c.id).toList(),
+    ));
+
+    _notificationsEnabled = settingsBox.get(notificationsKey, defaultValue: false);
+    
+    await BackgroundService().init();
+    if (_notificationsEnabled) {
+      await BackgroundService().registerPeriodicTask();
+    }
+
+    notifyListeners();
+    debugPrint('Sowa Settings: Gotowe.');
+  }
+
+  Future<void> toggleNotifications(bool enabled) async {
+    if (enabled) {
+      final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+          FlutterLocalNotificationsPlugin();
+      final bool? granted = await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
+      
+      if (granted == false) return;
+    }
+
+    _notificationsEnabled = enabled;
+    final settingsBox = Hive.box(settingsBoxName);
+    await settingsBox.put(notificationsKey, enabled);
+    
+    if (enabled) {
+      await BackgroundService().registerPeriodicTask();
+    } else {
+      await BackgroundService().cancelAllTasks();
+    }
+    
     notifyListeners();
   }
 
-  /// Zmiana motywu
+  Future<void> addCustomSource(NewsSource source) async {
+    final box = Hive.box(sourcesBoxName);
+    await box.put(source.id, source);
+    _allSources = List<NewsSource>.from(box.values);
+    _enabledSourceIds.add(source.id);
+    await saveEnabledSources();
+    notifyListeners();
+  }
+
+  Future<void> deleteSource(String id) async {
+    final box = Hive.box(sourcesBoxName);
+    await box.delete(id);
+    _allSources = List<NewsSource>.from(box.values);
+    _enabledSourceIds.remove(id);
+    await saveEnabledSources();
+    notifyListeners();
+  }
+
+  Future<void> resetToDefaultSources() async {
+    debugPrint('Sowa Settings: Przywracanie domyślnych 130 źródeł i czyszczenie cache...');
+    final box = Hive.box(sourcesBoxName);
+    await box.clear();
+    
+    await StorageService().clearAllCache();
+    
+    final Map<String, NewsSource> sourceMap = {
+      for (var s in NewsSource.defaultSources) s.id: s
+    };
+    await box.putAll(sourceMap);
+    
+    _allSources = List<NewsSource>.from(box.values);
+    _enabledSourceIds = _allSources.map((s) => s.id).toList();
+    await saveEnabledSources();
+    notifyListeners();
+    debugPrint('Sowa Settings: Przywrócono ${_allSources.length} źródeł.');
+  }
+
+  Future<void> clearNewsCache() async {
+    await StorageService().clearAllCache();
+    notifyListeners();
+  }
+
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
-    final box = Hive.box(settingsBoxName);
-    await box.put(themeKey, mode.index);
+    await Hive.box(settingsBoxName).put(themeKey, mode.index);
     notifyListeners();
   }
 
-  /// Przełączanie aktywności kategorii
-  Future<void> toggleCategory(String categoryId) async {
-    if (_activeCategoryIds.contains(categoryId)) {
-      _activeCategoryIds.remove(categoryId);
-    } else {
-      _activeCategoryIds.add(categoryId);
-    }
-    
-    final box = Hive.box(settingsBoxName);
-    await box.put(categoriesKey, _activeCategoryIds);
+  Future<void> toggleCategory(String id) async {
+    _activeCategoryIds.contains(id) ? _activeCategoryIds.remove(id) : _activeCategoryIds.add(id);
+    await Hive.box(settingsBoxName).put(categoriesKey, _activeCategoryIds);
     notifyListeners();
   }
 
-  /// Przełączanie aktywności źródła
-  Future<void> toggleSource(String sourceId) async {
-    if (_activeSourceIds.contains(sourceId)) {
-      _activeSourceIds.remove(sourceId);
-    } else {
-      _activeSourceIds.add(sourceId);
-    }
-    
-    final box = Hive.box(settingsBoxName);
-    await box.put(sourcesKey, _activeSourceIds);
+  Future<void> toggleSource(String id) async {
+    _enabledSourceIds.contains(id) ? _enabledSourceIds.remove(id) : _enabledSourceIds.add(id);
+    await saveEnabledSources();
     notifyListeners();
   }
 
-  /// Zarządzanie drużynami
-  Future<void> addTeam(String teamName) async {
-    final name = teamName.trim();
-    if (name.isEmpty || _favoriteTeams.contains(name)) return;
-    _favoriteTeams.add(name);
-    final box = Hive.box(settingsBoxName);
-    await box.put(teamsKey, _favoriteTeams);
-    notifyListeners();
+  Future<void> saveEnabledSources() async {
+    await Hive.box(settingsBoxName).put(sourcesEnabledKey, _enabledSourceIds);
   }
 
-  Future<void> removeTeam(String teamName) async {
-    _favoriteTeams.remove(teamName);
-    final box = Hive.box(settingsBoxName);
-    await box.put(teamsKey, _favoriteTeams);
-    notifyListeners();
-  }
-
-  /// Masowe przełączanie źródeł w kategorii
-  Future<void> toggleAllSourcesInCategory(String categoryId, bool enable) async {
-    final categorySources = NewsSource.defaultSources
-        .where((s) => s.categoryId == categoryId)
-        .map((s) => s.id)
-        .toList();
-
+  Future<void> toggleAllSourcesInCategory(String catId, bool enable) async {
+    final ids = _allSources.where((s) => s.categoryId == catId).map((s) => s.id).toList();
     if (enable) {
-      for (var id in categorySources) {
-        if (!_activeSourceIds.contains(id)) _activeSourceIds.add(id);
-      }
+      for (var id in ids) { if (!_enabledSourceIds.contains(id)) _enabledSourceIds.add(id); }
     } else {
-      _activeSourceIds.removeWhere((id) => categorySources.contains(id));
+      _enabledSourceIds.removeWhere((id) => ids.contains(id));
     }
-
-    final box = Hive.box(settingsBoxName);
-    await box.put(sourcesKey, _activeSourceIds);
+    await saveEnabledSources();
     notifyListeners();
   }
 
-  /// Przełączanie wszystkich źródeł globalnie
   Future<void> toggleAllSources(bool enable) async {
-    if (enable) {
-      _activeSourceIds = NewsSource.defaultSources.map((s) => s.id).toList();
-    } else {
-      _activeSourceIds = [];
-    }
-
-    final box = Hive.box(settingsBoxName);
-    await box.put(sourcesKey, _activeSourceIds);
+    _enabledSourceIds = enable ? _allSources.map((s) => s.id).toList() : [];
+    await saveEnabledSources();
     notifyListeners();
   }
 
-  /// Pomocnicze listy obiektów (filtrowane)
-  List<NewsCategory> get activeCategories => NewsCategory.defaultCategories
-      .where((c) => _activeCategoryIds.contains(c.id))
-      .toList();
+  Future<void> reorderCategories(int old, int neu) async {
+    if (neu > old) neu -= 1;
+    final item = _categoryOrder.removeAt(old);
+    _categoryOrder.insert(neu, item);
+    await Hive.box(settingsBoxName).put(categoryOrderKey, _categoryOrder);
+    notifyListeners();
+  }
 
-  List<NewsSource> get activeSources => NewsSource.defaultSources
-      .where((s) => _activeSourceIds.contains(s.id))
-      .toList();
+  Future<void> addTeam(String t) async {
+    if (t.trim().isEmpty || _favoriteTeams.contains(t.trim())) return;
+    _favoriteTeams.add(t.trim());
+    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
+    notifyListeners();
+  }
+
+  Future<void> removeTeam(String t) async {
+    _favoriteTeams.remove(t);
+    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
+    notifyListeners();
+  }
+
+  List<NewsCategory> get activeCategories {
+    final all = NewsCategory.defaultCategories;
+    List<NewsCategory> ordered = [];
+    for (var id in _categoryOrder) {
+      final f = all.where((c) => c.id == id).toList();
+      if (f.isNotEmpty) ordered.add(f.first);
+    }
+    for (var c in all) { if (!ordered.any((o) => o.id == c.id)) ordered.add(c); }
+    return ordered.where((c) => _activeCategoryIds.contains(c.id)).toList();
+  }
+
+  List<NewsCategory> get allCategoriesOrdered {
+    final all = NewsCategory.defaultCategories;
+    List<NewsCategory> ordered = [];
+    for (var id in _categoryOrder) {
+      final f = all.where((c) => c.id == id).toList();
+      if (f.isNotEmpty) ordered.add(f.first);
+    }
+    for (var c in all) { if (!ordered.any((o) => o.id == c.id)) ordered.add(c); }
+    return ordered;
+  }
 
   bool isCategoryActive(String id) => _activeCategoryIds.contains(id);
-  bool isSourceActive(String id) => _activeSourceIds.contains(id);
+  bool isSourceActive(String id) => _enabledSourceIds.contains(id);
 }

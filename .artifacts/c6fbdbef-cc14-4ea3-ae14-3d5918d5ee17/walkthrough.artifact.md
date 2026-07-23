@@ -1,32 +1,27 @@
-# Ekstremalna Optymalizacja Wydajności (Speed & Cache) - Prasówka
+# Profesjonalne Ładowanie (Eliminacja "Brak treści") - Prasówka
 
-Zmieniłem fundamenty działania aplikacji, aby obsługa ponad 130 źródeł newsowych była błyskawiczna i płynna. Prasówka przeszła z modelu "pobierz i czekaj" na nowoczesną architekturę **Offline First**.
+Wprowadziłem inteligentny system zarządzania stanami aplikacji, który sprawia, że interfejs jest zawsze profesjonalny i informacyjny, eliminując mylące komunikaty o braku newsów w trakcie ich pobierania.
 
-## Co się zmieniło? (Kluczowe ulepszenia)
+## Co zostało naprawione?
 
-### 1. Instant UI (Cache-First) 🚀
-Wyeliminowałem nudne ekrany ładowania przy każdym przełączaniu zakładki.
-- **Jak to działa:** Sowa zapisuje ostatnio pobrane newsy w pamięci telefonu (Hive). Kiedy wchodzisz w kategorię "Sport" lub "Tech", newsy pojawiają się **NATYCHMIAST**.
-- **Background Refresh:** Dopiero gdy czytasz zcache'owane treści, sowa w tle dyskretnie sprawdza, czy są nowe artykuły i aktualizuje listę.
+### 1. Inteligentny Shimmer (Skeleton UI) 🧬✨
+Zmieniłem priorytety wyświetlania treści. Od teraz sowa nigdy nie "wyskoczy" z napisem "Brak treści", dopóki nie skończy swojej pracy.
+- **W trakcie ładowania:** Zobaczysz pulsujące obrysy kart (Shimmer). Informują one, że sowa jest w drodze i zaraz dostarczy newsy.
+- **Po przełączeniu zakładki:** Jeśli sowa już coś pobrała dla danej kategorii, zobaczysz to natychmiast. Jeśli musi dociągnąć świeże dane, Shimmer pojawi się w sposób dyskretny, nie zasłaniając interfejsu.
 
-### 2. Wielowątkowość (Isolates) 🧠
-Ciężka praca procesora związana z przetwarzaniem setek plików XML została przeniesiona na osobny "tor" (Isolate).
-- **Efekt:** Animacje w aplikacji nie "haczą" (zero janku), nawet jeśli w tle sowa mieli ogromne ilości danych.
+### 2. "Brak treści" jako ostateczność 🛡️
+Komunikat o braku artykułów stał się teraz **aktem ostatecznym**.
+- Sowa pokaże go tylko wtedy, gdy przeszuka internet, sprawdzi filtry i faktycznie nie znajdzie ani jednego newsa. Dzięki temu unikamy sytuacji, w której użytkownik myśli, że aplikacja nie działa, a ona po prostu potrzebowała 2 sekund na połączenie.
 
-### 3. Inteligentne Pobieranie (Batching) 📦
-Zamiast wysyłać 130 zapytań naraz (co mogło zatykać łącze), sowa pobiera dane w optymalnych paczkach po 10 źródeł. To znacząco poprawia stabilność na słabszym internecie.
+### 3. Płynność Premium (Scroll Cache) 💨
+Przy okazji podkręciłem parametry przewijania:
+- **scrollCacheExtent:** Sowa teraz "renderuje" karty, które są jeszcze kawałek pod Twoim palcem. Dzięki temu, gdy przewijasz, newsy pojawiają się natychmiastowo i bez szarpnięć.
 
-### 4. Dyskretne ładowanie w UI 💠
-Usunąłem wielkiego Spinnera, który blokował ekran.
-- **Nowość:** Pod paskiem kategorii (TabBar) pojawił się cieniutki, złoty pasek postępu. Informuje on, że sowa właśnie dociąga świeże newsy, ale w ogóle nie przeszkadza Ci to w czytaniu tych, które już są na ekranie.
+## Jak to sprawdzić?
 
-## Jak poczuć różnicę?
+1. **Uruchom aplikację:** `flutter run --android-skip-build-dependency-validation`.
+2. Zmień zakładkę na taką, której dawno nie odwiedzałeś (np. **NAUKA**).
+3. Zobacz, jak profesjonalnie sowa prezentuje proces ładowania (pulsujące szkielety zamiast pustego napisu).
+4. Przewiń listę i zobacz, jak gładko przesuwają się artykuły.
 
-1. **Przełącz zakładkę:** Zobacz, że lista artykułów wskakuje natychmiast.
-2. **Spójrz pod AppBar:** Zobaczysz cienki złoty pasek ładowania — to sowa pracuje w tle.
-3. **Tryb samolotowy:** Wyłącz internet i otwórz aplikację. Wszystkie newsy z ostatniej sesji wciąż tam będą!
-
-> [!TIP]
-> Przy pierwszym uruchomieniu po tej aktualizacji sowa musi raz pobrać wszystko od zera, aby zbudować cache. Każde kolejne otwarcie aplikacji będzie już "ekspresowe".
-
-**Prasówka jest teraz tak szybka, jak to tylko możliwe w technologii RSS!** 🦉⚡️📱✨
+**Twoja sowa przestała być "porywcza" — teraz jest spokojna, pewna siebie i w pełni profesjonalna od pierwszej sekundy!** 🦉✨💎🚀🥇

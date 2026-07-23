@@ -27,13 +27,19 @@ class ArticleAdapter extends TypeAdapter<Article> {
       imageUrl: fields[5] as String?,
       isFavorite: fields[8] as bool,
       readLater: fields[9] as bool,
+      fullContent: fields[10] as String?,
+      isLiked: fields[11] as bool,
+      isDisliked: fields[12] as bool,
+      translatedTitle: fields[13] as String?,
+      translatedDescription: fields[14] as String?,
+      translatedFullContent: fields[15] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Article obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -53,7 +59,19 @@ class ArticleAdapter extends TypeAdapter<Article> {
       ..writeByte(8)
       ..write(obj.isFavorite)
       ..writeByte(9)
-      ..write(obj.readLater);
+      ..write(obj.readLater)
+      ..writeByte(10)
+      ..write(obj.fullContent)
+      ..writeByte(11)
+      ..write(obj.isLiked)
+      ..writeByte(12)
+      ..write(obj.isDisliked)
+      ..writeByte(13)
+      ..write(obj.translatedTitle)
+      ..writeByte(14)
+      ..write(obj.translatedDescription)
+      ..writeByte(15)
+      ..write(obj.translatedFullContent);
   }
 
   @override

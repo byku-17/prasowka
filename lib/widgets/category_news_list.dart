@@ -1,0 +1,207 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:prasowka/models/article.dart';
+import 'package:prasowka/models/news_category.dart';
+import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/screens/article_detail_screen.dart';
+import 'package:prasowka/theme/app_theme.dart';
+import 'package:prasowka/widgets/article_card.dart';
+import 'package:prasowka/widgets/news_skeleton.dart';
+
+class CategoryNewsList extends StatefulWidget {
+  final NewsCategory category;
+
+  const CategoryNewsList({super.key, required this.category});
+
+  @override
+  State<CategoryNewsList> createState() => _CategoryNewsListState();
+}
+
+class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  void _fetch() {
+    final settings = context.read<SettingsProvider>();
+    context.read<NewsProvider>().fetchNews(
+      category: widget.category,
+      allSources: settings.allSources,
+      enabledSourceIds: settings.enabledSourceIds,
+      favoriteTeams: settings.favoriteTeams,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetch());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final settings = context.watch<SettingsProvider>();
+    
+    return Selector<NewsProvider, bool>(
+      // Reagujemy na zmianę stanu ładowania LUB zmianę liczby artykułów
+      selector: (_, provider) => provider.isCategoryLoading(widget.category.id) || provider.getArticlesForCategory(widget.category.id).isNotEmpty,
+      builder: (context, _, child) {
+        final provider = context.read<NewsProvider>();
+        final articles = provider.getArticlesForCategory(widget.category.id);
+        final isLoading = provider.isCategoryLoading(widget.category.id);
+        final hasEverLoaded = provider.hasCategoryEverLoaded(widget.category.id);
+
+        // 1. Jeśli mamy artykuły -> Pokaż listę (nawet jeśli sowa doładowuje coś w tle)
+        if (articles.isNotEmpty) {
+          return RefreshIndicator(
+            color: AppTheme.accentGold,
+            onRefresh: () => provider.fetchNews(
+              category: widget.category,
+              allSources: settings.allSources,
+              enabledSourceIds: settings.enabledSourceIds,
+              favoriteTeams: settings.favoriteTeams,
+              forceRefresh: true,
+            ),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              addRepaintBoundaries: true,
+              cacheExtent: 1000.0,
+              itemCount: articles.length + (widget.category.id == 'all' && provider.recommendedArticles.isNotEmpty ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (widget.category.id == 'all' && provider.recommendedArticles.isNotEmpty) {
+                  if (index == 0) return RepaintBoundary(child: _buildRecommendationsSection(context, provider.recommendedArticles));
+                  final article = articles[index - 1];
+                  return ArticleCard(article: article, onTap: () => _openArticle(context, article));
+                }
+                final article = articles[index];
+                return ArticleCard(article: article, onTap: () => _openArticle(context, article));
+              },
+            ),
+          );
+        }
+
+        // 2. Jeśli lista jest pusta i sowa pracuje (lub jeszcze nigdy nie skończyła) -> SHIMMER
+        if (isLoading || !hasEverLoaded) {
+          return ListView.builder(
+            itemCount: 5,
+            itemBuilder: (context, index) => const NewsSkeleton(),
+          );
+        }
+
+        // 3. Jeśli lista jest pusta i sowa skończyła pracę -> BRAK TREŚCI
+        final errorMessage = provider.getCategoryError(widget.category.id);
+        return _buildEmptyState(context, provider, settings, errorMessage);
+      },
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, NewsProvider provider, SettingsProvider settings, String? errorMessage) {
+    return Container(
+      width: double.infinity,
+      color: Colors.black, 
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.wifi_off, size: 80, color: Colors.redAccent),
+          const SizedBox(height: 24),
+          const Text(
+            'BRAK TREŚCI',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            errorMessage ?? provider.lastDebugMessage,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          if (provider.lastTechnicalError != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+              ),
+              child: Text(
+                'LOG TECHNICZNY:\n${provider.lastTechnicalError}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 10, fontFamily: 'monospace'),
+              ),
+            ),
+          ],
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: () => provider.fetchNews(
+              category: widget.category,
+              allSources: settings.allSources,
+              enabledSourceIds: settings.enabledSourceIds,
+              favoriteTeams: settings.favoriteTeams,
+              forceRefresh: true,
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentGold,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            ),
+            icon: const Icon(Icons.bolt),
+            label: const Text('WYMUSZONE POBIERANIE', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () => settings.resetToDefaultSources(),
+            child: const Text('RESETUJ BAZĘ PORTALI', style: TextStyle(color: AppTheme.accentGold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationsSection(BuildContext context, List<Article> recommended) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Row(
+            children: [
+              Icon(Icons.auto_awesome, color: AppTheme.accentGold, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'DLA CIEBIE',
+                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2, color: AppTheme.accentGold),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 300,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: recommended.length,
+            itemBuilder: (context, index) {
+              final a = recommended[index];
+              return RepaintBoundary(
+                child: ArticleCard(article: a, isSmall: true, onTap: () => _openArticle(context, a)),
+              );
+            },
+          ),
+        ),
+        const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Divider()),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            'NAJNOWSZE',
+            style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 12, color: Colors.grey),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openArticle(BuildContext context, Article article) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => ArticleDetailScreen(article: article)));
+  }
+}

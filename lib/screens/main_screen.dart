@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
-import 'search_screen.dart';
-import 'saved_screen.dart';
-import 'settings_screen.dart';
-import '../theme/app_theme.dart';
+import 'package:prasowka/screens/home_screen.dart';
+import 'package:prasowka/screens/search_screen.dart';
+import 'package:prasowka/screens/saved_screen.dart';
+import 'package:prasowka/screens/settings_screen.dart';
+import 'package:prasowka/theme/app_theme.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -35,9 +35,7 @@ class _MainScreenState extends State<MainScreen> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppTheme.accentGold,
         unselectedItemColor: Colors.grey,
-        backgroundColor: Theme.of(context).brightness == Brightness.dark 
-            ? const Color(0xFF1E293B) 
-            : Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Główna'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Szukaj'),

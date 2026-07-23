@@ -1,7 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'main_screen.dart';
-import '../theme/app_theme.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:provider/provider.dart';
+import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/screens/main_screen.dart';
+import 'package:prasowka/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,13 +23,14 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   late Animation<double> _sowkaPosition;
   
   bool _collisionOccurred = false;
+  bool _isDataReady = false;
   final List<Particle> _particles = [];
 
   @override
   void initState() {
     super.initState();
+    _startInitialization();
 
-    // 1. Animacja ruchu (zderzenia) - spowolniona z 1200 na 2000ms
     _moveController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -39,13 +44,11 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       CurvedAnimation(parent: _moveController, curve: Curves.easeInOutBack),
     );
 
-    // 2. Animacja wstrząsu (Shake)
     _shakeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
 
-    // 3. Animacja cząsteczek
     _particleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -54,6 +57,27 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     _moveController.forward().then((_) {
       _onCollision();
     });
+  }
+
+  Future<void> _startInitialization() async {
+    try {
+      if (mounted) {
+        final settings = context.read<SettingsProvider>();
+        final news = context.read<NewsProvider>();
+        await settings.init();
+        await news.init();
+        
+        setState(() {
+          _isDataReady = true;
+        });
+        FlutterNativeSplash.remove();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDataReady = true);
+        FlutterNativeSplash.remove();
+      }
+    }
   }
 
   void _onCollision() {
@@ -65,8 +89,15 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     _shakeController.forward(from: 0.0);
     _particleController.forward();
 
-    // Przejście do głównego ekranu po zakończeniu animacji
-    Future.delayed(const Duration(milliseconds: 2500), () {
+    _checkAndNavigate();
+  }
+
+  void _checkAndNavigate() {
+    Future.delayed(const Duration(milliseconds: 2500), () async {
+      while (!_isDataReady) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -107,11 +138,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryNavy,
+      backgroundColor: const Color(0xFF0D0D0D),
       body: AnimatedBuilder(
         animation: Listenable.merge([_moveController, _shakeController, _particleController]),
         builder: (context, child) {
-          // Efekt wstrząsu
           double shakeOffset = 0;
           if (_shakeController.isAnimating) {
             shakeOffset = sin(_shakeController.value * 20 * pi) * 8 * (1 - _shakeController.value);
@@ -119,7 +149,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
           return Stack(
             children: [
-              // Cząsteczki (kurz/odłamki)
               if (_collisionOccurred)
                 Center(
                   child: CustomPaint(
@@ -127,7 +156,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   ),
                 ),
 
-              // Logo (Sowa) - widać ją w całości nad tekstem
               Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -135,17 +163,16 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     Transform.translate(
                       offset: Offset(0, -60 + shakeOffset),
                       child: Padding(
-                        padding: const EdgeInsets.all(36.0), // Jeszcze większy padding
+                        padding: const EdgeInsets.all(36.0),
                         child: Image.asset(
                           'assets/logo.png',
-                          height: 70, // Jeszcze mniejsza sowa dla efektu "lekkości"
+                          height: 70,
                           fit: BoxFit.contain,
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
                     
-                    // Animowane słowa
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -160,7 +187,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         Transform.translate(
                           offset: Offset(_sowkaPosition.value * 200 + shakeOffset, 0),
                           child: Image.asset(
-                            // Używamy sówki 2 po zderzeniu dla efektu zmiany koloru/stylu
                             _collisionOccurred ? 'assets/sówka 2.png' : 'assets/sówka.png',
                             height: 60,
                             fit: BoxFit.contain,
@@ -195,7 +221,7 @@ class ParticlePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
     for (var p in particles) {
-      paint.color = p.color.withOpacity(1 - progress);
+      paint.color = p.color.withValues(alpha: 1 - progress);
       canvas.drawCircle(
         Offset(p.x + p.vx * progress * 20, p.y + p.vy * progress * 20),
         p.size,

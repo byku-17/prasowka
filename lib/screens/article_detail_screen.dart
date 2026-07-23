@@ -5,9 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../models/article.dart';
-import '../theme/app_theme.dart';
-import '../providers/news_provider.dart';
+import 'package:prasowka/models/article.dart';
+import 'package:prasowka/theme/app_theme.dart';
+import 'package:prasowka/providers/news_provider.dart';
 
 class ArticleDetailScreen extends StatelessWidget {
   final Article article;
@@ -28,9 +28,34 @@ class ArticleDetailScreen extends StatelessWidget {
                       imageUrl: article.imageUrl!,
                       fit: BoxFit.cover,
                     )
-                  : Container(color: AppTheme.primaryNavy),
+                  : Container(color: const Color(0xFF0D0D0D)),
             ),
             actions: [
+              Consumer<NewsProvider>(
+                builder: (context, provider, child) {
+                  final isPolish = provider.isArticlePolish(article);
+                  final needsTranslation = !isPolish && (
+                    article.translatedTitle == null || 
+                    (article.fullContent != null && article.translatedFullContent == null)
+                  );
+
+                  if (!needsTranslation) return const SizedBox.shrink();
+
+                  return IconButton(
+                    icon: provider.isTranslating 
+                        ? const SizedBox(
+                            width: 20, 
+                            height: 20, 
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                          )
+                        : const Icon(Icons.translate, color: Colors.blueAccent),
+                    onPressed: provider.isTranslating 
+                        ? null 
+                        : () => provider.translateArticle(article),
+                    tooltip: 'Tłumacz na polski',
+                  );
+                },
+              ),
               IconButton(
                 icon: const Icon(Icons.share),
                 onPressed: () => Share.share('${article.title}\n\n${article.url}'),
@@ -67,28 +92,84 @@ class ArticleDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   
-                  Text(
-                    article.title,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      height: 1.2,
-                    ),
+                  Consumer<NewsProvider>(
+                    builder: (context, provider, child) {
+                      return Text(
+                        article.translatedTitle ?? article.title,
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          height: 1.2,
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 24),
                   
                   const Divider(),
                   const SizedBox(height: 16),
                   
-                  HtmlWidget(
-                    article.content.isNotEmpty 
-                        ? article.content 
-                        : (article.description.isNotEmpty ? article.description : 'Brak treści artykułu.'),
-                    textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontSize: 18,
-                      height: 1.6,
-                    ),
-                    onTapUrl: (url) async {
-                      await _launchUrl(url);
-                      return true;
+                  Consumer<NewsProvider>(
+                    builder: (context, provider, child) {
+                      final hasFullContent = article.fullContent != null && article.fullContent!.isNotEmpty;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (provider.isFetchingFullContent || provider.isTranslating)
+                            Center(
+                              child: Column(
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    provider.isTranslating ? 'Sowa tłumaczy dla Ciebie...' : 'Sowa czyta artykuł dla Ciebie...',
+                                    style: const TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else if (!hasFullContent)
+                            Column(
+                              children: [
+                                HtmlWidget(
+                                  article.translatedDescription ?? (article.description.isNotEmpty ? article.description : 'Brak treści artykułu.'),
+                                  textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    fontSize: 18,
+                                    height: 1.6,
+                                  ),
+                                  onTapUrl: (url) async {
+                                    await _launchUrl(url);
+                                    return true;
+                                  },
+                                ),
+                                const SizedBox(height: 24),
+                                Center(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => provider.fetchFullArticleContent(article),
+                                    icon: const Icon(Icons.auto_stories),
+                                    label: const Text('POBIERZ PEŁNĄ TREŚĆ'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.accentGold,
+                                      foregroundColor: AppTheme.primaryNavy,
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            HtmlWidget(
+                              article.translatedFullContent ?? article.fullContent!,
+                              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                fontSize: 18,
+                                height: 1.6,
+                              ),
+                              onTapUrl: (url) async {
+                                await _launchUrl(url);
+                                return true;
+                              },
+                            ),
+                        ],
+                      );
                     },
                   ),
                   
@@ -116,7 +197,21 @@ class ArticleDetailScreen extends StatelessWidget {
           return Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              FloatingActionButton(
+              FloatingActionButton.small(
+                heroTag: 'like',
+                onPressed: () => provider.toggleLike(article),
+                backgroundColor: article.isLiked ? AppTheme.accentGold : Colors.white,
+                child: Icon(article.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined, color: article.isLiked ? Colors.white : Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton.small(
+                heroTag: 'dislike',
+                onPressed: () => provider.toggleDislike(article),
+                backgroundColor: article.isDisliked ? Colors.red : Colors.white,
+                child: Icon(article.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined, color: article.isDisliked ? Colors.white : Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton.small(
                 heroTag: 'readLater',
                 onPressed: () => provider.toggleReadLater(article),
                 backgroundColor: article.readLater ? AppTheme.accentGold : Colors.white,
