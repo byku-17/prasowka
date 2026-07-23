@@ -44,12 +44,8 @@ class SettingsProvider with ChangeNotifier {
   Future<void> init() async {
     debugPrint('Sowa Settings: Inicjalizacja...');
     
-    // Rejestracja adapterów
-    if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(NewsSourceAdapter());
-    if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(NewsCategoryAdapter());
-
-    final settingsBox = await Hive.openBox(settingsBoxName);
     await StorageService().init();
+    final settingsBox = await Hive.openBox(settingsBoxName);
 
     // 1. Inicjalizacja Kategorii
     final categoriesBox = await Hive.openBox<NewsCategory>(categoriesBoxName);

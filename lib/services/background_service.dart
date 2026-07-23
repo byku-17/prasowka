@@ -13,9 +13,6 @@ void callbackDispatcher() {
     try {
       await Hive.initFlutter();
       
-      if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(ArticleAdapter());
-      if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(NewsSourceAdapter());
-      
       final storage = StorageService();
       final interest = UserInterestService();
       final rss = RssService();
@@ -23,8 +20,7 @@ void callbackDispatcher() {
       await storage.init();
       await interest.init();
 
-      const topIds = ['rmf24_polska', 'tvn24_najwazniejsze', 'onet_wiadomosci', 'bbc_world', 'techcrunch'];
-      final sources = NewsSource.defaultSources.where((s) => topIds.contains(s.id)).toList();
+      final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
 
       for (var source in sources) {
         final articles = await rss.fetchArticles(source);

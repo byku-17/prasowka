@@ -26,6 +26,19 @@ class NewsSource extends HiveObject {
   bool get isDefault => _isDefault ?? false;
   set isDefault(bool value) => _isDefault = value;
 
+  /// Identyfikatory najważniejszych źródeł używane w kategorii "Wszystkie" i powiadomieniach
+  static const List<String> topSourceIds = [
+    'rmf24_polska', 
+    'tvn24_najwazniejsze', 
+    'onet_wiadomosci', 
+    'bbc_world', 
+    'nyt_world', 
+    'money_pl', 
+    'techcrunch', 
+    'tvp_sport', 
+    'probasket'
+  ];
+
   NewsSource({
     required this.id,
     required this.name,
@@ -36,7 +49,7 @@ class NewsSource extends HiveObject {
   }) : _isDefault = isDefault;
 
   /// Pełna lista 130 źródeł z wybranymi "Top 3" (isDefault: true)
-  static List<NewsSource> get defaultSources => [
+  static final List<NewsSource> defaultSources = [
     // --- POLSKA ---
     NewsSource(id: 'rmf24_polska', name: 'RMF24', rssUrl: 'https://www.rmf24.pl/fakty/polska/feed', categoryId: 'poland', isDefault: true),
     NewsSource(id: 'tvn24_najwazniejsze', name: 'TVN24', rssUrl: 'https://tvn24.pl/najwazniejsze.xml', categoryId: 'poland', isDefault: true),
@@ -44,6 +57,9 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'rp_polska', name: 'Rzeczpospolita', rssUrl: 'https://www.rp.pl/rss/1016', categoryId: 'poland'),
     NewsSource(id: 'interia_fakty', name: 'Interia Fakty', rssUrl: 'https://fakty.interia.pl/feed', categoryId: 'poland'),
     NewsSource(id: 'gazeta_pl_wiadomosci', name: 'Gazeta.pl', rssUrl: 'http://wiadomosci.gazeta.pl/pub/rss/wiadomosci.xml', categoryId: 'poland'),
+    NewsSource(id: 'tygodnik_powszechny', name: 'Tygodnik Powszechny', rssUrl: 'https://www.tygodnikpowszechny.pl/rss', categoryId: 'poland'),
+    NewsSource(id: 'dziennik_pl', name: 'Dziennik.pl', rssUrl: 'https://wiadomosci.dziennik.pl/polska/rss.xml', categoryId: 'poland'),
+    NewsSource(id: 'tok_fm', name: 'TOK FM', rssUrl: 'https://www.tokfm.pl/pub/rss/tokfm.xml', categoryId: 'poland'),
 
     // --- ŚWIAT ---
     NewsSource(id: 'bbc_world', name: 'BBC News', rssUrl: 'http://feeds.bbci.co.uk/news/world/rss.xml', categoryId: 'world', isDefault: true),
@@ -51,6 +67,11 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'guardian_world', name: 'The Guardian', rssUrl: 'https://www.theguardian.com/world/rss', categoryId: 'world', isDefault: true),
     NewsSource(id: 'aljazeera_world', name: 'Al Jazeera', rssUrl: 'https://www.aljazeera.com/xml/rss/all.xml', categoryId: 'world'),
     NewsSource(id: 'reuters_world', name: 'Reuters', rssUrl: 'https://www.reutersagency.com/feed/', categoryId: 'world'),
+    NewsSource(id: 'osw_warszawa', name: 'OSW (Ośrodek Studiów Wschodnich)', rssUrl: 'https://www.osw.waw.pl/pl/rss.xml', categoryId: 'world'),
+    NewsSource(id: 'dzial_zagraniczny', name: 'Dział Zagraniczny', rssUrl: 'https://www.dzialzagraniczny.pl/feed/', categoryId: 'world'),
+    NewsSource(id: 'klub_jagiellonski', name: 'Klub Jagielloński', rssUrl: 'https://klubjagiellonski.pl/feed/', categoryId: 'world'),
+    NewsSource(id: 'pism_world', name: 'PISM', rssUrl: 'https://www.pism.pl/rss', categoryId: 'world'),
+    NewsSource(id: 'raport_o_stanie_swiata', name: 'Raport o Stanie Świata', rssUrl: 'https://raportostanieswiata.pl/feed/', categoryId: 'world'),
 
     // --- BIZNES ---
     NewsSource(id: 'money_pl', name: 'Money.pl', rssUrl: 'https://www.money.pl/rss/', categoryId: 'business', isDefault: true),
@@ -69,6 +90,7 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'infor_pl', name: 'Infor.pl', rssUrl: 'https://www.infor.pl/rss/aktualnosci_prawno_gospodarcze.xml', categoryId: 'business'),
     NewsSource(id: 'forbes_pl', name: 'Forbes Polska', rssUrl: 'https://news.google.com/rss/search?q=site:forbes.pl&hl=pl&gl=PL&ceid=PL:pl', categoryId: 'business'),
     NewsSource(id: 'reuters_business', name: 'Reuters Business', rssUrl: 'https://openrss.org/www.reuters.com/business', categoryId: 'business'),
+    NewsSource(id: 'obserwator_finansowy', name: 'Obserwator Finansowy', rssUrl: 'https://www.obserwatorfinansowy.pl/feed/', categoryId: 'business'),
     NewsSource(id: 'wsj_business', name: 'Wall Street Journal', rssUrl: 'https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml', categoryId: 'business'),
     NewsSource(id: 'cnbc_business', name: 'CNBC Business', rssUrl: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147', categoryId: 'business'),
 
@@ -89,6 +111,8 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'mambiznes', name: 'Mambiznes.pl', rssUrl: 'https://mambiznes.pl/rss', categoryId: 'tech'),
     NewsSource(id: 'just_geek_it', name: 'Just Geek IT', rssUrl: 'https://geek.justjoin.it/feed', categoryId: 'tech'),
     NewsSource(id: 'itwiz', name: 'ITwiz', rssUrl: 'https://itwiz.pl/feed/', categoryId: 'tech'),
+    NewsSource(id: 'niebezpiecznik', name: 'Niebezpiecznik', rssUrl: 'https://niebezpiecznik.pl/feed/', categoryId: 'tech'),
+    NewsSource(id: 'zaufana_trzecia_strona', name: 'Zaufana Trzecia Strona', rssUrl: 'https://zaufanatrzeciastrona.pl/feed/', categoryId: 'tech'),
     NewsSource(id: 'brandsit', name: 'Brandsit.pl', rssUrl: 'https://brandsit.pl/feed/', categoryId: 'tech'),
     NewsSource(id: 'the_verge', name: 'The Verge', rssUrl: 'https://www.theverge.com/rss/index.xml', categoryId: 'tech'),
 
@@ -100,6 +124,7 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'gwiazdy_basketu', name: 'Gwiazdy Basketu', rssUrl: 'https://gwiazdybasketu.pl/feed/', categoryId: 'sport'),
     NewsSource(id: 'szosty_gracz', name: 'Szósty Gracz', rssUrl: 'https://szostygracz.pl/feed/', categoryId: 'sport'),
     NewsSource(id: 'zkrainynba', name: 'Z Krainy NBA', rssUrl: 'https://zkrainynba.com/feed/', categoryId: 'sport'),
+    NewsSource(id: 'sport_pl', name: 'Sport.pl', rssUrl: 'https://www.sport.pl/pub/rss/sport.xml', categoryId: 'sport'),
     NewsSource(id: 'rzutza3', name: 'RzutZa3', rssUrl: 'https://rzutza3.pl/feed/', categoryId: 'sport'),
     NewsSource(id: 'polsat_sport', name: 'Polsat Sport', rssUrl: 'https://www.polsatsport.pl/rss/wszystkie.xml', categoryId: 'sport'),
     NewsSource(id: 'transfery_info', name: 'Transfery.info', rssUrl: 'https://transfery.info/rss', categoryId: 'sport'),
@@ -130,6 +155,9 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'puls_medycyny', name: 'Puls Medycyny', rssUrl: 'https://pulsmedycyny.pl/rss', categoryId: 'science'),
     NewsSource(id: 'kwantowo_pl', name: 'Kwantowo.pl', rssUrl: 'https://www.kwantowo.pl/feed/', categoryId: 'science'),
     NewsSource(id: 'projekt_pulsar', name: 'Projekt Pulsar', rssUrl: 'https://www.polityka.pl/rss/articles.xml?list=268', categoryId: 'science'),
+    NewsSource(id: 'crazy_nauka', name: 'Crazy Nauka', rssUrl: 'https://www.crazynauka.pl/feed/', categoryId: 'science'),
+    NewsSource(id: 'madre_ksiazki', name: 'Mądre Książki', rssUrl: 'https://madreksiazki.pl/feed/', categoryId: 'science'),
+    NewsSource(id: 'filozofuj', name: 'Filozofuj!', rssUrl: 'https://filozofuj.eu/feed/', categoryId: 'science'),
     NewsSource(id: 'dziennik_naukowy', name: 'Dziennik Naukowy', rssUrl: 'https://dzienniknaukowy.pl/feed/', categoryId: 'science'),
 
     // --- MOTORYZACJA ---
@@ -140,6 +168,9 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'elektrowoz', name: 'Elektrowóz', rssUrl: 'https://elektrowoz.pl/feed/', categoryId: 'automotive', isDefault: true),
     NewsSource(id: 'onet_moto', name: 'Onet Moto', rssUrl: 'https://wiadomosci.onet.pl/moto/.feed', categoryId: 'automotive'),
     NewsSource(id: 'moto_pl', name: 'Moto.pl', rssUrl: 'https://moto.pl/pub/rss/moto.xml', categoryId: 'automotive'),
+    NewsSource(id: 'francuskie_pl', name: 'Francuskie.pl', rssUrl: 'https://francuskie.pl/feed/', categoryId: 'automotive'),
+    NewsSource(id: 'autoblog_pl', name: 'Autoblog / Złomnik', rssUrl: 'https://spidersweb.pl/autoblog/feed/', categoryId: 'automotive'),
+    NewsSource(id: 'wysokie_obroty', name: 'WysokieObroty (Gazeta.pl)', rssUrl: 'http://wiadomosci.gazeta.pl/pub/rss/wysokieobroty.xml', categoryId: 'automotive'),
 
     // --- KULTURA ---
     NewsSource(id: 'filmweb_news', name: 'Filmweb', rssUrl: 'https://news.google.com/rss/search?q=site:filmweb.pl&hl=pl&gl=PL&ceid=PL:pl', categoryId: 'culture', isDefault: true),
@@ -158,6 +189,7 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'dwutygodnik', name: 'Dwutygodnik', rssUrl: 'https://www.dwutygodnik.com/rss', categoryId: 'culture'),
     NewsSource(id: 'kultura_liberalna', name: 'Kultura Liberalna', rssUrl: 'https://kulturaliberalna.pl/feed/', categoryId: 'culture'),
     NewsSource(id: 'vogue_kultura', name: 'Vogue Polska', rssUrl: 'https://www.vogue.pl/k/kultura/feed', categoryId: 'culture'),
+    NewsSource(id: 'kultura_gazetapl', name: 'Kultura Gazeta.pl', rssUrl: 'http://wiadomosci.gazeta.pl/pub/rss/kultura.xml', categoryId: 'culture'),
     NewsSource(id: 'imponderabilia_pod', name: 'Imponderabilia', rssUrl: 'https://anchor.fm/s/18384218/podcast/rss', categoryId: 'culture'),
     NewsSource(id: 'jakbyniepaczec_pod', name: 'Jakbyniepaczec', rssUrl: 'https://anchor.fm/s/3cc71778/podcast/rss', categoryId: 'culture'),
 
@@ -176,10 +208,13 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'geoportal_news', name: 'Geoportal Wiadomości', rssUrl: 'https://www.geoportal.gov.pl/rss/wiadomosci.xml', categoryId: 'travel'),
     NewsSource(id: 'lonely_planet', name: 'Lonely Planet', rssUrl: 'https://www.lonelyplanet.com/news/rss', categoryId: 'travel'),
     NewsSource(id: 'wp_turystyka', name: 'WP Turystyka', rssUrl: 'https://turystyka.wp.pl/rss.xml', categoryId: 'travel'),
+    NewsSource(id: 'tanie_loty', name: 'Tanie-Loty.com.pl', rssUrl: 'https://www.tanie-loty.com.pl/feed/', categoryId: 'travel'),
 
     // --- LIFESTYLE & KULINARIA ---
     NewsSource(id: 'noizz_pl', name: 'Noizz.pl', rssUrl: 'https://noizz.pl/.feed', categoryId: 'lifestyle', isDefault: true),
+    NewsSource(id: 'aktivist_pl', name: 'Aktivist', rssUrl: 'https://aktivist.pl/feed/', categoryId: 'lifestyle'),
     NewsSource(id: 'kobieta_pl', name: 'Kobieta.pl', rssUrl: 'https://www.kobieta.pl/rss', categoryId: 'lifestyle', isDefault: true),
+    NewsSource(id: 'fashion_magazine', name: 'FASHION MAGAZINE', rssUrl: 'https://fashionmagazine.pl/feed/', categoryId: 'lifestyle'),
     NewsSource(id: 'zwierciadlo_pl', name: 'Zwierciadlo.pl', rssUrl: 'https://zwierciadlo.pl/feed', categoryId: 'lifestyle', isDefault: true),
     NewsSource(id: 'k_mag', name: 'K MAG', rssUrl: 'https://kmag.pl/feed', categoryId: 'lifestyle'),
     NewsSource(id: 'f5_trendbook', name: 'F5 Trendbook', rssUrl: 'https://www.f5.pl/feed', categoryId: 'lifestyle'),

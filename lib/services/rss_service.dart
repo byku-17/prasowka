@@ -8,6 +8,10 @@ import 'package:prasowka/models/news_source.dart';
 import 'package:flutter/foundation.dart';
 
 class RssService {
+  static final _htmlTagRegExp = RegExp(r'<[^>]*>', caseSensitive: false);
+  static final _htmlBannedTagsRegExp = RegExp(r'<(source|picture|script|style|zrodlo|figure|figcaption)[^>]*>.*?</\1>', caseSensitive: false);
+  static final _whitespaceRegExp = RegExp(r'\s+');
+
   Future<List<Article>> fetchArticles(NewsSource source) async {
     final url = source.rssUrl.trim();
     try {
@@ -78,9 +82,9 @@ class RssService {
     if (htmlString.isEmpty) return '';
     if (!htmlString.contains('<')) return htmlString.trim();
     try {
-      String cleaned = htmlString.replaceAll(RegExp(r'<(source|picture|script|style|zrodlo|figure|figcaption)[^>]*>.*?</\1>', caseSensitive: false), '');
-      cleaned = cleaned.replaceAll(RegExp(r'<[^>]*>', caseSensitive: false), ' ');
-      return cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
+      String cleaned = htmlString.replaceAll(_htmlBannedTagsRegExp, '');
+      cleaned = cleaned.replaceAll(_htmlTagRegExp, ' ');
+      return cleaned.replaceAll(_whitespaceRegExp, ' ').trim();
     } catch (_) {
       return htmlString.trim();
     }
@@ -122,7 +126,7 @@ class RssService {
       }
     } catch (_) {}
     final source = item.content ?? item.summary ?? '';
-    if (source != null && source.contains('<img')) {
+    if (source.contains('<img')) {
       try {
         final document = parse(source);
         final src = document.querySelector('img')?.attributes['src'];
@@ -134,8 +138,18 @@ class RssService {
 
   bool _isValidImageUrl(String url) {
     final u = url.toLowerCase();
-    return u.contains('.jpg') || u.contains('.jpeg') || u.contains('.png') || 
-           u.contains('.webp') || u.contains('.gif') || u.contains('image');
+    // Sprawdzamy standardowe rozszerzenia
+    if (u.contains('.jpg') || u.contains('.jpeg') || u.contains('.png') || 
+        u.contains('.webp') || u.contains('.gif')) return true;
+    
+    // Obsługa dynamicznych URL-i (np. image.php?id=...)
+    if (u.contains('image') || u.contains('img') || u.contains('photo')) {
+      // Jeśli URL zawiera parametry zapytania (?), uznajemy go za potencjalny obrazek,
+      // jeśli występuje w nim słowo kluczowe związane z grafiką
+      if (u.contains('?')) return true;
+    }
+    
+    return false;
   }
 
   DateTime _parseDate(String? dateValue) {

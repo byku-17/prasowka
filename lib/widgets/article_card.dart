@@ -237,6 +237,12 @@ class ArticleCard extends StatelessWidget {
           onPressed: () => context.read<NewsProvider>().toggleDislike(article),
         ),
         _ReactionButton(
+          iconBuilder: (isActive) => isActive ? Icons.bookmark : Icons.bookmark_border,
+          colorBuilder: (isActive) => isActive ? Colors.blue : Colors.grey,
+          selector: (p) => article.readLater,
+          onPressed: () => context.read<NewsProvider>().toggleReadLater(article),
+        ),
+        _ReactionButton(
           iconBuilder: (isActive) => isActive ? Icons.favorite : Icons.favorite_border,
           colorBuilder: (isActive) => isActive ? Colors.red : Colors.grey,
           selector: (p) => article.isFavorite,
@@ -256,7 +262,7 @@ class ArticleCard extends StatelessWidget {
   }
 }
 
-class _ReactionButton extends StatelessWidget {
+class _ReactionButton extends StatefulWidget {
   final IconData Function(bool) iconBuilder;
   final Color Function(bool) colorBuilder;
   final bool Function(NewsProvider) selector;
@@ -270,19 +276,59 @@ class _ReactionButton extends StatelessWidget {
   });
 
   @override
+  State<_ReactionButton> createState() => _ReactionButtonState();
+}
+
+class _ReactionButtonState extends State<_ReactionButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    _controller.forward().then((_) => _controller.reverse());
+    widget.onPressed();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Selector<NewsProvider, bool>(
-      selector: (_, p) => selector(p),
+      selector: (_, p) => widget.selector(p),
       builder: (context, isActive, child) {
         return GestureDetector(
-          onTap: onPressed,
+          onTap: _handleTap,
           behavior: HitTestBehavior.opaque,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Icon(
-              iconBuilder(isActive),
-              color: colorBuilder(isActive),
-              size: 16,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Icon(
+                widget.iconBuilder(isActive),
+                color: widget.colorBuilder(isActive),
+                size: 20, // Zwiększony rozmiar z 16 na 20
+                shadows: isActive ? [
+                  Shadow(
+                    color: widget.colorBuilder(isActive).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                  )
+                ] : null,
+              ),
             ),
           ),
         );

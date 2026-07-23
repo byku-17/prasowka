@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_source.dart';
+import 'package:prasowka/models/news_category.dart';
 
 class StorageService {
   static final StorageService _instance = StorageService._internal();
@@ -15,12 +16,7 @@ class StorageService {
   /// Inicjalizacja Hive i otwarcie boxów (z bezpiecznym mechanizmem ratunkowym)
   Future<void> init() async {
     try {
-      if (!Hive.isAdapterRegistered(0)) {
-        Hive.registerAdapter(ArticleAdapter());
-      }
-      if (!Hive.isAdapterRegistered(1)) {
-        Hive.registerAdapter(NewsSourceAdapter());
-      }
+      _registerAdapters();
 
       await _openSafe(articlesBoxName);
       await _openSafe(cacheBoxName);
@@ -29,6 +25,13 @@ class StorageService {
     } catch (e) {
       debugPrint('Sowa Storage: Krytyczny błąd inicjalizacji ($e)');
     }
+  }
+
+  /// Rejestruje wszystkie adaptery Hive w jednym miejscu
+  void _registerAdapters() {
+    if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(ArticleAdapter());
+    if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(NewsSourceAdapter());
+    if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(NewsCategoryAdapter());
   }
 
   /// Próbuje otworzyć box, a w razie błędu czyści go (migracja/uszkodzenie)

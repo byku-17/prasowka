@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/models/news_source.dart';
@@ -19,6 +20,7 @@ class NewsProvider with ChangeNotifier {
   final Map<String, bool> _loadingMap = {};
   final Map<String, bool> _bgLoadingMap = {};
   final Map<String, String?> _errorMap = {};
+  final Map<String, bool> _hasEverLoadedMap = {};
   
   String _lastDebugMessage = 'Czekam na akcję...';
   String? _lastTechnicalError; 
@@ -34,9 +36,8 @@ class NewsProvider with ChangeNotifier {
   List<String>? _lastFavoriteTeams;
   final Map<String, DateTime> _lastFetchTimes = {};
   final Map<String, String> _requestIds = {};
-  final Map<String, bool> _hasEverLoadedMap = {};
 
-  // Gettery
+  // Getters
   List<Article> get articles => _articlesMap[_selectedCategory.id] ?? [];
   List<Article> get recommendedArticles => _recommendedArticles;
   bool get isLoading => _loadingMap[_selectedCategory.id] ?? false;
@@ -58,14 +59,11 @@ class NewsProvider with ChangeNotifier {
 
   Future<void> init() async {
     try {
-      debugPrint('Sowa NewsProvider: Inicjalizacja...');
       await _storageService.init();
       await _interestService.init();
-      _lastDebugMessage = 'System gotowy.';
       notifyListeners();
     } catch (e) {
-      _lastDebugMessage = 'Błąd inicjalizacji bazy.';
-      _lastTechnicalError = 'Błąd: $e';
+      _lastTechnicalError = e.toString();
       notifyListeners();
     }
   }
@@ -79,50 +77,38 @@ class NewsProvider with ChangeNotifier {
   }) async {
     final targetCategory = category ?? _selectedCategory;
     final categoryId = targetCategory.id;
-    
     final requestId = DateTime.now().millisecondsSinceEpoch.toString();
     _requestIds[categoryId] = requestId;
-
+    
     if (enabledSourceIds != null) _lastActiveSourceIds = enabledSourceIds;
     if (favoriteTeams != null) _lastFavoriteTeams = favoriteTeams;
 
-    // 1. ŁADOWANIE Z CACHE
     final cached = _storageService.getCategoryCache(categoryId);
-    
     if (cached.isNotEmpty) {
       _articlesMap[categoryId] = cached;
-      _loadingMap[categoryId] = false;
-      _bgLoadingMap[categoryId] = true;
       _hasEverLoadedMap[categoryId] = true;
       _calculateRecommendations();
-      notifyListeners();
-    } else {
-      _loadingMap[categoryId] = true;
-      _hasEverLoadedMap[categoryId] = false;
-      _errorMap[categoryId] = null;
-      _lastTechnicalError = null;
-      notifyListeners();
-    }
-
-    if (cached.isNotEmpty && !forceRefresh) {
-      final lastFetch = _lastFetchTimes[categoryId];
-      if (lastFetch != null && DateTime.now().difference(lastFetch).inMinutes < 5) {
-        _bgLoadingMap[categoryId] = false;
-        notifyListeners();
-        return;
+      if (!forceRefresh) {
+        final lastFetch = _lastFetchTimes[categoryId];
+        if (lastFetch != null && DateTime.now().difference(lastFetch).inMinutes < 5) {
+          notifyListeners();
+          return;
+        }
       }
     }
 
+    _loadingMap[categoryId] = true;
+    _errorMap[categoryId] = null;
+    notifyListeners();
+
     try {
-      // 2. WYBÓR ŹRÓDEŁ
-      List<NewsSource> sourcesToFetch = [];
       final List<NewsSource> baseSources = (allSources != null && allSources.isNotEmpty) 
           ? allSources 
           : NewsSource.defaultSources;
-
+          
+      List<NewsSource> sourcesToFetch;
       if (categoryId == 'all') {
-        const topIds = ['rmf24_polska', 'tvn24_najwazniejsze', 'onet_wiadomosci', 'bbc_world', 'nyt_world', 'money_pl', 'techcrunch', 'tvp_sport', 'probasket'];
-        sourcesToFetch = baseSources.where((s) => topIds.contains(s.id) || s.id.startsWith('custom_')).toList();
+        sourcesToFetch = baseSources.where((s) => NewsSource.topSourceIds.contains(s.id) || s.id.startsWith('custom_')).toList();
       } else {
         sourcesToFetch = baseSources.where((s) => s.categoryId == categoryId).toList();
       }
@@ -140,24 +126,20 @@ class NewsProvider with ChangeNotifier {
       }
 
       _lastSourceCount = sourcesToFetch.length;
-      _lastDebugMessage = 'Łączenie...';
-      notifyListeners();
-
-      // 3. POBIERANIE STRUMIENIOWE
-      final Map<String, Article> accumulatedMap = {};
       _lastSuccessCount = 0;
-      
+      List<Article> accumulated = [];
+
       for (int i = 0; i < sourcesToFetch.length; i += 10) {
         final batch = sourcesToFetch.skip(i).take(10).toList();
         final results = await Future.wait(batch.map((s) => _rssService.fetchArticles(s)));
         
         if (_requestIds[categoryId] != requestId) return;
 
-        bool hasNewArticles = false;
+        bool hasNew = false;
         for (var fetched in results) {
           if (fetched.isNotEmpty) {
             _lastSuccessCount++;
-            hasNewArticles = true;
+            hasNew = true;
             for (var article in fetched) {
               final stored = _storageService.getStoredArticle(article.id);
               if (stored != null) {
@@ -168,88 +150,115 @@ class NewsProvider with ChangeNotifier {
                 article.fullContent = stored.fullContent;
               }
               _interestService.calculateScore(article);
-              accumulatedMap[article.id] = article;
             }
+            accumulated.addAll(fetched);
           }
         }
         
-        if (hasNewArticles) {
-          final isCurrent = categoryId == _selectedCategory.id;
-          if (isCurrent || accumulatedMap.length % 50 == 0) {
-            _lastDebugMessage = 'Pobrano ${accumulatedMap.length} artykułów...';
-            final currentList = accumulatedMap.values.toList();
-            _sortAndMixArticlesSync(currentList, favoriteTeams ?? _lastFavoriteTeams, categoryId);
-            _articlesMap[categoryId] = currentList;
-            _hasEverLoadedMap[categoryId] = true;
-            if (accumulatedMap.length % 100 == 0) _calculateRecommendations();
-            notifyListeners();
+        if (hasNew) {
+          _lastDebugMessage = 'Pobrano ${accumulated.length} newsów...';
+          _articlesMap[categoryId] = List.from(accumulated);
+          
+          // Optymalizacja: Używamy compute dla dużych list (powyżej 50 artykułów)
+          if (_articlesMap[categoryId]!.length > 50) {
+            final mixed = await compute(_sortAndMixArticlesStatic, {
+              'list': _articlesMap[categoryId]!,
+              'teams': favoriteTeams ?? _lastFavoriteTeams,
+              'categoryId': categoryId,
+            });
+            _articlesMap[categoryId] = mixed;
+          } else {
+            _sortAndMixArticlesSync(_articlesMap[categoryId]!, favoriteTeams ?? _lastFavoriteTeams, categoryId);
           }
+          
+          _hasEverLoadedMap[categoryId] = true;
+          // Obliczamy rekomendacje rzadziej, tylko przy większych paczkach
+          if (accumulated.length % 200 == 0) _calculateRecommendations();
+          notifyListeners();
         }
       }
-      
-      if (_requestIds[categoryId] != requestId) return;
 
-      // 4. FINALIZACJA
-      final finalArticles = accumulatedMap.values.toList();
       _lastFetchTimes[categoryId] = DateTime.now();
-      _sortAndMixArticlesSync(finalArticles, favoriteTeams ?? _lastFavoriteTeams, categoryId);
-      _articlesMap[categoryId] = finalArticles;
+      _articlesMap[categoryId] = accumulated;
+      
+      if (accumulated.length > 50) {
+        final mixed = await compute(_sortAndMixArticlesStatic, {
+          'list': accumulated,
+          'teams': favoriteTeams ?? _lastFavoriteTeams,
+          'categoryId': categoryId,
+        });
+        _articlesMap[categoryId] = mixed;
+      } else {
+        _sortAndMixArticlesSync(accumulated, favoriteTeams ?? _lastFavoriteTeams, categoryId);
+        _articlesMap[categoryId] = accumulated;
+      }
+      
       _calculateRecommendations();
-      await _storageService.saveCategoryCache(categoryId, finalArticles);
+      await _storageService.saveCategoryCache(categoryId, accumulated);
       
       _loadingMap[categoryId] = false;
-      _bgLoadingMap[categoryId] = false;
       _hasEverLoadedMap[categoryId] = true;
-      _lastDebugMessage = 'Sukces! (${finalArticles.length})';
       notifyListeners();
-
     } catch (e) {
-      _lastTechnicalError = e.toString();
-      _hasEverLoadedMap[categoryId] = true; 
-      if (_requestIds[categoryId] != requestId) return;
+      _logError(categoryId, e);
+      _hasEverLoadedMap[categoryId] = true;
       _loadingMap[categoryId] = false;
-      _bgLoadingMap[categoryId] = false;
       notifyListeners();
     }
   }
 
   void _calculateRecommendations() {
-    final allArticlesList = allLoadedArticles.where((a) => !a.isDisliked).toList();
-    if (allArticlesList.isEmpty) return;
+    final allArticles = allLoadedArticles.where((a) => !a.isDisliked).toList();
+    if (allArticles.isEmpty) {
+      _recommendedArticles = [];
+      return;
+    }
     
-    final List<MapEntry<Article, double>> scored = allArticlesList
-        .map((a) => MapEntry(a, _interestService.calculateScore(a)))
-        .where((e) => e.value > 0)
-        .toList();
-        
+    // Optymalizacja: pobieramy punkty tylko raz dla każdego tagu, zamiast liczyć od nowa
+    final List<MapEntry<Article, double>> scored = allArticles.map((a) {
+      // Jeśli mamy cachedScore, używamy go. Jeśli nie, calculateScore go ustawi.
+      return MapEntry(a, a.cachedScore ?? _interestService.calculateScore(a));
+    }).where((e) => e.value > 0).toList();
+    
     scored.sort((a, b) => b.value.compareTo(a.value));
     _recommendedArticles = scored.map((e) => e.key).take(5).toList();
   }
 
-  void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId) {
+  static List<Article> _sortAndMixArticlesStatic(Map<String, dynamic> params) {
+    final List<Article> list = List<Article>.from(params['list']);
+    final List<String>? teams = params['teams'];
+    final String categoryId = params['categoryId'];
+
     list.sort((a, b) {
       if (a.imageUrl != null && b.imageUrl == null) return -1;
       if (a.imageUrl == null && b.imageUrl != null) return 1;
       return b.publishedAt.compareTo(a.publishedAt);
     });
-
+    
     list.removeWhere((a) => a.isDisliked);
-
+    
     if (list.length > 5) {
       final Map<String, List<Article>> bySource = {};
-      for (var a in list) { bySource.putIfAbsent(a.sourceName, () => []).add(a); }
+      for (var a in list) { 
+        bySource.putIfAbsent(a.sourceName, () => []).add(a); 
+      }
       final List<Article> mixed = [];
       bool added = true;
       while (added) {
         added = false;
-        for (var src in bySource.keys) { if (bySource[src]!.isNotEmpty) { mixed.add(bySource[src]!.removeAt(0)); added = true; } }
+        for (var src in bySource.keys) { 
+          if (bySource[src]!.isNotEmpty) { 
+            mixed.add(bySource[src]!.removeAt(0)); 
+            added = true; 
+          } 
+        }
       }
       list.clear();
       list.addAll(mixed);
     }
-
+    
     if (categoryId == 'all' && list.length > 100) list.removeRange(100, list.length);
-
+    
     if (categoryId == 'sport' && teams != null && teams.isNotEmpty) {
       final filtered = list.where((a) {
         final text = '${a.title} ${a.description}'.toLowerCase();
@@ -261,6 +270,18 @@ class NewsProvider with ChangeNotifier {
          list.addAll([...filtered, ...other]);
       }
     }
+    return list;
+  }
+
+  void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId) {
+    // Reużywamy logiki statycznej dla małych list
+    final result = _sortAndMixArticlesStatic({
+      'list': list,
+      'teams': teams,
+      'categoryId': categoryId,
+    });
+    list.clear();
+    list.addAll(result);
   }
 
   Future<void> toggleLike(Article article) async {
@@ -298,9 +319,7 @@ class NewsProvider with ChangeNotifier {
   }
 
   void _clearCachedScores() {
-    for (var list in _articlesMap.values) {
-      for (var a in list) { a.cachedScore = null; }
-    }
+    for (var list in _articlesMap.values) { for (var a in list) { a.cachedScore = null; } }
   }
 
   Future<void> _saveArticleState(Article article) async {
@@ -346,7 +365,6 @@ class NewsProvider with ChangeNotifier {
     bool needsDesc = article.translatedDescription == null;
     bool needsFull = article.fullContent != null && article.translatedFullContent == null;
     if (!needsTitle && !needsDesc && !needsFull) return;
-
     _isTranslating = true;
     notifyListeners();
     try {
@@ -362,7 +380,6 @@ class NewsProvider with ChangeNotifier {
         final tFull = await _translationService.translate(article.fullContent!);
         if (tFull != null) article.translatedFullContent = tFull;
       }
-
       final stored = _storageService.getStoredArticle(article.id);
       if (stored != null) {
         stored.translatedTitle = article.translatedTitle;
@@ -383,6 +400,22 @@ class NewsProvider with ChangeNotifier {
     final Map<String, Article> unique = {};
     for (var list in _articlesMap.values) { for (var a in list) { unique[a.id] = a; } }
     return unique.values.toList();
+  }
+
+  void clearError(String categoryId) {
+    _errorMap[categoryId] = null;
+    notifyListeners();
+  }
+
+  void clearTechnicalError() {
+    _lastTechnicalError = null;
+    notifyListeners();
+  }
+
+  void _logError(String categoryId, dynamic e) {
+    _lastTechnicalError = e.toString();
+    _errorMap[categoryId] = 'Wystąpił problem z pobieraniem danych. Spróbuj ponownie później.';
+    debugPrint('Sowa NewsProvider Error [$categoryId]: $e');
   }
 
   List<Article> get favoriteArticles => _storageService.getFavorites();
