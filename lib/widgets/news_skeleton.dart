@@ -8,73 +8,79 @@ class NewsSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isSmall) return _buildSmallSkeleton(context);
+    return _buildEdgeToEdgeSkeleton(context);
+  }
+
+  Widget _buildEdgeToEdgeSkeleton(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[900]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Zdjęcie na całą szerokość
+          Container(
+            height: 200,
+            width: double.infinity,
+            color: baseColor,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(height: 20, width: double.infinity, color: baseColor),
+                const SizedBox(height: 8),
+                Container(height: 20, width: 200, color: baseColor),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(height: 10, width: 60, color: baseColor),
+                    const Spacer(),
+                    Container(height: 14, width: 100, color: baseColor),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Colors.white10),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallSkeleton(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final baseColor = isDark ? Colors.grey[900]! : Colors.grey[300]!;
     final highlightColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
 
     return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: isSmall ? 4 : 16, 
-        vertical: isSmall ? 4 : 8
-      ),
+      width: 280,
+      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       child: Shimmer.fromColors(
         baseColor: baseColor,
         highlightColor: highlightColor,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Symulacja zdjęcia
             Container(
-              height: isSmall ? 150 : 200, // Dopasowano do nowych proporcji
-              width: isSmall ? 280 : double.infinity,
+              height: 150,
+              width: 280,
               decoration: BoxDecoration(
                 color: baseColor,
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            const SizedBox(height: 12),
-            // Symulacja tytułu
-            Container(
-              height: 20,
-              width: isSmall ? 200 : double.infinity,
-              decoration: BoxDecoration(
-                color: baseColor,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
             const SizedBox(height: 8),
-            if (!isSmall)
-              Container(
-                height: 14,
-                width: 150,
-                decoration: BoxDecoration(
-                  color: baseColor,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            const SizedBox(height: 12),
-            // Symulacja paska dolnego
-            Row(
-              children: [
-                Container(
-                  height: 10,
-                  width: 60,
-                  decoration: BoxDecoration(
-                    color: baseColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  height: 14,
-                  width: 80,
-                  decoration: BoxDecoration(
-                    color: baseColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ],
-            ),
+            Container(height: 14, width: 200, color: baseColor),
+            const SizedBox(height: 6),
+            Container(height: 10, width: 100, color: baseColor),
           ],
         ),
       ),

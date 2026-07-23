@@ -1,7 +1,6 @@
-# Zadania: Profesjonalne Ładowanie (Shimmer UI)
+# Zadania: Bezpieczeństwo i Pamięć Stanu 🦉🧠
 
-- [x] Dodanie paczki `shimmer` do `pubspec.yaml`
-- [x] Implementacja widgetu `NewsSkeleton`
-- [x] Logika `hasEverLoaded` w `NewsProvider`
-- [x] Integracja Shimmera w `CategoryNewsList`
-- [x] Weryfikacja wizualna
+- [ ] Persystencja ostatniej zakładki w `SettingsProvider`
+- [ ] Implementacja `PopScope` w `MainScreen` (Double Back to Exit)
+- [ ] Automatyczne przywracanie zakładki przy starcie
+- [ ] Weryfikacja działania na urządzeniu

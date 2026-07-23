@@ -43,16 +43,13 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
     super.build(context);
     final settings = context.watch<SettingsProvider>();
     
-    return Selector<NewsProvider, bool>(
-      // Reagujemy na zmianę stanu ładowania LUB zmianę liczby artykułów
-      selector: (_, provider) => provider.isCategoryLoading(widget.category.id) || provider.getArticlesForCategory(widget.category.id).isNotEmpty,
-      builder: (context, _, child) {
-        final provider = context.read<NewsProvider>();
+    return Consumer<NewsProvider>(
+      builder: (context, provider, child) {
         final articles = provider.getArticlesForCategory(widget.category.id);
         final isLoading = provider.isCategoryLoading(widget.category.id);
         final hasEverLoaded = provider.hasCategoryEverLoaded(widget.category.id);
 
-        // 1. Jeśli mamy artykuły -> Pokaż listę (nawet jeśli sowa doładowuje coś w tle)
+        // 1. Jeśli mamy artykuły -> Pokaż listę
         if (articles.isNotEmpty) {
           return RefreshIndicator(
             color: AppTheme.accentGold,
@@ -64,7 +61,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
               forceRefresh: true,
             ),
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: EdgeInsets.zero,
               addRepaintBoundaries: true,
               cacheExtent: 1000.0,
               itemCount: articles.length + (widget.category.id == 'all' && provider.recommendedArticles.isNotEmpty ? 1 : 0),
@@ -81,7 +78,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
           );
         }
 
-        // 2. Jeśli lista jest pusta i sowa pracuje (lub jeszcze nigdy nie skończyła) -> SHIMMER
+        // 2. Jeśli pusto i ładowanie -> SHIMMER
         if (isLoading || !hasEverLoaded) {
           return ListView.builder(
             itemCount: 5,
@@ -89,7 +86,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
           );
         }
 
-        // 3. Jeśli lista jest pusta i sowa skończyła pracę -> BRAK TREŚCI
+        // 3. Jeśli faktycznie pusto po zakończeniu -> EMPTY STATE
         final errorMessage = provider.getCategoryError(widget.category.id);
         return _buildEmptyState(context, provider, settings, errorMessage);
       },
@@ -163,7 +160,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Row(
             children: [
               Icon(Icons.auto_awesome, color: AppTheme.accentGold, size: 18),
@@ -189,7 +186,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
             },
           ),
         ),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Divider()),
+        const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Divider(color: Colors.white10)),
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Text(

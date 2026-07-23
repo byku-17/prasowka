@@ -22,13 +22,13 @@ class NewsSourceAdapter extends TypeAdapter<NewsSource> {
       rssUrl: fields[2] as String,
       categoryId: fields[4] as String,
       logoUrl: fields[3] as String?,
-    );
+    ).._isDefault = fields[5] as bool?;
   }
 
   @override
   void write(BinaryWriter writer, NewsSource obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -38,7 +38,9 @@ class NewsSourceAdapter extends TypeAdapter<NewsSource> {
       ..writeByte(3)
       ..write(obj.logoUrl)
       ..writeByte(4)
-      ..write(obj.categoryId);
+      ..write(obj.categoryId)
+      ..writeByte(5)
+      ..write(obj._isDefault);
   }
 
   @override

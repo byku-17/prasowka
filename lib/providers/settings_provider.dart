@@ -16,6 +16,7 @@ class SettingsProvider with ChangeNotifier {
   static const String teamsKey = 'favoriteTeams';
   static const String categoryOrderKey = 'categoryOrder';
   static const String notificationsKey = 'notificationsEnabled';
+  static const String onboardingKey = 'onboardingCompleted';
 
   ThemeMode _themeMode = ThemeMode.system;
   List<String> _activeCategoryIds = [];
@@ -24,6 +25,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> _categoryOrder = [];
   List<NewsSource> _allSources = [];
   bool _notificationsEnabled = false;
+  bool _onboardingCompleted = false;
 
   ThemeMode get themeMode => _themeMode;
   List<String> get activeCategoryIds => _activeCategoryIds;
@@ -31,6 +33,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> get favoriteTeams => _favoriteTeams;
   List<NewsSource> get allSources => _allSources;
   bool get notificationsEnabled => _notificationsEnabled;
+  bool get onboardingCompleted => _onboardingCompleted;
 
   Future<void> init() async {
     debugPrint('Sowa Settings: Inicjalizacja...');
@@ -57,13 +60,14 @@ class SettingsProvider with ChangeNotifier {
       defaultValue: NewsCategory.defaultCategories.map((c) => c.id).toList(),
     ));
 
+    // Włączone źródła - Domyślnie tylko Top 3 (isDefault) dla wydajności
     _enabledSourceIds = List<String>.from(settingsBox.get(
       sourcesEnabledKey,
-      defaultValue: _allSources.map((s) => s.id).toList(),
+      defaultValue: _allSources.where((s) => s.isDefault).map((s) => s.id).toList(),
     ));
 
     if (_enabledSourceIds.isEmpty && _allSources.isNotEmpty) {
-      _enabledSourceIds = _allSources.map((s) => s.id).toList();
+      _enabledSourceIds = _allSources.where((s) => s.isDefault).map((s) => s.id).toList();
       await saveEnabledSources();
     }
 
@@ -75,6 +79,7 @@ class SettingsProvider with ChangeNotifier {
     ));
 
     _notificationsEnabled = settingsBox.get(notificationsKey, defaultValue: false);
+    _onboardingCompleted = settingsBox.get(onboardingKey, defaultValue: false);
     
     await BackgroundService().init();
     if (_notificationsEnabled) {
@@ -141,7 +146,7 @@ class SettingsProvider with ChangeNotifier {
     await box.putAll(sourceMap);
     
     _allSources = List<NewsSource>.from(box.values);
-    _enabledSourceIds = _allSources.map((s) => s.id).toList();
+    _enabledSourceIds = _allSources.where((s) => s.isDefault).map((s) => s.id).toList();
     await saveEnabledSources();
     notifyListeners();
     debugPrint('Sowa Settings: Przywrócono ${_allSources.length} źródeł.');
@@ -236,4 +241,11 @@ class SettingsProvider with ChangeNotifier {
 
   bool isCategoryActive(String id) => _activeCategoryIds.contains(id);
   bool isSourceActive(String id) => _enabledSourceIds.contains(id);
+
+  /// Markuje onboarding jako zakończony
+  Future<void> completeOnboarding() async {
+    _onboardingCompleted = true;
+    await Hive.box(settingsBoxName).put(onboardingKey, true);
+    notifyListeners();
+  }
 }

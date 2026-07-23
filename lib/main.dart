@@ -37,7 +37,7 @@ class PrasowkaApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: settings.themeMode,
-      home: const SplashScreen(),
+      home: const SplashScreen(), // Powrót do zawsze startującego Splasha
     );
   }
 }

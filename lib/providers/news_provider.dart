@@ -82,30 +82,35 @@ class NewsProvider with ChangeNotifier {
     
     final requestId = DateTime.now().millisecondsSinceEpoch.toString();
     _requestIds[categoryId] = requestId;
-    
+
     if (enabledSourceIds != null) _lastActiveSourceIds = enabledSourceIds;
     if (favoriteTeams != null) _lastFavoriteTeams = favoriteTeams;
 
     // 1. ŁADOWANIE Z CACHE
     final cached = _storageService.getCategoryCache(categoryId);
+    
     if (cached.isNotEmpty) {
       _articlesMap[categoryId] = cached;
       _loadingMap[categoryId] = false;
       _bgLoadingMap[categoryId] = true;
+      _hasEverLoadedMap[categoryId] = true;
       _calculateRecommendations();
       notifyListeners();
+    } else {
+      _loadingMap[categoryId] = true;
+      _hasEverLoadedMap[categoryId] = false;
+      _errorMap[categoryId] = null;
+      _lastTechnicalError = null;
+      notifyListeners();
+    }
 
+    if (cached.isNotEmpty && !forceRefresh) {
       final lastFetch = _lastFetchTimes[categoryId];
-      if (!forceRefresh && lastFetch != null && DateTime.now().difference(lastFetch).inMinutes < 5) {
+      if (lastFetch != null && DateTime.now().difference(lastFetch).inMinutes < 5) {
         _bgLoadingMap[categoryId] = false;
         notifyListeners();
         return;
       }
-    } else {
-      _loadingMap[categoryId] = true;
-      _errorMap[categoryId] = null;
-      _lastTechnicalError = null;
-      notifyListeners();
     }
 
     try {
@@ -162,22 +167,23 @@ class NewsProvider with ChangeNotifier {
                 article.isDisliked = stored.isDisliked;
                 article.fullContent = stored.fullContent;
               }
-              // Wstępne przeliczenie wyniku dla oszczędności w UI
               _interestService.calculateScore(article);
               accumulatedMap[article.id] = article;
             }
           }
         }
         
-        // LAZY REFRESH: Odświeżamy UI tylko rzadko podczas ładowania (co 50 newsów)
-        if (hasNewArticles && (accumulatedMap.length < 30 || accumulatedMap.length % 50 == 0)) {
-          _lastDebugMessage = 'Pobrano ${accumulatedMap.length} artykułów...';
-          final currentList = accumulatedMap.values.toList();
-          _sortAndMixArticlesSync(currentList, favoriteTeams ?? _lastFavoriteTeams, categoryId);
-          _articlesMap[categoryId] = currentList;
-          // Rekomendacje liczymy tylko raz na jakiś czas
-          if (accumulatedMap.length % 100 == 0) _calculateRecommendations();
-          notifyListeners();
+        if (hasNewArticles) {
+          final isCurrent = categoryId == _selectedCategory.id;
+          if (isCurrent || accumulatedMap.length % 50 == 0) {
+            _lastDebugMessage = 'Pobrano ${accumulatedMap.length} artykułów...';
+            final currentList = accumulatedMap.values.toList();
+            _sortAndMixArticlesSync(currentList, favoriteTeams ?? _lastFavoriteTeams, categoryId);
+            _articlesMap[categoryId] = currentList;
+            _hasEverLoadedMap[categoryId] = true;
+            if (accumulatedMap.length % 100 == 0) _calculateRecommendations();
+            notifyListeners();
+          }
         }
       }
       
@@ -199,7 +205,7 @@ class NewsProvider with ChangeNotifier {
 
     } catch (e) {
       _lastTechnicalError = e.toString();
-      _hasEverLoadedMap[categoryId] = true; // Mark as loaded even on error to stop shimmer
+      _hasEverLoadedMap[categoryId] = true; 
       if (_requestIds[categoryId] != requestId) return;
       _loadingMap[categoryId] = false;
       _bgLoadingMap[categoryId] = false;
@@ -208,11 +214,10 @@ class NewsProvider with ChangeNotifier {
   }
 
   void _calculateRecommendations() {
-    final allArticles = allLoadedArticles.where((a) => !a.isDisliked).toList();
-    if (allArticles.isEmpty) return;
+    final allArticlesList = allLoadedArticles.where((a) => !a.isDisliked).toList();
+    if (allArticlesList.isEmpty) return;
     
-    // Sortowanie rekomendacji - tylko dla tych z dodatnim wynikiem
-    final List<MapEntry<Article, double>> scored = allArticles
+    final List<MapEntry<Article, double>> scored = allArticlesList
         .map((a) => MapEntry(a, _interestService.calculateScore(a)))
         .where((e) => e.value > 0)
         .toList();
@@ -222,7 +227,6 @@ class NewsProvider with ChangeNotifier {
   }
 
   void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId) {
-    // 1. Priorytet: Zdjęcia -> Data
     list.sort((a, b) {
       if (a.imageUrl != null && b.imageUrl == null) return -1;
       if (a.imageUrl == null && b.imageUrl != null) return 1;
@@ -231,7 +235,6 @@ class NewsProvider with ChangeNotifier {
 
     list.removeWhere((a) => a.isDisliked);
 
-    // 2. Mieszanie źródeł (Interleaving)
     if (list.length > 5) {
       final Map<String, List<Article>> bySource = {};
       for (var a in list) { bySource.putIfAbsent(a.sourceName, () => []).add(a); }

@@ -61,12 +61,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   Future<void> _startInitialization() async {
     try {
+      final settings = context.read<SettingsProvider>();
+      final news = context.read<NewsProvider>();
+      await settings.init();
+      await news.init();
+      
       if (mounted) {
-        final settings = context.read<SettingsProvider>();
-        final news = context.read<NewsProvider>();
-        await settings.init();
-        await news.init();
-        
         setState(() {
           _isDataReady = true;
         });
