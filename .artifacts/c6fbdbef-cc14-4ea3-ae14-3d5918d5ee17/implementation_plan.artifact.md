@@ -1,38 +1,40 @@
-# Plan: Bezpieczeństwo i Pamięć Stanu (Ochrona przed wyjściem)
+# Plan: Sowa 2.0 - Punkt 2: Onboarding i Silnik Google News RSS
 
-Celem jest ochrona użytkownika przed przypadkowym zamknięciem aplikacji oraz sprawienie, by sowa pamiętała, na czym skończyłeś czytanie.
+Celem tego etapu jest wdrożenie profesjonalnego okna powitalnego oraz mechanizmu dynamicznego pobierania newsów na podstawie słów kluczowych (firmy, drużyny) za pomocą nielimitowanego Google News RSS.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Podwójny "Wstecz":** Na głównym ekranie sowa nie zamknie się po jednym kliknięciu przycisku wstecz. Wyświetli komunikat "Kliknij jeszcze raz, aby wyjść". Drugie kliknięcie w ciągu 2 sekund zamknie aplikację.
-> **Pamięć Zakładki:** Sowa zapamięta, którą kategorię przeglądałeś (np. Sport) i przy następnym uruchomieniu otworzy ją automatycznie zamiast zawsze startować od "Wszystkich".
+> **Dynamiczne Źródła:** Każde słowo kluczowe wpisane w Onboardingu (lub później w ustawieniach) stworzy "wirtualne źródło" Google News. Dzięki temu sowa znajdzie informacje o Twojej ulubionej firmie czy lokalnej drużynie, nawet jeśli nie ma ich na naszej liście 130 portali.
+> **Pierwsze Wrażenie:** Przywrócimy ekran powitalny, który tym razem będzie poprawnie zintegrowany z systemem ładowania danych.
 
 ## Proponowane Zmiany
 
-### 1. Ochrona przed wyjściem (UI Logic)
+### 1. Aktywacja Onboardingu (UI Flow)
 
-#### [MODIFY] [screens/main_screen.dart](file:///D:/Apps/prasowka/lib/screens/main_screen.dart)
-- Owinięcie `Scaffold` w `PopScope`.
-- Implementacja logiki `_onWillPop`: jeśli użytkownik nie jest na pierwszej zakładce, powrót do pierwszej. Jeśli jest na pierwszej — prośba o drugie kliknięcie.
+#### [MODIFY] [splash_screen.dart](file:///D:/Apps/prasowka/lib/screens/splash_screen.dart)
+- Przywrócenie warunkowej nawigacji: `onboardingCompleted ? MainScreen : OnboardingScreen`.
+- Naprawa błędu z `const` przy dynamicznym wyborze ekranu.
 
-### 2. Pamięć ostatniej lokalizacji (Logic)
+### 2. Silnik Google News RSS (Logic)
 
 #### [MODIFY] [providers/settings_provider.dart](file:///D:/Apps/prasowka/lib/providers/settings_provider.dart)
-- Dodanie pola `lastTabIndex` do ustawień zapisywanych w Hive.
-- Metoda `setLastTabIndex(int index)`.
+- Rozszerzenie metody `addTeam` (którą zmienimy na `addKeyword`).
+- **Logika:** Po dodaniu słowa sowa automatycznie generuje link RSS: `news.google.com/rss/search?q={keyword}&hl=pl&gl=PL&ceid=PL:pl`.
+- Dodawanie takich linków jako specjalnych `NewsSource` do bazy Hive.
 
-#### [MODIFY] [screens/main_screen.dart](file:///D:/Apps/prasowka/lib/screens/main_screen.dart)
-- Wczytywanie początkowego indeksu z `SettingsProvider`.
-- Zapisywanie indeksu przy każdej zmianie zakładki.
+#### [MODIFY] [providers/news_provider.dart](file:///D:/Apps/prasowka/lib/providers/news_provider.dart)
+- Priorytetyzacja artykułów pochodzących z "wyszukiwarek Google" na górze listy w sekcji "Dla Ciebie".
 
-### 3. Szybki powrót do artykułu (UX)
+### 3. Finalizacja Onboarding Screen (UI)
 
-Sowa już teraz trzyma artykuły w cache, więc powrót do listy jest błyskawiczny. Skupimy się na tym, by po przypadkowym wyjściu z aplikacji i jej ponownym otwarciu, użytkownik lądował w tej samej kategorii.
+#### [MODIFY] [screens/onboarding_screen.dart](file:///D:/Apps/prasowka/lib/screens/onboarding_screen.dart)
+- Upewnienie się, że przycisk "ZACZNIJMY!" poprawnie zapisuje wszystkie dane i przechodzi do `MainScreen`.
+- Dodanie animacji przejścia między krokami.
 
 ## Plan Weryfikacji
 
-### Testy Manualne
-1. **Exit Test:** Na ekranie głównym kliknij raz "Wstecz". Sprawdź, czy pojawił się napis "Kliknij ponownie...". Kliknij szybko drugi raz i sprawdź, czy aplikacja się zamknęła.
-2. **Tab Memory Test:** Przejdź do zakładki "Zapisane", zamknij aplikację (ubij proces) i otwórz ponownie. Sprawdź, czy sowa od razu pokazuje zakładkę "Zapisane".
-3. **Detail Escape Test:** Będąc wewnątrz artykułu, kliknij "Wstecz". Sprawdź, czy wróciłeś do listy (standardowe zachowanie), a nie zamknąłeś aplikacji.
+### Testy Funkcjonalne
+1. **Reset Danych:** Wyczyszczenie danych aplikacji i sprawdzenie, czy sowa wita nas ekranem Onboarding.
+2. **Keyword Test:** Wpisanie unikalnego słowa (np. nazwy rzadkiej kryptowaluty) w onboardingu i sprawdzenie, czy newsy o tym faktycznie pojawiają się na górze listy po starcie.
+3. **Skip Test:** Sprawdzenie, czy po przejściu onboardingu sowa przy kolejnym starcie od razu pokazuje newsy (Splash -> Main).

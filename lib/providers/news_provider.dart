@@ -242,12 +242,7 @@ class NewsProvider with ChangeNotifier {
       bool added = true;
       while (added) {
         added = false;
-        for (var src in bySource.keys) { 
-          if (bySource[src]!.isNotEmpty) { 
-            mixed.add(bySource[src]!.removeAt(0)); 
-            added = true; 
-          } 
-        }
+        for (var src in bySource.keys) { if (bySource[src]!.isNotEmpty) { mixed.add(bySource[src]!.removeAt(0)); added = true; } }
       }
       list.clear();
       list.addAll(mixed);

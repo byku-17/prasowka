@@ -22,17 +22,13 @@ class ArticleCard extends StatelessWidget {
     if (isSmall) {
       return _buildSmallCard(context);
     }
-    return _buildEdgeToEdgeCard(context);
-  }
 
-  Widget _buildEdgeToEdgeCard(BuildContext context) {
     return InkWell(
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          // Obrazek na pełną szerokość
+          // Zdjęcie na pełną szerokość (Edge-to-Edge)
           if (article.imageUrl != null)
             AspectRatio(
               aspectRatio: 16 / 9,
@@ -41,67 +37,84 @@ class ArticleCard extends StatelessWidget {
                 children: [
                   CachedNetworkImage(
                     imageUrl: article.imageUrl!,
-                    fit: BoxFit.cover,
-                    memCacheHeight: 500,
-                    memCacheWidth: 900,
+                    fit: BoxFit.cover, // Wypełnia przestrzeń wycinając nadmiar, nie rozciąga
+                    alignment: Alignment.center,
+                    // Ustawiamy tylko szerokość cache, wysokość dostosuje się z zachowaniem proporcji
+                    memCacheWidth: 1080, 
                     placeholder: (context, url) => Container(
                       color: Colors.grey.withValues(alpha: 0.1),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
                     ),
-                    errorWidget: (context, url, error) => const SizedBox.shrink(),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey.withValues(alpha: 0.05),
+                      child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                    ),
                   ),
                   _buildTranslationWatermark(),
                 ],
               ),
             ),
           
+          // Treść z marginesami
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Nagłówek (tytuł)
                 Selector<NewsProvider, String>(
                   selector: (_, p) => article.translatedTitle ?? article.title,
                   builder: (context, title, child) => Text(
                     title,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: 19,
+                      height: 1.25,
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                
                 const SizedBox(height: 8),
                 Selector<NewsProvider, String>(
                   selector: (_, p) => article.translatedDescription ?? article.description,
                   builder: (context, desc, child) => Text(
                     desc,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.white70 
+                          : Colors.black87,
                       fontSize: 14,
-                      height: 1.4,
+                      height: 1.5,
                     ),
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: Text(
-                        article.sourceName,
-                        style: const TextStyle(color: AppTheme.accentGold, fontWeight: FontWeight.bold, fontSize: 11),
+                        article.sourceName.toUpperCase(),
+                        style: const TextStyle(
+                          color: AppTheme.accentGold, 
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 11,
+                          letterSpacing: 0.5,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       _formatTimeAgo(article.publishedAt),
-                      style: const TextStyle(color: Colors.grey, fontSize: 10),
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
                     ),
                     const SizedBox(width: 16),
                     _buildActions(context),
@@ -110,29 +123,27 @@ class ArticleCard extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, indent: 16, endIndent: 16, color: Colors.white10),
-          const SizedBox(height: 8),
+          const Divider(height: 1, thickness: 0.5, color: Colors.white24),
         ],
       ),
     );
   }
 
   Widget _buildSmallCard(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      clipBehavior: Clip.antiAlias,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+    return Container(
+      width: 280,
+      margin: const EdgeInsets.only(left: 16, right: 4, top: 8, bottom: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          width: 280,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
               if (article.imageUrl != null)
                 AspectRatio(
@@ -143,53 +154,41 @@ class ArticleCard extends StatelessWidget {
                       CachedNetworkImage(
                         imageUrl: article.imageUrl!,
                         fit: BoxFit.cover,
-                        memCacheHeight: 250,
-                        memCacheWidth: 450,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey.withValues(alpha: 0.1),
-                        ),
+                        memCacheWidth: 600, // Tylko szerokość dla zachowania proporcji
                         errorWidget: (context, url, error) => const SizedBox.shrink(),
                       ),
                       _buildTranslationWatermark(),
                     ],
                   ),
                 ),
-              
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(10.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Selector<NewsProvider, String>(
-                      selector: (_, p) => article.translatedTitle ?? article.title,
-                      builder: (context, title, child) => Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      article.translatedTitle ?? article.title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Text(
                             article.sourceName,
-                            style: const TextStyle(color: AppTheme.accentGold, fontWeight: FontWeight.bold, fontSize: 10),
+                            style: const TextStyle(color: AppTheme.accentGold, fontSize: 10, fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatTimeAgo(article.publishedAt),
-                          style: const TextStyle(color: Colors.grey, fontSize: 9),
-                        ),
+                        _buildActions(context),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    _buildActions(context),
                   ],
                 ),
               ),
@@ -209,12 +208,12 @@ class ArticleCard extends StatelessWidget {
           top: 8,
           right: 8,
           child: Container(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
+              color: Colors.black.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: const Icon(Icons.translate, size: 12, color: Colors.white),
+            child: const Text('EN', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
           ),
         );
       },
@@ -224,7 +223,6 @@ class ArticleCard extends StatelessWidget {
   Widget _buildActions(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: isSmall ? MainAxisAlignment.spaceAround : MainAxisAlignment.end,
       children: [
         _ReactionButton(
           iconBuilder: (isActive) => isActive ? Icons.thumb_up : Icons.thumb_up_outlined,
@@ -244,12 +242,6 @@ class ArticleCard extends StatelessWidget {
           selector: (p) => article.isFavorite,
           onPressed: () => context.read<NewsProvider>().toggleFavorite(article),
         ),
-        _ReactionButton(
-          iconBuilder: (isActive) => isActive ? Icons.timer : Icons.timer_outlined,
-          colorBuilder: (isActive) => isActive ? AppTheme.accentGold : Colors.grey,
-          selector: (p) => article.readLater,
-          onPressed: () => context.read<NewsProvider>().toggleReadLater(article),
-        ),
       ],
     );
   }
@@ -257,9 +249,9 @@ class ArticleCard extends StatelessWidget {
   String _formatTimeAgo(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    if (difference.inDays > 0) return '${difference.inDays}d temu';
-    if (difference.inHours > 0) return '${difference.inHours}h temu';
-    if (difference.inMinutes > 0) return '${difference.inMinutes}m temu';
+    if (difference.inDays > 0) return '${difference.inDays}d';
+    if (difference.inHours > 0) return '${difference.inHours}h';
+    if (difference.inMinutes > 0) return '${difference.inMinutes}m';
     return 'teraz';
   }
 }
@@ -286,11 +278,11 @@ class _ReactionButton extends StatelessWidget {
           onTap: onPressed,
           behavior: HitTestBehavior.opaque,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Icon(
               iconBuilder(isActive),
               color: colorBuilder(isActive),
-              size: 14,
+              size: 16,
             ),
           ),
         );

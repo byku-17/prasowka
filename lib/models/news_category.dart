@@ -1,29 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
-/// Reprezentuje kategorię newsów w aplikacji.
-class NewsCategory {
+part 'news_category.g.dart';
+
+@HiveType(typeId: 2)
+class NewsCategory extends HiveObject {
+  @HiveField(0)
   final String id;
+  
+  @HiveField(1)
   final String name;
-  final IconData icon;
+  
+  @HiveField(2)
+  final int iconCode; // Zapisujemy kod ikony, bo IconData nie jest wspierane bezpośrednio przez Hive
 
-  const NewsCategory({
+  @HiveField(3)
+  final bool isCustom; // Czy kategoria została dodana przez użytkownika
+
+  NewsCategory({
     required this.id,
     required this.name,
-    required this.icon,
+    required this.iconCode,
+    this.isCustom = false,
   });
 
-  /// Statyczna lista domyślnych kategorii
+  // Pomocniczy getter do pobierania IconData
+  IconData get icon => IconData(iconCode, fontFamily: 'MaterialIcons');
+
   static List<NewsCategory> get defaultCategories => [
-    const NewsCategory(id: 'all', name: 'Wszystkie', icon: Icons.auto_awesome),
-    const NewsCategory(id: 'world', name: 'Świat', icon: Icons.public),
-    const NewsCategory(id: 'poland', name: 'Polska', icon: Icons.flag),
-    const NewsCategory(id: 'business', name: 'Biznes', icon: Icons.business_center),
-    const NewsCategory(id: 'sport', name: 'Sport', icon: Icons.sports_soccer),
-    const NewsCategory(id: 'tech', name: 'Tech', icon: Icons.computer),
-    const NewsCategory(id: 'science', name: 'Nauka', icon: Icons.science),
-    const NewsCategory(id: 'automotive', name: 'Motoryzacja', icon: Icons.directions_car),
-    const NewsCategory(id: 'travel', name: 'Podróże', icon: Icons.flight_takeoff),
-    const NewsCategory(id: 'lifestyle', name: 'Lifestyle', icon: Icons.style),
-    const NewsCategory(id: 'culture', name: 'Kultura', icon: Icons.theater_comedy),
+    NewsCategory(id: 'all', name: 'Wszystkie', iconCode: Icons.auto_awesome.codePoint),
+    NewsCategory(id: 'world', name: 'Świat', iconCode: Icons.public.codePoint),
+    NewsCategory(id: 'poland', name: 'Polska', iconCode: Icons.flag.codePoint),
+    NewsCategory(id: 'business', name: 'Biznes', iconCode: Icons.business_center.codePoint),
+    NewsCategory(id: 'sport', name: 'Sport', iconCode: Icons.sports_soccer.codePoint),
+    NewsCategory(id: 'tech', name: 'Tech', iconCode: Icons.computer.codePoint),
+    NewsCategory(id: 'science', name: 'Nauka', iconCode: Icons.science.codePoint),
+    NewsCategory(id: 'automotive', name: 'Motoryzacja', iconCode: Icons.directions_car.codePoint),
+    NewsCategory(id: 'travel', name: 'Podróże', iconCode: Icons.flight_takeoff.codePoint),
+    NewsCategory(id: 'lifestyle', name: 'Lifestyle', iconCode: Icons.style.codePoint),
+    NewsCategory(id: 'culture', name: 'Kultura', iconCode: Icons.theater_comedy.codePoint),
   ];
 }

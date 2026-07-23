@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/screens/main_screen.dart';
+import 'package:prasowka/screens/onboarding_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -63,6 +64,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     try {
       final settings = context.read<SettingsProvider>();
       final news = context.read<NewsProvider>();
+      
+      // Ważne: najpierw inicjalizujemy ustawienia, bo one inicjalizują bazę
       await settings.init();
       await news.init();
       
@@ -73,6 +76,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         FlutterNativeSplash.remove();
       }
     } catch (e) {
+      debugPrint('Initialization error: $e');
       if (mounted) {
         setState(() => _isDataReady = true);
         FlutterNativeSplash.remove();
@@ -99,10 +103,15 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       }
 
       if (mounted) {
+        final bool showOnboarding = !context.read<SettingsProvider>().onboardingCompleted;
+        
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) {
+              if (showOnboarding) return const OnboardingScreen();
+              return const MainScreen();
+            },
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },

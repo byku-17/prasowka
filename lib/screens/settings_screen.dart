@@ -179,14 +179,14 @@ class SettingsScreen extends StatelessWidget {
                   spacing: 8,
                   children: settings.favoriteTeams.map((team) => Chip(
                     label: Text(team),
-                    onDeleted: () => settings.removeTeam(team),
+                    onDeleted: () => settings.removeKeyword(team),
                     deleteIconColor: Colors.red,
                     backgroundColor: AppTheme.accentGold.withValues(alpha: 0.1),
                   )).toList(),
                 ),
                 TextField(
                   decoration: const InputDecoration(hintText: 'Dodaj drużynę...', suffixIcon: Icon(Icons.add)),
-                  onSubmitted: (val) => val.isNotEmpty ? settings.addTeam(val) : null,
+                  onSubmitted: (val) => val.isNotEmpty ? settings.addKeyword(val) : null,
                 ),
               ],
             ),

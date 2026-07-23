@@ -5,6 +5,8 @@ import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
+import 'package:prasowka/screens/main_screen.dart';
+
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -36,25 +38,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final settings = context.read<SettingsProvider>();
     
     // 1. Zapisujemy wybrane kategorie
-    // Najpierw wyłączamy wszystko, potem włączamy wybrane
-    for (var cat in NewsCategory.defaultCategories) {
-      if (cat.id != 'all' && settings.isCategoryActive(cat.id)) {
-        await settings.toggleCategory(cat.id);
-      }
-    }
-    for (var id in _selectedCategories) {
-      if (!settings.isCategoryActive(id)) {
-        await settings.toggleCategory(id);
-      }
+    if (_selectedCategories.isNotEmpty) {
+      await settings.setSelectedCategories(_selectedCategories);
     }
 
     // 2. Dodajemy słowa kluczowe (firmy, drużyny)
     for (var kw in _favoriteKeywords) {
-      await settings.addTeam(kw);
+      await settings.addKeyword(kw);
     }
 
     // 3. Markujemy onboarding jako zakończony i wchodzimy do aplikacji
     await settings.completeOnboarding();
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    }
   }
 
   @override

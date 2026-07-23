@@ -40,15 +40,12 @@ class StorageService {
     } catch (e) {
       debugPrint('Sowa Storage: Problem z boxem $name ($e). Próba naprawy...');
       try {
-        // Zamiast usuwania pliku blokady (co rzuca błędy na Androidzie),
-        // próbujemy otworzyć box w trybie awaryjnym i wyczyścić go
         final box = await Hive.openBox(name);
         await box.clear();
         debugPrint('Sowa Storage: Zawartość boxa $name została wyczyszczona.');
       } catch (e2) {
         debugPrint('Sowa Storage: Drastyczny reset boxa $name...');
         try {
-          // Jeśli nawet to zawiedzie, omijamy usuwanie .lock i próbujemy usunąć samą bazę
           await Hive.deleteBoxFromDisk(name);
           await Hive.openBox(name);
         } catch (e3) {
@@ -78,8 +75,8 @@ class StorageService {
     final currentCache = getCategoryCache(categoryId);
     final Map<String, Article> uniqueArticles = {};
     
+    for (var a in currentCache) { uniqueArticles[a.id] = a; }
     for (var a in newArticles) { uniqueArticles[a.id] = a; }
-    for (var a in currentCache) { if (!uniqueArticles.containsKey(a.id)) { uniqueArticles[a.id] = a; } }
     
     final List<Article> combinedList = uniqueArticles.values.toList();
     combinedList.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));

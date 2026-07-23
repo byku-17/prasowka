@@ -9,9 +9,10 @@ import 'package:prasowka/services/background_service.dart';
 class SettingsProvider with ChangeNotifier {
   static const String settingsBoxName = 'settings';
   static const String sourcesBoxName = 'news_sources_dynamic';
+  static const String categoriesBoxName = 'news_categories_dynamic';
   
   static const String themeKey = 'themeMode';
-  static const String categoriesKey = 'activeCategories';
+  static const String activeCategoriesKey = 'activeCategoryIds';
   static const String sourcesEnabledKey = 'activeSourceIds';
   static const String teamsKey = 'favoriteTeams';
   static const String categoryOrderKey = 'categoryOrder';
@@ -20,6 +21,7 @@ class SettingsProvider with ChangeNotifier {
   static const String lastTabIndexKey = 'lastTabIndex';
 
   ThemeMode _themeMode = ThemeMode.system;
+  List<NewsCategory> _allCategories = [];
   List<String> _activeCategoryIds = [];
   List<String> _enabledSourceIds = [];
   List<String> _favoriteTeams = [];
@@ -30,6 +32,7 @@ class SettingsProvider with ChangeNotifier {
   int _lastTabIndex = 0;
 
   ThemeMode get themeMode => _themeMode;
+  List<NewsCategory> get allCategories => _allCategories;
   List<String> get activeCategoryIds => _activeCategoryIds;
   List<String> get enabledSourceIds => _enabledSourceIds;
   List<String> get favoriteTeams => _favoriteTeams;
@@ -40,30 +43,42 @@ class SettingsProvider with ChangeNotifier {
 
   Future<void> init() async {
     debugPrint('Sowa Settings: Inicjalizacja...');
-    final settingsBox = await Hive.openBox(settingsBoxName);
     
+    // Rejestracja adapterów
+    if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(NewsSourceAdapter());
+    if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(NewsCategoryAdapter());
+
+    final settingsBox = await Hive.openBox(settingsBoxName);
     await StorageService().init();
 
-    final sourcesBox = await Hive.openBox(sourcesBoxName);
+    // 1. Inicjalizacja Kategorii
+    final categoriesBox = await Hive.openBox<NewsCategory>(categoriesBoxName);
+    if (categoriesBox.isEmpty) {
+      await categoriesBox.putAll({for (var c in NewsCategory.defaultCategories) c.id: c});
+    }
+    _allCategories = categoriesBox.values.toList();
 
-    final themeIndex = settingsBox.get(themeKey, defaultValue: ThemeMode.system.index);
-    _themeMode = ThemeMode.values[themeIndex];
-
-    final expectedCount = NewsSource.defaultSources.length;
-    if (sourcesBox.isEmpty || sourcesBox.length < (expectedCount * 0.9)) {
-      debugPrint('Sowa Settings: Wykryto brak źródeł (${sourcesBox.length}/$expectedCount). Resetuję...');
+    // 2. Inicjalizacja Źródeł
+    final sourcesBox = await Hive.openBox<NewsSource>(sourcesBoxName);
+    if (sourcesBox.isEmpty || sourcesBox.length < (NewsSource.defaultSources.length * 0.9)) {
       await resetToDefaultSources();
     } else {
-      _allSources = List<NewsSource>.from(sourcesBox.values);
-      debugPrint('Sowa Settings: Wczytano ${_allSources.length} źródeł.');
+      _allSources = sourcesBox.values.toList();
     }
 
+    // 3. Ustawienia ogólne
+    final themeIndex = settingsBox.get(themeKey, defaultValue: ThemeMode.system.index);
+    _themeMode = ThemeMode.values[themeIndex];
+    _onboardingCompleted = settingsBox.get(onboardingKey, defaultValue: false);
+    _lastTabIndex = settingsBox.get(lastTabIndexKey, defaultValue: 0);
+
+    // 4. Aktywne kategorie
     _activeCategoryIds = List<String>.from(settingsBox.get(
-      categoriesKey,
-      defaultValue: NewsCategory.defaultCategories.map((c) => c.id).toList(),
+      activeCategoriesKey,
+      defaultValue: _allCategories.map((c) => c.id).toList(),
     ));
 
-    // Włączone źródła - Domyślnie tylko Top 3 (isDefault) dla wydajności
+    // 5. Włączone źródła (domyślnie te z isDefault)
     _enabledSourceIds = List<String>.from(settingsBox.get(
       sourcesEnabledKey,
       defaultValue: _allSources.where((s) => s.isDefault).map((s) => s.id).toList(),
@@ -74,17 +89,17 @@ class SettingsProvider with ChangeNotifier {
       await saveEnabledSources();
     }
 
+    // 6. Zainteresowania (słowa kluczowe)
     _favoriteTeams = List<String>.from(settingsBox.get(teamsKey, defaultValue: <String>[]));
     
+    // 7. Kolejność kategorii
     _categoryOrder = List<String>.from(settingsBox.get(
       categoryOrderKey,
-      defaultValue: NewsCategory.defaultCategories.map((c) => c.id).toList(),
+      defaultValue: _allCategories.map((c) => c.id).toList(),
     ));
 
+    // 8. Powiadomienia
     _notificationsEnabled = settingsBox.get(notificationsKey, defaultValue: false);
-    _onboardingCompleted = settingsBox.get(onboardingKey, defaultValue: false);
-    _lastTabIndex = settingsBox.get(lastTabIndexKey, defaultValue: 0);
-    
     await BackgroundService().init();
     if (_notificationsEnabled) {
       await BackgroundService().registerPeriodicTask();
@@ -119,8 +134,89 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // --- Zarządzanie Kategoriami ---
+
+  Future<void> addCustomCategory(String name, IconData icon) async {
+    final id = 'cat_${DateTime.now().millisecondsSinceEpoch}';
+    final newCategory = NewsCategory(
+      id: id,
+      name: name,
+      iconCode: icon.codePoint,
+      isCustom: true,
+    );
+    
+    final box = Hive.box<NewsCategory>(categoriesBoxName);
+    await box.put(id, newCategory);
+    _allCategories = box.values.toList();
+    
+    _activeCategoryIds.add(id);
+    _categoryOrder.add(id);
+    
+    await Hive.box(settingsBoxName).put(activeCategoriesKey, _activeCategoryIds);
+    await Hive.box(settingsBoxName).put(categoryOrderKey, _categoryOrder);
+
+    await addKeywordSource(name, id);
+    notifyListeners();
+  }
+
+  Future<void> removeCategory(String id) async {
+    final category = _allCategories.firstWhere((c) => c.id == id);
+    if (!category.isCustom) return;
+
+    final box = Hive.box<NewsCategory>(categoriesBoxName);
+    await box.delete(id);
+    _allCategories = box.values.toList();
+    
+    _activeCategoryIds.remove(id);
+    _categoryOrder.remove(id);
+    
+    await Hive.box(settingsBoxName).put(activeCategoriesKey, _activeCategoryIds);
+    await Hive.box(settingsBoxName).put(categoryOrderKey, _categoryOrder);
+
+    final sourcesToRemove = _allSources.where((s) => s.categoryId == id).map((s) => s.id).toList();
+    for (var sid in sourcesToRemove) {
+      await deleteSource(sid);
+    }
+    
+    notifyListeners();
+  }
+
+  // --- Zarządzanie Źródłami i Słowami Kluczowymi ---
+
+  Future<void> addKeywordSource(String keyword, [String categoryId = 'all']) async {
+    final t = keyword.trim();
+    if (t.isEmpty) return;
+
+    final sourceId = 'google_news_${t.toLowerCase().replaceAll(' ', '_')}';
+    final googleSource = NewsSource(
+      id: sourceId,
+      name: 'Google News: $t',
+      rssUrl: 'https://news.google.com/rss/search?q=${Uri.encodeComponent(t)}&hl=pl&gl=PL&ceid=PL:pl',
+      categoryId: categoryId,
+      isDefault: false,
+    );
+    
+    await addCustomSource(googleSource);
+  }
+
+  Future<void> addKeyword(String keyword) async {
+    if (keyword.trim().isEmpty || _favoriteTeams.contains(keyword.trim())) return;
+    _favoriteTeams.add(keyword.trim());
+    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
+    await addKeywordSource(keyword, 'all');
+    notifyListeners();
+  }
+
+  Future<void> removeKeyword(String t) async {
+    _favoriteTeams.remove(t);
+    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
+    final sourceId = 'google_news_${t.toLowerCase().replaceAll(' ', '_')}';
+    await deleteSource(sourceId);
+    notifyListeners();
+  }
+
   Future<void> addCustomSource(NewsSource source) async {
-    final box = Hive.box(sourcesBoxName);
+    final box = Hive.box<NewsSource>(sourcesBoxName);
     await box.put(source.id, source);
     _allSources = List<NewsSource>.from(box.values);
     _enabledSourceIds.add(source.id);
@@ -129,7 +225,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> deleteSource(String id) async {
-    final box = Hive.box(sourcesBoxName);
+    final box = Hive.box<NewsSource>(sourcesBoxName);
     await box.delete(id);
     _allSources = List<NewsSource>.from(box.values);
     _enabledSourceIds.remove(id);
@@ -138,14 +234,13 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> resetToDefaultSources() async {
-    debugPrint('Sowa Settings: Przywracanie domyślnych 130 źródeł i czyszczenie cache...');
-    final box = Hive.box(sourcesBoxName);
+    final box = Hive.box<NewsSource>(sourcesBoxName);
     await box.clear();
-    
     await StorageService().clearAllCache();
     
+    final List<NewsSource> defaults = NewsSource.defaultSources;
     final Map<String, NewsSource> sourceMap = {
-      for (var s in NewsSource.defaultSources) s.id: s
+      for (var s in defaults) s.id: s
     };
     await box.putAll(sourceMap);
     
@@ -153,8 +248,9 @@ class SettingsProvider with ChangeNotifier {
     _enabledSourceIds = _allSources.where((s) => s.isDefault).map((s) => s.id).toList();
     await saveEnabledSources();
     notifyListeners();
-    debugPrint('Sowa Settings: Przywrócono ${_allSources.length} źródeł.');
   }
+
+  // --- Inne ---
 
   Future<void> clearNewsCache() async {
     await StorageService().clearAllCache();
@@ -169,7 +265,7 @@ class SettingsProvider with ChangeNotifier {
 
   Future<void> toggleCategory(String id) async {
     _activeCategoryIds.contains(id) ? _activeCategoryIds.remove(id) : _activeCategoryIds.add(id);
-    await Hive.box(settingsBoxName).put(categoriesKey, _activeCategoryIds);
+    await Hive.box(settingsBoxName).put(activeCategoriesKey, _activeCategoryIds);
     notifyListeners();
   }
 
@@ -208,55 +304,44 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addTeam(String t) async {
-    if (t.trim().isEmpty || _favoriteTeams.contains(t.trim())) return;
-    _favoriteTeams.add(t.trim());
-    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
-    notifyListeners();
-  }
-
-  Future<void> removeTeam(String t) async {
-    _favoriteTeams.remove(t);
-    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
-    notifyListeners();
-  }
-
   List<NewsCategory> get activeCategories {
-    final all = NewsCategory.defaultCategories;
     List<NewsCategory> ordered = [];
     for (var id in _categoryOrder) {
-      final f = all.where((c) => c.id == id).toList();
+      final f = NewsCategory.defaultCategories.where((c) => c.id == id).toList();
       if (f.isNotEmpty) ordered.add(f.first);
     }
-    for (var c in all) { if (!ordered.any((o) => o.id == c.id)) ordered.add(c); }
+    for (var c in NewsCategory.defaultCategories) { if (!ordered.any((o) => o.id == c.id)) ordered.add(c); }
     return ordered.where((c) => _activeCategoryIds.contains(c.id)).toList();
   }
 
   List<NewsCategory> get allCategoriesOrdered {
-    final all = NewsCategory.defaultCategories;
     List<NewsCategory> ordered = [];
     for (var id in _categoryOrder) {
-      final f = all.where((c) => c.id == id).toList();
+      final f = NewsCategory.defaultCategories.where((c) => c.id == id).toList();
       if (f.isNotEmpty) ordered.add(f.first);
     }
-    for (var c in all) { if (!ordered.any((o) => o.id == c.id)) ordered.add(c); }
+    for (var c in NewsCategory.defaultCategories) { if (!ordered.any((o) => o.id == c.id)) ordered.add(c); }
     return ordered;
   }
 
-  bool isCategoryActive(String id) => _activeCategoryIds.contains(id);
-  bool isSourceActive(String id) => _enabledSourceIds.contains(id);
-
-  /// Zapisuje ostatnio otwartą zakładkę
   Future<void> setLastTabIndex(int index) async {
     _lastTabIndex = index;
     await Hive.box(settingsBoxName).put(lastTabIndexKey, index);
-    // Nie wywołujemy notifyListeners, aby uniknąć zbędnych odświeżeń UI przy zmianie zakładki
   }
 
-  /// Markuje onboarding jako zakończony
+  Future<void> setSelectedCategories(List<String> ids) async {
+    _activeCategoryIds = List<String>.from(ids);
+    if (!_activeCategoryIds.contains('all')) _activeCategoryIds.insert(0, 'all');
+    await Hive.box(settingsBoxName).put(activeCategoriesKey, _activeCategoryIds);
+    notifyListeners();
+  }
+
   Future<void> completeOnboarding() async {
     _onboardingCompleted = true;
     await Hive.box(settingsBoxName).put(onboardingKey, true);
     notifyListeners();
   }
+
+  bool isCategoryActive(String id) => _activeCategoryIds.contains(id);
+  bool isSourceActive(String id) => _enabledSourceIds.contains(id);
 }
