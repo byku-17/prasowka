@@ -17,6 +17,7 @@ class SettingsProvider with ChangeNotifier {
   static const String categoryOrderKey = 'categoryOrder';
   static const String notificationsKey = 'notificationsEnabled';
   static const String onboardingKey = 'onboardingCompleted';
+  static const String lastTabIndexKey = 'lastTabIndex';
 
   ThemeMode _themeMode = ThemeMode.system;
   List<String> _activeCategoryIds = [];
@@ -26,6 +27,7 @@ class SettingsProvider with ChangeNotifier {
   List<NewsSource> _allSources = [];
   bool _notificationsEnabled = false;
   bool _onboardingCompleted = false;
+  int _lastTabIndex = 0;
 
   ThemeMode get themeMode => _themeMode;
   List<String> get activeCategoryIds => _activeCategoryIds;
@@ -34,6 +36,7 @@ class SettingsProvider with ChangeNotifier {
   List<NewsSource> get allSources => _allSources;
   bool get notificationsEnabled => _notificationsEnabled;
   bool get onboardingCompleted => _onboardingCompleted;
+  int get lastTabIndex => _lastTabIndex;
 
   Future<void> init() async {
     debugPrint('Sowa Settings: Inicjalizacja...');
@@ -80,6 +83,7 @@ class SettingsProvider with ChangeNotifier {
 
     _notificationsEnabled = settingsBox.get(notificationsKey, defaultValue: false);
     _onboardingCompleted = settingsBox.get(onboardingKey, defaultValue: false);
+    _lastTabIndex = settingsBox.get(lastTabIndexKey, defaultValue: 0);
     
     await BackgroundService().init();
     if (_notificationsEnabled) {
@@ -241,6 +245,13 @@ class SettingsProvider with ChangeNotifier {
 
   bool isCategoryActive(String id) => _activeCategoryIds.contains(id);
   bool isSourceActive(String id) => _enabledSourceIds.contains(id);
+
+  /// Zapisuje ostatnio otwartą zakładkę
+  Future<void> setLastTabIndex(int index) async {
+    _lastTabIndex = index;
+    await Hive.box(settingsBoxName).put(lastTabIndexKey, index);
+    // Nie wywołujemy notifyListeners, aby uniknąć zbędnych odświeżeń UI przy zmianie zakładki
+  }
 
   /// Markuje onboarding jako zakończony
   Future<void> completeOnboarding() async {

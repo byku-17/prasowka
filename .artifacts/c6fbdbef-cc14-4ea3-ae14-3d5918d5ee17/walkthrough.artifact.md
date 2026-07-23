@@ -1,26 +1,28 @@
-# Naprawa błędów i stabilizacja Sowa 2.0 (Etap 1) 🦉🔧🚀
+# Bezpieczeństwo i Pamięć Stanu - Prasówka 🦉🧠✨
 
-Oczyściłem projekt ze wszystkich błędów kompilacji, które powstały podczas wdrażania zmian. Sowa jest teraz technicznie zdrowa i gotowa do testów Punktu 1 (Turbo Szybkość).
+Zaimplementowałem mechanizmy, które chronią Cię przed przypadkowym wyjściem z aplikacji oraz sprawiają, że sowa zawsze pamięta, gdzie skończyłeś swoją lekturę.
 
-## Co zostało naprawione?
+## Co się zmieniło?
 
-### 1. Stabilizacja NewsProvider 🧠
-- **Błędy składni:** Naprawiłem błąd z brakującym blokiem `try-catch` i błędną strukturą klasy. To właśnie te błędy powodowały lawinę komunikatów "Undefined name".
-- **Spójność metod:** Ujednoliciłem nazewnictwo metod (np. `getArticlesForCategory`), aby wszystkie ekrany mogły poprawnie pobierać dane.
+### 1. Ochrona przed przypadkowym wyjściem (Double Back) 🛡️
+Główny ekran aplikacji posiada teraz inteligentny system obsługi przycisku "Wstecz":
+- **Powrót do startu:** Jeśli jesteś na innej zakładce niż główna (np. w Ustawieniach), pierwsze kliknięcie "Wstecz" przeniesie Cię na główną listę newsów.
+- **Potwierdzenie wyjścia:** Jeśli jesteś na głównej liście, sowa nie zamknie się od razu. Wyświetli komunikat: *"Naciśnij ponownie, aby wyjść z aplikacji"*. Dopiero drugie szybkie kliknięcie (w ciągu 2 sekund) spowoduje bezpieczne zamknięcie aplikacji.
 
-### 2. Odblokowanie Startu (Splash Screen) 🎬
-- **Czysty Start:** Usunąłem błędy kompilacji w ekranie startowym.
-- **Tymczasowe uproszczenie:** Zgodnie z naszą umową, sowa po animacji logo wchodzi teraz bezpośrednio do newsów. Kod okna powitalnego (Onboarding) czeka w ukryciu na Twoją decyzję.
+### 2. Pamięć ostatniej lokalizacji 📍💾
+Sowa nauczyła się zapamiętywać Twoje preferencje nawigacyjne:
+- **Persystencja zakładek:** Aplikacja zapisuje w swojej bazie, którą zakładkę ("Główna", "Szukaj", "Zapisane", "Ustawienia") ostatnio przeglądałeś.
+- **Automatyczny powrót:** Przy każdym uruchomieniu aplikacji, sowa od razu otworzy tę samą zakładkę, na której skończyłeś ostatnią sesję. Nie musisz już za każdym razem przeklikiwać się do ulubionych sekcji.
 
-### 3. Bezpieczna Baza Danych (Hive) 💾
-- **Adaptery:** Upewniłem się, że sowa poprawnie rozpoznaje "instrukcje obsługi" (adaptery) dla nowej listy portali.
+### 3. Płynny powrót do treści 🔄
+Dzięki połączeniu pamięci zakładek z naszym systemem cache, powrót do aplikacji po przypadkowym wyjściu jest teraz niemal niezauważalny — sowa ląduje dokładnie tam, gdzie ją zostawiłeś, z już załadowanymi newsami.
 
-## Jak teraz przetestować nową szybkość?
+## Jak to przetestować?
 
 1. **Uruchom aplikację:** `flutter run --android-skip-build-dependency-validation`.
-2. Wejdź w **Ustawienia**.
-3. Kliknij czerwony przycisk **"RESET ŹRÓDEŁ"**. To ten moment, w którym sowa wyrzuca stare 130 portali i wgrywa nową, lekką mapę ok. 30 portali (Top 3 na kategorię).
-4. Wróć na ekran główny i **przesuń palcem w dół**, aby odświeżyć.
-5. Zobacz, jak niesamowicie szybko teraz sowa "przeczesuje" internet!
+2. Przejdź do zakładki **ZAPISANE**.
+3. Zamknij aplikację całkowicie (użyj menu ostatnich aplikacji i "ubij" ją).
+4. Otwórz aplikację ponownie — sowa powinna od razu pokazać Ci zakładkę **ZAPISANE**.
+5. Spróbuj wyjść z aplikacji przyciskiem systemowym "Wstecz" i zobacz, jak działa nowe zabezpieczenie z komunikatem.
 
-**Sowa jest teraz technicznie czysta i gotowa do lotu. Czekam na Twój znak, czy Punkt 1 (szybkość) spełnia Twoje oczekiwania!** 🦉💨💎🥇🚀
+**Sowa stała się teraz znacznie mądrzejsza i bardziej przewidywalna. Czy te usprawnienia poprawiają Twój komfort korzystania z aplikacji?** 🦉💎✨🥇🚀
