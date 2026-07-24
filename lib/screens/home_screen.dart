@@ -5,6 +5,7 @@ import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/widgets/category_news_list.dart';
+import 'package:prasowka/widgets/scores_bar.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {

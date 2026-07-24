@@ -117,6 +117,38 @@ class _AppearanceSettingsPage extends StatelessWidget {
                 label: const Text('WYŚLIJ TESTOWY ALERT', style: TextStyle(fontSize: 11)),
               ),
             ),
+          const _SectionHeader('SPORT'),
+          SwitchListTile(
+            secondary: const Icon(Icons.sports_score_outlined),
+            title: const Text('Pokaż wyniki meczów'),
+            subtitle: const Text('Wyświetla pasek z wynikami na żywo dla Twoich ulubionych drużyn i lig.'),
+            value: settings.showSportsBar,
+            onChanged: (val) => settings.toggleSportsBar(val),
+            activeColor: AppTheme.accentGold,
+          ),
+          if (settings.showSportsBar) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Text('WŁĄCZONE DYSCYPLINY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+            ),
+            _buildSportToggles(settings),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Tylko moje drużyny', style: TextStyle(fontSize: 14)),
+              subtitle: const Text('Pokazuje tylko mecze klubów wpisanych w zainteresowaniach.', style: TextStyle(fontSize: 11)),
+              value: settings.onlyFavoriteTeams,
+              onChanged: (val) => settings.setOnlyFavoriteTeams(val),
+              activeColor: AppTheme.accentGold,
+              dense: true,
+            ),
+            ListTile(
+              title: const Text('Zarządzaj ligami piłkarskimi', style: TextStyle(fontSize: 14)),
+              subtitle: Text('${settings.enabledLeagues.length} wybranych lig', style: const TextStyle(fontSize: 11)),
+              trailing: const Icon(Icons.chevron_right, size: 20),
+              onTap: () => _showLeaguePicker(context, settings),
+              dense: true,
+            ),
+          ],
           const Divider(),
           const _SectionHeader('SYSTEMOWE'),
           ListTile(
@@ -139,12 +171,101 @@ class _AppearanceSettingsPage extends StatelessWidget {
     switch (mode) { case ThemeMode.system: return 'Systemowy'; case ThemeMode.light: return 'Jasny'; case ThemeMode.dark: return 'Ciemny'; }
   }
 
+  Widget _buildSportToggles(SettingsProvider settings) {
+    final sports = ['football', 'nba', 'f1', 'tennis', 'volleyball', 'handball', 'nhl', 'mlb', 'nfl'];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+      child: Wrap(
+        spacing: 8,
+        children: sports.map((s) => FilterChip(
+          label: Text(_sportName(s), style: const TextStyle(fontSize: 10)),
+          selected: settings.enabledSports.contains(s),
+          onSelected: (_) => settings.toggleSport(s),
+          selectedColor: AppTheme.accentGold.withValues(alpha: 0.3),
+          checkmarkColor: AppTheme.accentGold,
+        )).toList(),
+      ),
+    );
+  }
+
+  String _sportName(String id) {
+    switch (id) {
+      case 'football': return 'Piłka Nożna';
+      case 'ekstraklasa': return 'Ekstraklasa';
+      case 'nba': return 'NBA';
+      case 'f1': return 'F1';
+      case 'tennis': return 'Tenis';
+      case 'volleyball': return 'Siatkówka';
+      case 'handball': return 'Piłka Ręczna';
+      case 'nhl': return 'NHL';
+      case 'mlb': return 'MLB';
+      case 'nfl': return 'NFL';
+      default: return id.toUpperCase();
+    }
+  }
+
   void _showThemePicker(BuildContext context, SettingsProvider settings) {
     showModalBottomSheet(context: context, builder: (context) => SafeArea(child: Wrap(children: [
       ListTile(leading: const Icon(Icons.brightness_auto), title: const Text('Systemowy'), onTap: () { settings.setThemeMode(ThemeMode.system); Navigator.pop(context); }),
       ListTile(leading: const Icon(Icons.light_mode), title: const Text('Jasny'), onTap: () { settings.setThemeMode(ThemeMode.light); Navigator.pop(context); }),
       ListTile(leading: const Icon(Icons.dark_mode), title: const Text('Ciemny'), onTap: () { settings.setThemeMode(ThemeMode.dark); Navigator.pop(context); }),
     ])));
+  }
+
+  void _showLeaguePicker(BuildContext context, SettingsProvider settings) {
+    final leagues = [
+      {'name': 'PKO BP Ekstraklasa (Polska)', 'code': 'EKSTRAKLASA'},
+      {'name': 'Premier League (Anglia)', 'code': 'PL'},
+      {'name': 'La Liga (Hiszpania)', 'code': 'PD'},
+      {'name': 'Bundesliga (Niemcy)', 'code': 'BL1'},
+      {'name': 'Serie A (Włochy)', 'code': 'SA'},
+      {'name': 'Ligue 1 (Francja)', 'code': 'FL1'},
+      {'name': 'Champions League (Europa)', 'code': 'CL'},
+      {'name': 'Eredivisie (Holandia)', 'code': 'DED'},
+      {'name': 'Primeira Liga (Portugalia)', 'code': 'PPL'},
+      {'name': 'Championship (Anglia)', 'code': 'ELC'},
+      {'name': 'Euro 2024', 'code': 'EC'},
+      {'name': 'Mistrzostwa Świata', 'code': 'WC'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                children: [
+                  const Text('WYBIERZ LIGI PIŁKARSKIE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: leagues.length,
+                      itemBuilder: (context, index) {
+                        final l = leagues[index];
+                        final isEnabled = settings.enabledLeagues.contains(l['code']);
+                        return CheckboxListTile(
+                          title: Text(l['name']!, style: const TextStyle(fontSize: 14)),
+                          value: isEnabled,
+                          activeColor: AppTheme.accentGold,
+                          onChanged: (_) {
+                            settings.toggleLeague(l['code']!);
+                            setModalState(() {});
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }
 
@@ -327,8 +448,36 @@ class _SourceSettingsPage extends StatelessWidget {
 }
 
 // --- PODSTRONA: MOJE ZAINTERESOWANIA ---
-class _InterestsSettingsPage extends StatelessWidget {
+class _InterestsSettingsPage extends StatefulWidget {
   const _InterestsSettingsPage();
+
+  @override
+  State<_InterestsSettingsPage> createState() => _InterestsSettingsPageState();
+}
+
+class _InterestsSettingsPageState extends State<_InterestsSettingsPage> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit(SettingsProvider settings) {
+    final text = _controller.text.trim();
+    if (text.isNotEmpty) {
+      if (settings.favoriteTeams.any((e) => e.toLowerCase() == text.toLowerCase())) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('To hasło jest już na liście.')),
+        );
+        return;
+      }
+      settings.addKeyword(text);
+      _controller.clear();
+      // Usunięto FocusScope.of(context).unfocus(), aby móc dodawać seryjnie
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -362,18 +511,18 @@ class _InterestsSettingsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 TextField(
+                  controller: _controller,
                   decoration: InputDecoration(
                     hintText: 'Dodaj nowe hasło...',
-                    suffixIcon: const Icon(Icons.add, color: AppTheme.accentGold),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.add_circle, color: AppTheme.accentGold),
+                      onPressed: () => _submit(settings),
+                    ),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
-                  onSubmitted: (val) {
-                    if (val.trim().isNotEmpty) {
-                      settings.addKeyword(val.trim());
-                    }
-                  },
+                  onSubmitted: (_) => _submit(settings),
                 ),
               ],
             ),
@@ -385,9 +534,6 @@ class _InterestsSettingsPage extends StatelessWidget {
             child: Text('Możesz tu zmienić tematy, które wybrałeś podczas pierwszego uruchomienia aplikacji.', style: TextStyle(fontSize: 12, color: Colors.grey)),
           ),
           const SizedBox(height: 16),
-          // Tutaj moglibyśmy dodać listę kategorii z Checkboxami, ale SettingsProvider już to ma w toggleCategory.
-          // Możemy tu dodać coś specyficznego dla "Onboarding Interests" jeśli by istniały osobno.
-          // Na razie wyświetlimy listę aktywnych kategorii jako podsumowanie.
           ...settings.activeCategories.map((cat) => ListTile(
             leading: Icon(cat.icon, size: 18),
             title: Text(cat.name),

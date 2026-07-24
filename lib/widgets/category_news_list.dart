@@ -8,6 +8,7 @@ import 'package:prasowka/screens/article_detail_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/widgets/article_card.dart';
 import 'package:prasowka/widgets/news_skeleton.dart';
+import 'package:prasowka/widgets/scores_bar.dart';
 
 class CategoryNewsList extends StatefulWidget {
   final NewsCategory category;
@@ -19,6 +20,9 @@ class CategoryNewsList extends StatefulWidget {
 }
 
 class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepAliveClientMixin {
+  final ScrollController _scrollController = ScrollController();
+  bool _showBackToTop = false;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -35,60 +39,117 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 600 && !_showBackToTop) {
+        setState(() => _showBackToTop = true);
+      } else if (_scrollController.offset <= 600 && _showBackToTop) {
+        setState(() => _showBackToTop = false);
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetch());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToTop() {
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final settings = context.watch<SettingsProvider>();
-    
+    final bool isSport = widget.category.id == 'sport';
+
     return Consumer<NewsProvider>(
       builder: (context, provider, child) {
         final articles = provider.getArticlesForCategory(widget.category.id);
         final isLoading = provider.isCategoryLoading(widget.category.id);
         final hasEverLoaded = provider.hasCategoryEverLoaded(widget.category.id);
 
+        Widget content;
+
         // 1. Jeśli mamy artykuły -> Pokaż listę
         if (articles.isNotEmpty) {
-          return RefreshIndicator(
-            color: AppTheme.accentGold,
-            onRefresh: () => provider.fetchNews(
-              category: widget.category,
-              allSources: settings.allSources,
-              enabledSourceIds: settings.enabledSourceIds,
-              favoriteTeams: settings.favoriteTeams,
-              forceRefresh: true,
-            ),
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              addRepaintBoundaries: true,
-              cacheExtent: 1000.0,
-              itemCount: articles.length + (widget.category.id == 'all' && provider.recommendedArticles.isNotEmpty ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (widget.category.id == 'all' && provider.recommendedArticles.isNotEmpty) {
-                  if (index == 0) return RepaintBoundary(child: _buildRecommendationsSection(context, provider.recommendedArticles));
-                  final article = articles[index - 1];
-                  return ArticleCard(article: article, onTap: () => _openArticle(context, article));
-                }
-                final article = articles[index];
-                return ArticleCard(article: article, onTap: () => _openArticle(context, article));
-              },
-            ),
-          );
-        }
+          final bool isAll = widget.category.id == 'all';
+          final bool showRecs = isAll && provider.recommendedArticles.isNotEmpty;
 
-        // 2. Jeśli pusto i ładowanie -> SHIMMER
-        if (isLoading || !hasEverLoaded) {
-          return ListView.builder(
+          content = Stack(
+            children: [
+              RefreshIndicator(
+                color: AppTheme.accentGold,
+                onRefresh: () => provider.fetchNews(
+                  category: widget.category,
+                  allSources: settings.allSources,
+                  enabledSourceIds: settings.enabledSourceIds,
+                  favoriteTeams: settings.favoriteTeams,
+                  forceRefresh: true,
+                ),
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: EdgeInsets.zero,
+                  addRepaintBoundaries: true,
+                  cacheExtent: 1000.0,
+                  itemCount: articles.length + (showRecs ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    // Sekcja Wszystkie: Rekomendacje na górze
+                    if (showRecs) {
+                      if (index == 0) return RepaintBoundary(child: _buildRecommendationsSection(context, provider.recommendedArticles));
+                      final article = articles[index - 1];
+                      return ArticleCard(article: article, onTap: () => _openArticle(context, article));
+                    }
+
+                    // Reszta
+                    final article = articles[index];
+                    return ArticleCard(article: article, onTap: () => _openArticle(context, article));
+                  },
+                ),
+              ),
+              if (_showBackToTop)
+                Positioned(
+                  right: 16,
+                  bottom: 16,
+                  child: FloatingActionButton.small(
+                    onPressed: _scrollToTop,
+                    backgroundColor: AppTheme.accentGold,
+                    foregroundColor: Colors.black,
+                    elevation: 4,
+                    child: const Icon(Icons.arrow_upward),
+                  ),
+                ),
+            ],
+          );
+        } else if (isLoading || !hasEverLoaded) {
+          // 2. Jeśli pusto i ładowanie -> SHIMMER
+          content = ListView.builder(
             itemCount: 5,
             itemBuilder: (context, index) => const NewsSkeleton(),
           );
+        } else {
+          // 3. Jeśli faktycznie pusto po zakończeniu -> EMPTY STATE
+          final errorMessage = provider.getCategoryError(widget.category.id);
+          content = _buildEmptyState(context, provider, settings, errorMessage);
         }
 
-        // 3. Jeśli faktycznie pusto po zakończeniu -> EMPTY STATE
-        final errorMessage = provider.getCategoryError(widget.category.id);
-        return _buildEmptyState(context, provider, settings, errorMessage);
+        // Jeśli to sekcja SPORT, dodajemy ScoresBar nad treścią (niezależnie od tego czy są newsy)
+        if (isSport) {
+          return Column(
+            children: [
+              const ScoresBar(),
+              Expanded(child: content),
+            ],
+          );
+        }
+
+        return content;
       },
     );
   }

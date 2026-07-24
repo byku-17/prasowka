@@ -19,6 +19,10 @@ class SettingsProvider with ChangeNotifier {
   static const String notificationsKey = 'notificationsEnabled';
   static const String onboardingKey = 'onboardingCompleted';
   static const String lastTabIndexKey = 'lastTabIndex';
+  static const String sportsBarKey = 'showSportsBar';
+  static const String enabledSportsKey = 'enabledSports';
+  static const String enabledLeaguesKey = 'enabledLeagues';
+  static const String onlyFavoriteTeamsKey = 'onlyFavoriteTeams';
 
   ThemeMode _themeMode = ThemeMode.system;
   List<NewsCategory> _allCategories = [];
@@ -27,8 +31,12 @@ class SettingsProvider with ChangeNotifier {
   List<String> _favoriteTeams = [];
   List<String> _categoryOrder = [];
   List<NewsSource> _allSources = [];
+  List<String> _enabledSports = ['football', 'nba', 'f1', 'tennis', 'volleyball', 'handball', 'nhl', 'mlb', 'nfl'];
+  List<String> _enabledLeagues = ['PL', 'PD', 'BL1', 'SA', 'FL1', 'CL', 'DED', 'PPL', 'ELC', 'EKSTRAKLASA'];
+  bool _onlyFavoriteTeams = false;
   bool _notificationsEnabled = false;
   bool _onboardingCompleted = false;
+  bool _showSportsBar = true;
   int _lastTabIndex = 0;
 
   ThemeMode get themeMode => _themeMode;
@@ -37,8 +45,12 @@ class SettingsProvider with ChangeNotifier {
   List<String> get enabledSourceIds => _enabledSourceIds;
   List<String> get favoriteTeams => _favoriteTeams;
   List<NewsSource> get allSources => _allSources;
+  List<String> get enabledSports => _enabledSports;
+  List<String> get enabledLeagues => _enabledLeagues;
+  bool get onlyFavoriteTeams => _onlyFavoriteTeams;
   bool get notificationsEnabled => _notificationsEnabled;
   bool get onboardingCompleted => _onboardingCompleted;
+  bool get showSportsBar => _showSportsBar;
   int get lastTabIndex => _lastTabIndex;
 
   Future<void> init() async {
@@ -66,6 +78,10 @@ class SettingsProvider with ChangeNotifier {
     final themeIndex = settingsBox.get(themeKey, defaultValue: ThemeMode.system.index);
     _themeMode = ThemeMode.values[themeIndex];
     _onboardingCompleted = settingsBox.get(onboardingKey, defaultValue: false);
+    _showSportsBar = settingsBox.get(sportsBarKey, defaultValue: true);
+    _enabledSports = List<String>.from(settingsBox.get(enabledSportsKey, defaultValue: ['football', 'nba', 'f1', 'tennis', 'volleyball', 'handball', 'nhl', 'mlb', 'nfl']));
+    _enabledLeagues = List<String>.from(settingsBox.get(enabledLeaguesKey, defaultValue: ['PL', 'PD', 'BL1', 'SA', 'FL1', 'CL', 'DED', 'PPL', 'ELC', 'EKSTRAKLASA']));
+    _onlyFavoriteTeams = settingsBox.get(onlyFavoriteTeamsKey, defaultValue: false);
     _lastTabIndex = settingsBox.get(lastTabIndexKey, defaultValue: 0);
 
     // 4. Aktywne kategorie
@@ -196,10 +212,11 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> addKeyword(String keyword) async {
-    if (keyword.trim().isEmpty || _favoriteTeams.contains(keyword.trim())) return;
-    _favoriteTeams.add(keyword.trim());
+    final t = keyword.trim();
+    if (t.isEmpty || _favoriteTeams.any((element) => element.toLowerCase() == t.toLowerCase())) return;
+    _favoriteTeams.add(t);
     await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
-    await addKeywordSource(keyword, 'all');
+    await addKeywordSource(t, 'all');
     notifyListeners();
   }
 
@@ -340,4 +357,36 @@ class SettingsProvider with ChangeNotifier {
 
   bool isCategoryActive(String id) => _activeCategoryIds.contains(id);
   bool isSourceActive(String id) => _enabledSourceIds.contains(id);
+
+  Future<void> toggleSportsBar(bool enabled) async {
+    _showSportsBar = enabled;
+    await Hive.box(settingsBoxName).put(sportsBarKey, enabled);
+    notifyListeners();
+  }
+
+  Future<void> toggleSport(String sportId) async {
+    if (_enabledSports.contains(sportId)) {
+      _enabledSports.remove(sportId);
+    } else {
+      _enabledSports.add(sportId);
+    }
+    await Hive.box(settingsBoxName).put(enabledSportsKey, _enabledSports);
+    notifyListeners();
+  }
+
+  Future<void> toggleLeague(String code) async {
+    if (_enabledLeagues.contains(code)) {
+      _enabledLeagues.remove(code);
+    } else {
+      _enabledLeagues.add(code);
+    }
+    await Hive.box(settingsBoxName).put(enabledLeaguesKey, _enabledLeagues);
+    notifyListeners();
+  }
+
+  Future<void> setOnlyFavoriteTeams(bool val) async {
+    _onlyFavoriteTeams = val;
+    await Hive.box(settingsBoxName).put(onlyFavoriteTeamsKey, val);
+    notifyListeners();
+  }
 }

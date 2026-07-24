@@ -1,55 +1,29 @@
-# Plan Implementacji Paska Wyników Sportowych (Live Scores)
+# Plan Naprawy V3.0: Optymalizacja "Smart-Fetch"
 
-Ten plan opisuje dodanie poziomego paska wyników meczów piłkarskich, zintegrowanego z API `football-data.org`, wyświetlanego na górze ekranu głównego.
-
-## User Review Required
-
-> [!IMPORTANT]
-> **Ograniczenia API (Free Tier):**
-> 1. Darmowy klucz `football-data.org` pozwala na 10 zapytań na minutę.
-> 2. Darmowy pakiet obejmuje tylko główne ligi europejskie (m.in. Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Liga Mistrzów). **Ekstraklasa nie jest dostępna w darmowym planie.**
-> 3. Wymagane jest posiadanie klucza API. Na potrzeby deweloperskie użyjemy placeholdera, ale docelowo będziesz musiał go wkleić w kodzie.
+Ten plan radykalnie zmienia strategię pobierania danych, aby zmieścić się w darmowych limitach RapidAPI (10 zapytań/min) i odblokować wyniki Ekstraklasy.
 
 ## Proposed Changes
 
-### 1. Model i Serwis Danych
-Utworzenie nowej warstwy odpowiedzialnej za pobieranie i mapowanie wyników.
+### 1. Przebudowa SportsService (Zasada "Jeden Strzał")
+Zamiast pętli po ligach, która generowała dziesiątki zapytań, Sowa pobierze wszystkie mecze z danego dnia jednym zapytaniem.
 
-#### [NEW] [football_match.dart](file:///D:/Apps/prasowka/lib/models/football_match.dart)
-- Klasa reprezentująca mecz (drużyny, wynik, status, logo).
+#### [MODIFY] [sports_service.dart](file:///D:/Apps/prasowka/lib/services/sports_service.dart)
+- **Soccer (RapidAPI)**:
+    - Użycie endpointu `/fixtures?date=YYYY-MM-DD`.
+    - Pobieranie danych tylko dla 2 dni (Dziś i Wczoraj) – łącznie tylko 2 zapytania zamiast ~60.
+    - Filtrowanie Ekstraklasy i innych lig wewnątrz aplikacji (pobieramy wszystko, wybieramy tylko to, co zaznaczył użytkownik).
+- **Inne sporty (NHL, MLB, NFL)**:
+    - Podobna optymalizacja: jedno zapytanie na dyscyplinę na dzień.
+- **Dynamiczne sezony**: Zapytanie o datę nie wymaga podawania sezonu, co rozwiązuje problem błędnych lat (2024/2026).
 
-#### [NEW] [football_service.dart](file:///D:/Apps/prasowka/lib/services/football_service.dart)
-- Integracja z `http`.
-- Metoda `fetchUpcomingMatches()` pobierająca dane dla wybranych lig.
-- Mapowanie tekstowych nazw drużyn (z Twoich zainteresowań) na identyfikatory API.
+### 2. Oszczędzanie Limitów w SportsProvider
+#### [MODIFY] [sports_provider.dart](file:///D:/Apps/prasowka/lib/providers/sports_provider.dart)
+- Wprowadzenie inteligentnego odświeżania: Jeśli dane z "Wczoraj" zostały już pobrane, nie pytamy o nie ponownie przy kolejnym odświeżeniu (pytamy tylko o "Dziś").
 
-### 2. Zarządzanie Stanem
-Dodanie obsługi wyników do `NewsProvider` lub utworzenie dedykowanego providera.
-
-#### [NEW] [scores_provider.dart](file:///D:/Apps/prasowka/lib/providers/scores_provider.dart)
-- Przechowywanie listy meczów.
-- Logika odświeżania co np. 15 minut (by nie przekroczyć limitów API).
-- Filtrowanie meczów na podstawie Twoich słów kluczowych (np. jeśli masz "Real Madryt" w zainteresowaniach, ten mecz będzie pierwszy).
-
-### 3. Interfejs Użytkownika (UI)
-Dodanie paska wyników na ekranie głównym.
-
-#### [NEW] [scores_bar.dart](file:///D:/Apps/prasowka/lib/widgets/scores_bar.dart)
-- Pozioma, przewijalna lista małych kart z wynikami.
-- Animacja "Live" dla trwających spotkań.
-
-#### [MODIFY] [home_screen.dart](file:///D:/Apps/prasowka/lib/screens/home_screen.dart)
-- Umieszczenie `ScoresBar` pomiędzy tytułem "PRASÓWKA" a paskiem kategorii.
-
-### 4. Ustawienia
-Możliwość włączenia/wyłączenia paska wyników.
-
-#### [MODIFY] [settings_screen.dart](file:///D:/Apps/prasowka/lib/screens/settings_screen.dart)
-- Dodanie przełącznika "Pokaż wyniki na żywo" w sekcji "Wygląd".
+### 3. Logi Oszczędności
+- Dodanie komunikatów informujących o zużyciu limitów: `Sowa Sports: Zaoszczędzono X zapytań dzięki filtrowaniu w locie`.
 
 ## Verification Plan
-
-### Manual Verification
-- Sprawdzenie, czy pasek wyświetla się tylko, gdy są dostępne mecze (lub "Brak meczów dzisiaj").
-- Weryfikacja, czy mecze drużyn z listy "Moje zainteresowania" pojawiają się jako pierwsze.
-- Sprawdzenie zachowania aplikacji przy braku internetu lub błędzie klucza API.
+1. Wykonanie Hot Restartu.
+2. Sprawdzenie logów: powinno pojawić się tylko kilka zapytań (np. 1 dla piłki, 1 dla NBA) zamiast długiej listy.
+3. Weryfikacja czy Ekstraklasa z 24 lipca (piątek) jest widoczna jako "WCZORAJ".

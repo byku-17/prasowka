@@ -1,15 +1,8 @@
-# Zadania: Aktualizacja Bazy Portali RSS
+# Zadania: Plan Naprawy V3.0 (Smart-Fetch)
 
-- [x] Dodanie nowych źródeł do modelu `NewsSource`
-    - [x] Motoryzacja (Francuskie.pl, Autoblog, WysokieObroty)
-    - [x] Kultura (Kultura Gazeta.pl)
-    - [x] Lifestyle (Aktivist, FASHION MAGAZINE)
-    - [x] Sport (Sport.pl)
-    - [x] Biznes (Obserwator Finansowy)
-    - [x] Tech (Niebezpiecznik, Zaufana Trzecia Strona)
-    - [x] Nauka (Crazy Nauka, Mądre Książki, Filozofuj!)
-    - [x] Podróże (Tanie-Loty.com.pl)
-    - [x] Polska (Tygodnik Powszechny, Dziennik.pl, TOK FM)
-    - [x] Świat (OSW, Dział Zagraniczny, Klub Jagielloński, PISM, Raport o Stanie Świata)
-- [x] Weryfikacja obecności źródeł w Ustawieniach
-- [x] Testowe wczytanie artykułów z jednego z nowych źródeł
+- [x] Implementacja "Zasady Jednego Strzału" w `SportsService` (Soccer)
+- [x] Implementacja optymalizacji dla pozostałych sportów (NHL, MLB, NFL)
+- [x] Usunięcie pętli sezonowych i ligowych (oszczędność limitu API)
+- [x] Dodanie filtracji wyników w pamięci aplikacji
+- [x] Logowanie zużycia limitów w konsoli
+- [ ] Weryfikacja końcowa
