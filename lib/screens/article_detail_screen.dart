@@ -62,7 +62,7 @@ class ArticleDetailScreen extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.open_in_browser),
-                onPressed: () => _launchUrl(article.url),
+                onPressed: () => _launchUrl(context, article.url),
               ),
             ],
           ),
@@ -137,7 +137,7 @@ class ArticleDetailScreen extends StatelessWidget {
                                     height: 1.6,
                                   ),
                                   onTapUrl: (url) async {
-                                    await _launchUrl(url);
+                                    await _launchUrl(context, url);
                                     return true;
                                   },
                                 ),
@@ -164,7 +164,7 @@ class ArticleDetailScreen extends StatelessWidget {
                                 height: 1.6,
                               ),
                               onTapUrl: (url) async {
-                                await _launchUrl(url);
+                                await _launchUrl(context, url);
                                 return true;
                               },
                             ),
@@ -177,7 +177,7 @@ class ArticleDetailScreen extends StatelessWidget {
                   
                   Center(
                     child: OutlinedButton.icon(
-                      onPressed: () => _launchUrl(article.url),
+                      onPressed: () => _launchUrl(context, article.url),
                       icon: const Icon(Icons.link),
                       label: const Text('CZYTAJ ORYGINAŁ W SERWISIE'),
                       style: OutlinedButton.styleFrom(
@@ -237,10 +237,14 @@ class ArticleDetailScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _launchUrl(String url) async {
+  Future<void> _launchUrl(BuildContext context, String url) async {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      throw Exception('Could not launch $url');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Nie udało się otworzyć linku')),
+        );
+      }
     }
   }
 }

@@ -1,8 +1,12 @@
-# Zadania: Plan Naprawy V3.0 (Smart-Fetch)
+# Zadania: Ostateczne Czyszczenie Blokad (V4.2)
 
-- [x] Implementacja "Zasady Jednego Strzału" w `SportsService` (Soccer)
-- [x] Implementacja optymalizacji dla pozostałych sportów (NHL, MLB, NFL)
-- [x] Usunięcie pętli sezonowych i ligowych (oszczędność limitu API)
-- [x] Dodanie filtracji wyników w pamięci aplikacji
-- [x] Logowanie zużycia limitów w konsoli
+- [ ] Czyszczenie `SettingsProvider`:
+    - [ ] Usunięcie `enabledSports` i `enabledLeagues`
+    - [ ] Usunięcie metod sterujących dyscyplinami
+- [ ] Aktualizacja `SportsProvider`:
+    - [ ] Usunięcie filtrów dyscyplin (liczą się tylko słowa kluczowe)
+    - [ ] Poprawa odporności na błędy parsowania
+- [ ] Rozszerzenie Radaru w `SportsService` do +/- 7 dni
+- [ ] Usunięcie martwych metod w `SportsService`
+- [ ] UI Cleanup w `SettingsScreen`
 - [ ] Weryfikacja końcowa

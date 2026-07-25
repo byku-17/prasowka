@@ -5,7 +5,6 @@ import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/widgets/category_news_list.dart';
-import 'package:prasowka/widgets/scores_bar.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -110,17 +109,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   unselectedLabelColor: Colors.white70,
                   tabs: _activeCategories.map((cat) => Tab(text: cat.name.toUpperCase())).toList(),
                 ),
-              Consumer<NewsProvider>(
-                builder: (context, provider, child) {
-                  return provider.isCategoryBgLoading(provider.selectedCategory.id)
-                      ? const LinearProgressIndicator(
-                          backgroundColor: Colors.transparent,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentGold),
-                          minHeight: 2,
-                        )
-                      : const SizedBox(height: 2);
-                },
-              ),
+              const SizedBox(height: 2),
             ],
           ),
         ),

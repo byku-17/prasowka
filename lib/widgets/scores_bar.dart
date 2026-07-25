@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/providers/sports_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/screens/settings_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -16,21 +17,15 @@ class ScoresBar extends StatefulWidget {
 class _ScoresBarState extends State<ScoresBar> {
   String? _lastSettingsHash;
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
   void _checkAndRefresh(SettingsProvider settings) {
-    final currentHash = "${settings.enabledSports.join()}${settings.enabledLeagues.join()}${settings.onlyFavoriteTeams}${settings.favoriteTeams.join()}";
+    // Skupiamy się tylko na zainteresowaniach i fladze filtrowania
+    final currentHash = "${settings.onlyFavoriteTeams}${settings.favoriteTeams.join()}";
     
     if (_lastSettingsHash != currentHash) {
       _lastSettingsHash = currentHash;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<SportsProvider>().fetchEvents(
           favoriteKeywords: settings.favoriteTeams,
-          enabledSports: settings.enabledSports,
-          enabledLeagues: settings.enabledLeagues,
           onlyFavoriteTeams: settings.onlyFavoriteTeams,
           force: true,
         );
@@ -55,7 +50,7 @@ class _ScoresBarState extends State<ScoresBar> {
           return GestureDetector(
             onLongPress: () => _showDebugDialog(context, provider.debugLogs),
             child: Container(
-              height: 60,
+              height: 100,
               width: double.infinity,
               alignment: Alignment.center,
               margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -64,9 +59,27 @@ class _ScoresBarState extends State<ScoresBar> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.white10),
               ),
-              child: const Text(
-                'Brak meczów dla wybranych filtrów (Przytrzymaj by sprawdzić)',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Brak meczów dla Twoich faworytów',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InterestsSettingsPage())),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accentGold,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      minimumSize: const Size(0, 0),
+                      textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                    icon: const Icon(Icons.add, size: 14),
+                    label: const Text('DODAJ DRUŻYNĘ LUB LIGĘ'),
+                  ),
+                ],
               ),
             ),
           );
@@ -118,7 +131,7 @@ class _ScoresBarState extends State<ScoresBar> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('DIAGNOSTYKA SOWY'),
+        title: const Text('DIAGNOSTYKA V4.2'),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -144,7 +157,6 @@ class _MatchScoreTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Rozdzielamy wynik "2 - 1" na części. Jeśli mecz się nie zaczął (v), dajemy puste.
     List<String> scoreParts = event.score.split(' - ');
     String homeScore = scoreParts.isNotEmpty ? scoreParts[0] : '';
     String awayScore = scoreParts.length > 1 ? scoreParts[1] : '';
@@ -162,82 +174,53 @@ class _MatchScoreTile extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Nagłówek: Liga i Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
-                  "${_getSportLabel(event.type)}: ${event.competition.toUpperCase()} | ${_formatDateLabel(event.date)}",
+                  "${event.competition.toUpperCase()} | ${_formatDateLabel(event.date)}",
                   style: const TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (event.status == EventStatus.live)
-                Row(
-                  children: [
-                    Text(event.time ?? '', style: const TextStyle(fontSize: 8, color: Colors.red, fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
-                      child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                  child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
                 )
               else if (event.status == EventStatus.finished)
                 const Text('KONIEC', style: TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 10),
-          
-          // Drużyna Gospodarzy
           Row(
             children: [
               _buildTeamLogo(event.homeLogo),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  event.homeTeam,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: Text(event.homeTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
               ),
               if (!isScheduled)
-                Text(
-                  homeScore,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentGold),
-                ),
+                Text(homeScore, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentGold)),
             ],
           ),
           const SizedBox(height: 6),
-          
-          // Drużyna Gości
           Row(
             children: [
               _buildTeamLogo(event.awayLogo),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  event.awayTeam,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: Text(event.awayTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
               ),
               if (!isScheduled)
-                Text(
-                  awayScore,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentGold),
-                ),
+                Text(awayScore, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentGold)),
             ],
           ),
-          
           if (isScheduled) ...[
             const Spacer(),
-            const Text(
-              "NADCHODZĄCE",
-              style: TextStyle(fontSize: 8, color: AppTheme.accentGold, fontWeight: FontWeight.bold),
-            ),
+            const Text("WKRÓTCE", style: TextStyle(fontSize: 8, color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
           ],
         ],
       ),
@@ -258,31 +241,13 @@ class _MatchScoreTile extends StatelessWidget {
     final yesterday = today.subtract(const Duration(days: 1));
     final matchDate = DateTime(date.year, date.month, date.day);
 
-    if (matchDate == today) {
-      return _formatTime(date);
-    } else if (matchDate == yesterday) {
-      return "WCZORAJ";
-    } else {
-      return "${_formatDateShort(date)} ${_formatTime(date)}";
-    }
-  }
-
-  String _getSportLabel(SportType type) {
-    switch (type) {
-      case SportType.football: return 'PIŁKA';
-      case SportType.nba: return 'NBA';
-      case SportType.nhl: return 'NHL';
-      case SportType.mlb: return 'MLB';
-      case SportType.nfl: return 'NFL';
-      case SportType.tennis: return 'TENIS';
-      case SportType.volleyball: return 'SIATKÓWKA';
-      case SportType.handball: return 'RĘCZNA';
-      default: return '';
-    }
+    if (matchDate == today) return _formatTime(date);
+    if (matchDate == yesterday) return "WCZORAJ";
+    return "${_formatDateShort(date)} ${_formatTime(date)}";
   }
 
   Widget _buildTeamLogo(String? url) {
-    if (url == null) return const Icon(Icons.shield, size: 14, color: Colors.grey);
+    if (url == null || url.isEmpty) return const Icon(Icons.shield, size: 14, color: Colors.grey);
     return CachedNetworkImage(
       imageUrl: url,
       width: 14,

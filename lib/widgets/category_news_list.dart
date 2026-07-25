@@ -170,26 +170,10 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
           ),
           const SizedBox(height: 16),
           Text(
-            errorMessage ?? provider.lastDebugMessage,
+            errorMessage ?? 'Nie udało się pobrać artykułów. Sprawdź połączenie z internetem i spróbuj ponownie.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
-          if (provider.lastTechnicalError != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
-              ),
-              child: Text(
-                'LOG TECHNICZNY:\n${provider.lastTechnicalError}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 10, fontFamily: 'monospace'),
-              ),
-            ),
-          ],
           const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: () => provider.fetchNews(

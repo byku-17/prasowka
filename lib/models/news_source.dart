@@ -60,6 +60,7 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'tygodnik_powszechny', name: 'Tygodnik Powszechny', rssUrl: 'https://www.tygodnikpowszechny.pl/rss', categoryId: 'poland'),
     NewsSource(id: 'dziennik_pl', name: 'Dziennik.pl', rssUrl: 'https://wiadomosci.dziennik.pl/polska/rss.xml', categoryId: 'poland'),
     NewsSource(id: 'tok_fm', name: 'TOK FM', rssUrl: 'https://www.tokfm.pl/pub/rss/tokfm.xml', categoryId: 'poland'),
+    NewsSource(id: 'natemat_pl', name: 'naTemat.pl', rssUrl: 'https://natemat.pl/rss/wszystkie', categoryId: 'poland'),
 
     // --- ŚWIAT ---
     NewsSource(id: 'bbc_world', name: 'BBC News', rssUrl: 'http://feeds.bbci.co.uk/news/world/rss.xml', categoryId: 'world', isDefault: true),

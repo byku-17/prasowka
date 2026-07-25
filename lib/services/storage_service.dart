@@ -43,17 +43,12 @@ class StorageService {
     } catch (e) {
       debugPrint('Sowa Storage: Problem z boxem $name ($e). Próba naprawy...');
       try {
-        final box = await Hive.openBox(name);
-        await box.clear();
-        debugPrint('Sowa Storage: Zawartość boxa $name została wyczyszczona.');
+        // Usuwamy uszkodzony plik z dysku, dopiero potem otwieramy na nowo
+        await Hive.deleteBoxFromDisk(name);
+        await Hive.openBox(name);
+        debugPrint('Sowa Storage: Box $name został usunięty i odtworzony.');
       } catch (e2) {
-        debugPrint('Sowa Storage: Drastyczny reset boxa $name...');
-        try {
-          await Hive.deleteBoxFromDisk(name);
-          await Hive.openBox(name);
-        } catch (e3) {
-          debugPrint('Sowa Storage: Nie udało się odzyskać boxa $name ($e3)');
-        }
+        debugPrint('Sowa Storage: Nie udało się odzyskać boxa $name ($e2)');
       }
     }
   }

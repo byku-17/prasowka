@@ -18,14 +18,11 @@ class NewsProvider with ChangeNotifier {
 
   final Map<String, List<Article>> _articlesMap = {};
   final Map<String, bool> _loadingMap = {};
-  final Map<String, bool> _bgLoadingMap = {};
   final Map<String, String?> _errorMap = {};
   final Map<String, bool> _hasEverLoadedMap = {};
   
   String _lastDebugMessage = 'Czekam na akcję...';
   String? _lastTechnicalError; 
-  int _lastSuccessCount = 0;
-  int _lastSourceCount = 0;
   
   List<Article> _recommendedArticles = [];
   bool _isFetchingFullContent = false;
@@ -41,19 +38,15 @@ class NewsProvider with ChangeNotifier {
   List<Article> get articles => _articlesMap[_selectedCategory.id] ?? [];
   List<Article> get recommendedArticles => _recommendedArticles;
   bool get isLoading => _loadingMap[_selectedCategory.id] ?? false;
-  bool get isBackgroundLoading => _bgLoadingMap[_selectedCategory.id] ?? false;
   String? get errorMessage => _errorMap[_selectedCategory.id];
   NewsCategory get selectedCategory => _selectedCategory;
   bool get isFetchingFullContent => _isFetchingFullContent;
   bool get isTranslating => _isTranslating;
   String get lastDebugMessage => _lastDebugMessage;
   String? get lastTechnicalError => _lastTechnicalError;
-  int get lastSuccessCount => _lastSuccessCount;
-  int get lastSourceCount => _lastSourceCount;
 
   List<Article> getArticlesForCategory(String categoryId) => _articlesMap[categoryId] ?? [];
   bool isCategoryLoading(String categoryId) => _loadingMap[categoryId] ?? false;
-  bool isCategoryBgLoading(String categoryId) => _bgLoadingMap[categoryId] ?? false;
   bool hasCategoryEverLoaded(String categoryId) => _hasEverLoadedMap[categoryId] ?? false;
   String? getCategoryError(String categoryId) => _errorMap[categoryId];
 
@@ -125,8 +118,6 @@ class NewsProvider with ChangeNotifier {
         if (categoryId == 'all') sourcesToFetch = staticSources.take(30).toList();
       }
 
-      _lastSourceCount = sourcesToFetch.length;
-      _lastSuccessCount = 0;
       List<Article> accumulated = [];
 
       for (int i = 0; i < sourcesToFetch.length; i += 10) {
@@ -138,7 +129,6 @@ class NewsProvider with ChangeNotifier {
         bool hasNew = false;
         for (var fetched in results) {
           if (fetched.isNotEmpty) {
-            _lastSuccessCount++;
             hasNew = true;
             for (var article in fetched) {
               final stored = _storageService.getStoredArticle(article.id);
@@ -157,22 +147,7 @@ class NewsProvider with ChangeNotifier {
         
         if (hasNew) {
           _lastDebugMessage = 'Pobrano ${accumulated.length} newsów...';
-          _articlesMap[categoryId] = List.from(accumulated);
-          
-          // Optymalizacja: Używamy compute dla dużych list (powyżej 50 artykułów)
-          if (_articlesMap[categoryId]!.length > 50) {
-            final mixed = await compute(_sortAndMixArticlesStatic, {
-              'list': _articlesMap[categoryId]!,
-              'teams': favoriteTeams ?? _lastFavoriteTeams,
-              'categoryId': categoryId,
-            });
-            _articlesMap[categoryId] = mixed;
-          } else {
-            _sortAndMixArticlesSync(_articlesMap[categoryId]!, favoriteTeams ?? _lastFavoriteTeams, categoryId);
-          }
-          
           _hasEverLoadedMap[categoryId] = true;
-          // Obliczamy rekomendacje rzadziej, tylko przy większych paczkach
           if (accumulated.length % 200 == 0) _calculateRecommendations();
           notifyListeners();
         }
@@ -400,16 +375,6 @@ class NewsProvider with ChangeNotifier {
     final Map<String, Article> unique = {};
     for (var list in _articlesMap.values) { for (var a in list) { unique[a.id] = a; } }
     return unique.values.toList();
-  }
-
-  void clearError(String categoryId) {
-    _errorMap[categoryId] = null;
-    notifyListeners();
-  }
-
-  void clearTechnicalError() {
-    _lastTechnicalError = null;
-    notifyListeners();
   }
 
   void _logError(String categoryId, dynamic e) {
