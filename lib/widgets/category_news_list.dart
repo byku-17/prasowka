@@ -9,6 +9,7 @@ import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/widgets/article_card.dart';
 import 'package:prasowka/widgets/news_skeleton.dart';
 import 'package:prasowka/widgets/scores_bar.dart';
+import 'package:prasowka/widgets/warsaw_info_bar.dart';
 
 class CategoryNewsList extends StatefulWidget {
   final NewsCategory category;
@@ -68,6 +69,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
     super.build(context);
     final settings = context.watch<SettingsProvider>();
     final bool isSport = widget.category.id == 'sport';
+    final bool isWarsaw = widget.category.id == 'warsaw';
 
     return Consumer<NewsProvider>(
       builder: (context, provider, child) {
@@ -140,10 +142,11 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
         }
 
         // Jeśli to sekcja SPORT, dodajemy ScoresBar nad treścią (niezależnie od tego czy są newsy)
-        if (isSport) {
+        if (isSport || isWarsaw) {
           return Column(
             children: [
-              const ScoresBar(),
+              if (isSport) const ScoresBar(),
+              if (isWarsaw) const WarsawInfoBar(),
               Expanded(child: content),
             ],
           );

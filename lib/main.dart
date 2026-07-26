@@ -9,6 +9,7 @@ import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/providers/sports_provider.dart';
 import 'package:prasowka/screens/main_screen.dart';
 import 'package:prasowka/screens/onboarding_screen.dart';
+import 'package:prasowka/services/background_service.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,12 @@ void main() async {
 
   await settings.init();
   await news.init();
+
+  // Inicjalizacja powiadomień + sprawdzenie cold startu
+  if (settings.notificationsEnabled) {
+    await BackgroundService().init();
+    await BackgroundService().checkNotificationLaunch();
+  }
 
   FlutterNativeSplash.remove();
 

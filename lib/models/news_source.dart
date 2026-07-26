@@ -190,6 +190,11 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'dwutygodnik', name: 'Dwutygodnik', rssUrl: 'https://www.dwutygodnik.com/rss', categoryId: 'culture'),
     NewsSource(id: 'kultura_liberalna', name: 'Kultura Liberalna', rssUrl: 'https://kulturaliberalna.pl/feed/', categoryId: 'culture'),
     NewsSource(id: 'vogue_kultura', name: 'Vogue Polska', rssUrl: 'https://www.vogue.pl/k/kultura/feed', categoryId: 'culture'),
+
+    // --- WARSZAWA ---
+    NewsSource(id: 'warszawa_pl', name: 'Warszawa.pl', rssUrl: 'https://www.warszawa.pl/feed/', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'warszawa_wpigulce', name: 'Warszawa W Pigułce', rssUrl: 'https://warszawawpigulce.pl/feed/', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'uw_news', name: 'Uniwersytet Warszawski', rssUrl: 'https://www.uw.edu.pl/feed', categoryId: 'warsaw', isDefault: true),
     NewsSource(id: 'kultura_gazetapl', name: 'Kultura Gazeta.pl', rssUrl: 'http://wiadomosci.gazeta.pl/pub/rss/kultura.xml', categoryId: 'culture'),
     NewsSource(id: 'imponderabilia_pod', name: 'Imponderabilia', rssUrl: 'https://anchor.fm/s/18384218/podcast/rss', categoryId: 'culture'),
     NewsSource(id: 'jakbyniepaczec_pod', name: 'Jakbyniepaczec', rssUrl: 'https://anchor.fm/s/3cc71778/podcast/rss', categoryId: 'culture'),

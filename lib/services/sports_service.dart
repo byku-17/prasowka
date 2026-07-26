@@ -5,36 +5,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SportsService {
-  String get _nbaApiKey => dotenv.env['NBA_API_KEY'] ?? '';
-  String get _rapidApiKey => dotenv.env['RAPID_API_KEY'] ?? '';
   String get _theSportsDbKey => dotenv.env['THESPORTSDB_API_KEY'] ?? '3';
-
-  bool _isMissing(String key) => key.isEmpty || key == 'YOUR_KEY_HERE';
 
   Future<List<SportEvent>> fetchAllEvents() async {
     final List<SportEvent> allEvents = [];
     final List<Future<List<SportEvent>>> futures = [];
 
     final now = DateTime.now();
-    debugPrint('Sowa Sports V6.0: Start (Real: $now)');
+    debugPrint('Sowa Sports V7.0: Start (Real: $now)');
 
     // 1. PIŁKA NOŻNA (TheSportsDB — eventsday.php, free tier z kluczem '3')
     futures.add(_fetchFootballDays(now));
 
-    // 2. NBA (balldontlie)
-    if (!_isMissing(_nbaApiKey)) {
-      final dateStr = now.toIso8601String().split('T')[0];
-      futures.add(_fetchNBA(dateStr));
-    }
+    // 2. NBA, NHL, MLB (ESPN — bez klucza)
+    futures.add(_fetchEspnScoreboard('basketball', 'nba', SportType.nba, 'NBA'));
+    futures.add(_fetchEspnScoreboard('hockey', 'nhl', SportType.nhl, 'NHL'));
+    futures.add(_fetchEspnScoreboard('baseball', 'mlb', SportType.mlb, 'MLB'));
 
-    // 3. INNE (RapidAPI - NHL, MLB)
-    if (!_isMissing(_rapidApiKey)) {
-      final dateStr = now.toIso8601String().split('T')[0];
-      futures.add(_fetchRapidGeneric('hockey', SportType.nhl, dateStr));
-      futures.add(_fetchRapidGeneric('baseball', SportType.mlb, dateStr));
-    }
-
-    // 4. F1 & TENNIS (Zawsze dostępne)
+    // 3. F1 & TENNIS (Zawsze dostępne)
     futures.add(_fetchF1());
     futures.add(_fetchTennis(now));
 
@@ -48,8 +36,91 @@ class SportsService {
     final Map<String, SportEvent> unique = {};
     for (var e in allEvents) { unique[e.id] = e; }
     
-    debugPrint('Sowa Sports V6.0: Zakończono. Łącznie unikalnych: ${unique.length}');
+    debugPrint('Sowa Sports V7.0: Zakończono. Łącznie unikalnych: ${unique.length}');
     return unique.values.toList();
+  }
+
+  /// ESPN Scoreboard — darmowe, bez klucza. Działa dla NBA, NHL, MLB.
+  Future<List<SportEvent>> _fetchEspnScoreboard(String sport, String league, SportType type, String competition) async {
+    try {
+      final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard';
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List events = data['events'] ?? [];
+        return events.map((e) {
+          final competitions = e['competitions'] ?? [];
+          final comp = competitions.isNotEmpty ? competitions[0] : null;
+          final competitors = comp?['competitors'] ?? [];
+          
+          String homeTeam = '?';
+          String awayTeam = '?';
+          String homeScore = '0';
+          String awayScore = '0';
+          String? homeLogo;
+          String? awayLogo;
+
+          for (var c in competitors) {
+            final isHome = c['homeAway'] == 'home';
+            final team = c['team'] ?? {};
+            final score = c['score'] ?? '0';
+            if (isHome) {
+              homeTeam = team['displayName'] ?? team['shortDisplayName'] ?? '?';
+              homeScore = score;
+              homeLogo = team['logo'];
+            } else {
+              awayTeam = team['displayName'] ?? team['shortDisplayName'] ?? '?';
+              awayScore = score;
+              awayLogo = team['logo'];
+            }
+          }
+
+          // Status
+          final statusType = e['status']?['type']?['name'] ?? '';
+          EventStatus status;
+          switch (statusType) {
+            case 'STATUS_FINAL':
+            case 'STATUS_END_PERIOD':
+            case 'STATUS_POSTPONED':
+              status = EventStatus.finished;
+              break;
+            case 'STATUS_IN_PROGRESS':
+            case 'STATUS_HALFTIME':
+            case 'STATUS_TIMEOUT':
+              status = EventStatus.live;
+              break;
+            default:
+              status = EventStatus.scheduled;
+          }
+
+          // Data
+          DateTime eventDate;
+          try {
+            eventDate = DateTime.parse(e['date'] ?? DateTime.now().toIso8601String()).toLocal();
+          } catch (_) {
+            eventDate = DateTime.now();
+          }
+
+          return MatchEvent(
+            id: '${type.name}_${e['id']}',
+            type: type,
+            date: eventDate,
+            status: status,
+            homeTeam: homeTeam,
+            awayTeam: awayTeam,
+            score: "$homeScore - $awayScore",
+            competition: competition,
+            homeLogo: homeLogo,
+            awayLogo: awayLogo,
+          );
+        }).toList();
+      } else {
+        debugPrint('Sowa Sports: ESPN $competition — HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Sowa Sports: Błąd ESPN $competition: $e');
+    }
+    return [];
   }
 
   /// POBIERA MECZE PIŁKI NOŻNEJ — eventsday.php (DZIŚ + JUTRO + Wczoraj)
@@ -105,69 +176,6 @@ class SportsService {
     await Future.wait(futures);
     debugPrint('Sowa Sports: Piłka nożna — ${events.length} meczy (dziś±1)');
     return events;
-  }
-
-  Future<List<SportEvent>> _fetchNBA(String date) async {
-    try {
-      final url = 'https://api.balldontlie.io/v1/games?dates[]=$date';
-      final response = await http.get(Uri.parse(url), headers: {'Authorization': _nbaApiKey});
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List games = data['data'] ?? [];
-        return games.map((g) => MatchEvent(
-          id: 'nba_${g['id']}',
-          type: SportType.nba,
-          date: DateTime.parse(g['date']).toLocal(),
-          status: g['status'].toString().contains(':') ? EventStatus.scheduled : (g['status'] == 'Final' ? EventStatus.finished : EventStatus.live),
-          homeTeam: g['home_team']['full_name'],
-          awayTeam: g['visitor_team']['full_name'],
-          score: "${g['home_team_score']} - ${g['visitor_team_score']}",
-          competition: 'NBA',
-        )).toList();
-      } else {
-        debugPrint('Sowa Sports: NBA — HTTP ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Sowa Sports: Błąd NBA: $e');
-    }
-    return [];
-  }
-
-  Future<List<SportEvent>> _fetchRapidGeneric(String endpoint, SportType type, String date) async {
-    try {
-      final host = '$endpoint-api-v1.p.rapidapi.com';
-      final url = 'https://$host/games?date=$date';
-      final response = await http.get(Uri.parse(url), headers: {
-        'x-rapidapi-key': _rapidApiKey,
-        'x-rapidapi-host': host
-      });
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List res = data['response'] ?? [];
-        return res.map((item) {
-          final game = item['game'] ?? item;
-          final teams = item['teams'];
-          return MatchEvent(
-            id: '${type.name}_${game['id']}',
-            type: type,
-            date: DateTime.parse(game['date'] ?? game['utcDate'] ?? game['start'] ?? DateTime.now().toIso8601String()).toLocal(),
-            status: _mapRapidStatus(item['status']?['short'] ?? 'NS'),
-            homeTeam: teams['home']['name'],
-            awayTeam: teams['away']['name'],
-            score: type == SportType.mlb ? "${item['scores']?['home']?['total'] ?? 0} - ${item['scores']?['away']?['total'] ?? 0}" : "${item['scores']?['home'] ?? 0} - ${item['scores']?['away'] ?? 0}",
-            competition: item['league']?['name'] ?? type.name.toUpperCase(),
-            homeLogo: teams['home']['logo'],
-            awayLogo: teams['away']['logo'],
-          );
-        }).toList();
-      } else {
-        debugPrint('Sowa Sports: RapidAPI $endpoint — HTTP ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Sowa Sports: Błąd RapidAPI $endpoint: $e');
-    }
-    return [];
   }
 
   Future<List<SportEvent>> _fetchF1() async {
@@ -228,12 +236,6 @@ class SportsService {
   EventStatus _mapTsdbStatus(String? status) {
     if (status == 'FT') return EventStatus.finished;
     if (status == 'NS' || status == 'PST') return EventStatus.scheduled;
-    return EventStatus.live;
-  }
-
-  EventStatus _mapRapidStatus(String short) {
-    if (short == 'NS' || short == 'TBD' || short == 'Scheduled' || short == 'PST') return EventStatus.scheduled;
-    if (short == 'FT' || short == 'AET' || short == 'PEN' || short == 'Finished') return EventStatus.finished;
     return EventStatus.live;
   }
 }

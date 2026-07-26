@@ -5,6 +5,7 @@ import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/models/news_source.dart';
 import 'package:prasowka/services/storage_service.dart';
 import 'package:prasowka/services/background_service.dart';
+import 'package:prasowka/services/weather_service.dart';
 
 class SettingsProvider with ChangeNotifier {
   static const String settingsBoxName = 'settings';
@@ -21,6 +22,9 @@ class SettingsProvider with ChangeNotifier {
   static const String lastTabIndexKey = 'lastTabIndex';
   static const String sportsBarKey = 'showSportsBar';
   static const String onlyFavoriteTeamsKey = 'onlyFavoriteTeams';
+  static const String preferredCityKey = 'preferredCity';
+  static const String cityLatKey = 'cityLatitude';
+  static const String cityLonKey = 'cityLongitude';
 
   ThemeMode _themeMode = ThemeMode.system;
   List<NewsCategory> _allCategories = [];
@@ -34,6 +38,9 @@ class SettingsProvider with ChangeNotifier {
   bool _onboardingCompleted = false;
   bool _showSportsBar = true;
   int _lastTabIndex = 0;
+  String _preferredCity = 'Warszawa';
+  double _cityLatitude = 52.2297;
+  double _cityLongitude = 21.0122;
 
   ThemeMode get themeMode => _themeMode;
   List<NewsCategory> get allCategories => _allCategories;
@@ -46,6 +53,8 @@ class SettingsProvider with ChangeNotifier {
   bool get onboardingCompleted => _onboardingCompleted;
   bool get showSportsBar => _showSportsBar;
   int get lastTabIndex => _lastTabIndex;
+  String get preferredCity => _preferredCity;
+  CityCoordinates get cityCoordinates => CityCoordinates(name: _preferredCity, latitude: _cityLatitude, longitude: _cityLongitude);
 
   Future<void> init() async {
     debugPrint('Sowa Settings: Inicjalizacja V4.2...');
@@ -81,6 +90,28 @@ class SettingsProvider with ChangeNotifier {
     _showSportsBar = settingsBox.get(sportsBarKey, defaultValue: true);
     _onlyFavoriteTeams = settingsBox.get(onlyFavoriteTeamsKey, defaultValue: true);
     _lastTabIndex = settingsBox.get(lastTabIndexKey, defaultValue: 0);
+    _preferredCity = settingsBox.get(preferredCityKey, defaultValue: 'Warszawa');
+    _cityLatitude = settingsBox.get(cityLatKey, defaultValue: 52.2297);
+    _cityLongitude = settingsBox.get(cityLonKey, defaultValue: 21.0122);
+
+    // 4. Kolejność kategorii — MIGRACJA: dodaj brakujące, usuń nieistniejące
+    _categoryOrder = List<String>.from(settingsBox.get(
+      categoryOrderKey,
+      defaultValue: _allCategories.map((c) => c.id).toList(),
+    ));
+    bool orderChanged = false;
+    for (final cat in _allCategories) {
+      if (!_categoryOrder.contains(cat.id)) {
+        _categoryOrder.add(cat.id);
+        orderChanged = true;
+        debugPrint('Sowa Settings: Dodano do kolejności: ${cat.id}');
+      }
+    }
+    _categoryOrder.removeWhere((id) => !_allCategories.any((c) => c.id == id));
+    if (orderChanged) {
+      await settingsBox.put(categoryOrderKey, _categoryOrder);
+      debugPrint('Sowa Settings: Zapisano nową kolejność: $_categoryOrder');
+    }
 
     // 4. Aktywne kategorie
     _activeCategoryIds = List<String>.from(settingsBox.get(
@@ -113,14 +144,8 @@ class SettingsProvider with ChangeNotifier {
 
     // 6. Zainteresowania (słowa kluczowe)
     _favoriteTeams = List<String>.from(settingsBox.get(teamsKey, defaultValue: <String>[]));
-    
-    // 7. Kolejność kategorii
-    _categoryOrder = List<String>.from(settingsBox.get(
-      categoryOrderKey,
-      defaultValue: _allCategories.map((c) => c.id).toList(),
-    ));
 
-    // 8. Powiadomienia
+    // 7. Powiadomienia
     _notificationsEnabled = settingsBox.get(notificationsKey, defaultValue: false);
     await BackgroundService().init();
     if (_notificationsEnabled) {
@@ -135,7 +160,7 @@ class SettingsProvider with ChangeNotifier {
   /// Upewnia się, że nowe źródła są obecne u starych użytkowników
   Future<void> _ensureNewSourcesRegistered() async {
     final box = await Hive.openBox<NewsSource>(sourcesBoxName);
-    final newIds = ['natemat_pl', 'gryonline_promocje', 'purepc_promocje', 'lowcygier', 'kodpromo'];
+    final newIds = ['natemat_pl', 'gryonline_promocje', 'purepc_promocje', 'lowcygier', 'kodpromo', 'warszawa_pl', 'warszawa_wpigulce', 'uw_news'];
     for (final id in newIds) {
       if (!box.containsKey(id)) {
         final source = NewsSource.defaultSources.firstWhere((s) => s.id == id, orElse: () => NewsSource.defaultSources.first);
@@ -294,6 +319,17 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setOnlyFavoriteTeams(bool val) async {
     _onlyFavoriteTeams = val;
     await Hive.box(settingsBoxName).put(onlyFavoriteTeamsKey, val);
+    notifyListeners();
+  }
+
+  Future<void> setPreferredCity(String name, double lat, double lon) async {
+    _preferredCity = name;
+    _cityLatitude = lat;
+    _cityLongitude = lon;
+    final box = Hive.box(settingsBoxName);
+    await box.put(preferredCityKey, name);
+    await box.put(cityLatKey, lat);
+    await box.put(cityLonKey, lon);
     notifyListeners();
   }
 

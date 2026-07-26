@@ -126,7 +126,14 @@ class AppearanceSettingsPage extends StatelessWidget {
               dense: true,
             ),
           const Divider(),
-          const _SectionHeader('SYSTEMOWE'),
+          const _SectionHeader('TWOJE MIASTO'),
+          ListTile(
+            leading: const Icon(Icons.location_city),
+            title: const Text('Miasto'),
+            subtitle: Text(settings.preferredCity),
+            onTap: () => _showCityPicker(context, settings),
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.cleaning_services_outlined),
             title: const Text('Wyczyść pamięć cache'),
@@ -152,7 +159,39 @@ class AppearanceSettingsPage extends StatelessWidget {
       ListTile(leading: const Icon(Icons.brightness_auto), title: const Text('Systemowy'), onTap: () { settings.setThemeMode(ThemeMode.system); Navigator.pop(context); }),
       ListTile(leading: const Icon(Icons.light_mode), title: const Text('Jasny'), onTap: () { settings.setThemeMode(ThemeMode.light); Navigator.pop(context); }),
       ListTile(leading: const Icon(Icons.dark_mode), title: const Text('Ciemny'), onTap: () { settings.setThemeMode(ThemeMode.dark); Navigator.pop(context); }),
-    ])));
+      ])));
+  }
+
+  void _showCityPicker(BuildContext context, SettingsProvider settings) {
+    final cities = [
+      {'name': 'Warszawa', 'lat': 52.2297, 'lon': 21.0122},
+      {'name': 'Kraków', 'lat': 50.0647, 'lon': 19.9450},
+      {'name': 'Wrocław', 'lat': 51.1079, 'lon': 17.0385},
+      {'name': 'Gdańsk', 'lat': 54.3520, 'lon': 18.6466},
+      {'name': 'Poznań', 'lat': 52.4064, 'lon': 16.9252},
+      {'name': 'Łódź', 'lat': 51.7592, 'lon': 19.4560},
+      {'name': 'Katowice', 'lat': 50.2649, 'lon': 19.0238},
+    ];
+    showModalBottomSheet(context: context, builder: (context) => SafeArea(child: ListView(
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('Wybierz miasto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        ...cities.map((c) => ListTile(
+          leading: Icon(
+            Icons.location_on,
+            color: settings.preferredCity == c['name'] ? AppTheme.accentGold : null,
+          ),
+          title: Text(c['name'] as String),
+          trailing: settings.preferredCity == c['name'] ? Icon(Icons.check, color: AppTheme.accentGold) : null,
+          onTap: () {
+            settings.setPreferredCity(c['name'] as String, c['lat'] as double, c['lon'] as double);
+            Navigator.pop(context);
+          },
+        )),
+      ],
+    )));
   }
 }
 
