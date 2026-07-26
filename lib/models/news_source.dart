@@ -211,6 +211,12 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'wp_turystyka', name: 'WP Turystyka', rssUrl: 'https://turystyka.wp.pl/rss.xml', categoryId: 'travel'),
     NewsSource(id: 'tanie_loty', name: 'Tanie-Loty.com.pl', rssUrl: 'https://www.tanie-loty.com.pl/feed/', categoryId: 'travel'),
 
+    // --- PROMOCJE ---
+    NewsSource(id: 'gryonline_promocje', name: 'GRYOnline.pl Promocje', rssUrl: 'https://www.gry-online.pl/rss/promocje.xml', categoryId: 'deals', isDefault: true),
+    NewsSource(id: 'lowcygier', name: 'Łowcy Gier', rssUrl: 'https://lowcygier.pl/feed/', categoryId: 'deals', isDefault: true),
+    NewsSource(id: 'purepc_promocje', name: 'PurePC (Okazje)', rssUrl: 'https://www.purepc.pl/rss', categoryId: 'deals', isDefault: true),
+    NewsSource(id: 'kodpromo', name: 'KodPromo.pl', rssUrl: 'https://kodpromo.pl/index.xml', categoryId: 'deals', isDefault: true),
+
     // --- LIFESTYLE & KULINARIA ---
     NewsSource(id: 'noizz_pl', name: 'Noizz.pl', rssUrl: 'https://noizz.pl/.feed', categoryId: 'lifestyle', isDefault: true),
     NewsSource(id: 'aktivist_pl', name: 'Aktivist', rssUrl: 'https://aktivist.pl/feed/', categoryId: 'lifestyle'),

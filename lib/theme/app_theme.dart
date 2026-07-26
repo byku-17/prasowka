@@ -3,12 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Główne kolory marki
-  static const Color primaryNavy = Color(0xFF1B2A4A);
+  static const Color primaryNavy = Color(0xFF1E2126);
   static const Color accentGold = Color(0xFFF5B942);
   
   // Kolory tła i tekstu
   static const Color lightBg = Color(0xFFF8F9FA);
-  static const Color darkBg = Color(0xFF0D0D0D); 
+  static const Color darkBg = Color(0xFF1E2126);
 
   /// Motyw Jasny
   static ThemeData get lightTheme {
@@ -42,7 +42,7 @@ class AppTheme {
 
   /// Motyw Ciemny
   static ThemeData get darkTheme {
-    const Color deepBlack = Color(0xFF0D0D0D);
+    const Color deepBlack = Color(0xFF1E2126);
     final base = ThemeData.dark();
     return ThemeData(
       useMaterial3: true,

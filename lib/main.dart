@@ -7,21 +7,31 @@ import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/providers/sports_provider.dart';
-import 'package:prasowka/screens/splash_screen.dart';
+import 'package:prasowka/screens/main_screen.dart';
+import 'package:prasowka/screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  
+
   await dotenv.load(fileName: ".env");
   await Hive.initFlutter();
-  
+
+  final settings = SettingsProvider();
+  final news = NewsProvider();
+  final sports = SportsProvider();
+
+  await settings.init();
+  await news.init();
+
+  FlutterNativeSplash.remove();
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => SettingsProvider()),
-        ChangeNotifierProvider(create: (_) => NewsProvider()),
-        ChangeNotifierProvider(create: (_) => SportsProvider()),
+        ChangeNotifierProvider.value(value: settings),
+        ChangeNotifierProvider.value(value: news),
+        ChangeNotifierProvider.value(value: sports),
       ],
       child: const PrasowkaApp(),
     ),
@@ -34,14 +44,14 @@ class PrasowkaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    
+
     return MaterialApp(
       title: 'Prasówka',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: settings.themeMode,
-      home: const SplashScreen(), // Powrót do zawsze startującego Splasha
+      home: settings.onboardingCompleted ? const MainScreen() : const OnboardingScreen(),
     );
   }
 }

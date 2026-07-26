@@ -58,6 +58,12 @@ class SettingsProvider with ChangeNotifier {
     if (categoriesBox.isEmpty) {
       await categoriesBox.putAll({for (var c in NewsCategory.defaultCategories) c.id: c});
     }
+    // Upewnij się, że nowe kategorie (np. "deals") są obecne dla starych użytkowników
+    for (final cat in NewsCategory.defaultCategories) {
+      if (!categoriesBox.containsKey(cat.id)) {
+        await categoriesBox.put(cat.id, cat);
+      }
+    }
     _allCategories = categoriesBox.values.toList();
 
     // 2. Inicjalizacja Źródeł
@@ -81,6 +87,18 @@ class SettingsProvider with ChangeNotifier {
       activeCategoriesKey,
       defaultValue: _allCategories.map((c) => c.id).toList(),
     ));
+
+    // Dodaj nowe kategorie do aktywnych dla starych użytkowników
+    bool changed = false;
+    for (final cat in _allCategories) {
+      if (!_activeCategoryIds.contains(cat.id)) {
+        _activeCategoryIds.add(cat.id);
+        changed = true;
+      }
+    }
+    if (changed) {
+      await Hive.box(settingsBoxName).put(activeCategoriesKey, _activeCategoryIds);
+    }
 
     // 5. Włączone źródła (domyślnie te z isDefault)
     _enabledSourceIds = List<String>.from(settingsBox.get(
@@ -114,16 +132,17 @@ class SettingsProvider with ChangeNotifier {
     debugPrint('Sowa Settings: Gotowe (Tryb Personalizacji OK)');
   }
 
-  /// Upewnia się, że nowe źródła (np. naTemat.pl) są obecne u starych użytkowników
+  /// Upewnia się, że nowe źródła są obecne u starych użytkowników
   Future<void> _ensureNewSourcesRegistered() async {
     final box = await Hive.openBox<NewsSource>(sourcesBoxName);
-    const newId = 'natemat_pl';
-    if (!box.containsKey(newId)) {
-      final source = NewsSource.defaultSources.firstWhere((s) => s.id == newId, orElse: () => NewsSource.defaultSources.first);
-      await box.put(newId, source);
-      _allSources = box.values.toList();
-      debugPrint('Sowa Settings: Zarejestrowano nowe źródło: $newId');
+    final newIds = ['natemat_pl', 'gryonline_promocje', 'purepc_promocje', 'lowcygier', 'kodpromo'];
+    for (final id in newIds) {
+      if (!box.containsKey(id)) {
+        final source = NewsSource.defaultSources.firstWhere((s) => s.id == id, orElse: () => NewsSource.defaultSources.first);
+        await box.put(id, source);
+      }
     }
+    _allSources = box.values.toList();
   }
 
   Future<void> toggleNotifications(bool enabled) async {

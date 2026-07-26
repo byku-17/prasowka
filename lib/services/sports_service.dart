@@ -7,7 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class SportsService {
   String get _nbaApiKey => dotenv.env['NBA_API_KEY'] ?? '';
   String get _rapidApiKey => dotenv.env['RAPID_API_KEY'] ?? '';
-  String get _theSportsDbKey => dotenv.env['THESPORTSDB_API_KEY'] ?? '1';
+  String get _theSportsDbKey => dotenv.env['THESPORTSDB_API_KEY'] ?? '3';
 
   bool _isMissing(String key) => key.isEmpty || key == 'YOUR_KEY_HERE';
 
@@ -15,101 +15,96 @@ class SportsService {
     final List<SportEvent> allEvents = [];
     final List<Future<List<SportEvent>>> futures = [];
 
-    // --- LOGIKA DATY (PODRÓŻ W CZASIE 2026 -> 2024) ---
     final now = DateTime.now();
-    final DateTime referenceNow = now.year == 2026 
-        ? DateTime(2024, now.month, now.day, now.hour, now.minute) 
-        : now;
-    
-    debugPrint('Sowa Sports V4.2: Start (Reference: $referenceNow)');
+    debugPrint('Sowa Sports V6.0: Start (Real: $now)');
 
-    // 1. PIŁKA NOŻNA (TheSportsDB - Metoda Ligowa z Szerokim Radarem)
-    // ID 4422: Ekstraklasa, 4328: PL, 4335: LaLiga, 4331: Bundesliga, 4332: SerieA, 4334: Ligue1
-    final soccerLeagues = ['4422', '4328', '4335', '4331', '4332', '4334'];
-    for (var id in soccerLeagues) {
-      futures.add(_fetchLeagueEvents(id, referenceNow));
-    }
+    // 1. PIŁKA NOŻNA (TheSportsDB — eventsday.php, free tier z kluczem '3')
+    futures.add(_fetchFootballDays(now));
 
     // 2. NBA (balldontlie)
     if (!_isMissing(_nbaApiKey)) {
-      final dateStr = referenceNow.toIso8601String().split('T')[0];
+      final dateStr = now.toIso8601String().split('T')[0];
       futures.add(_fetchNBA(dateStr));
     }
 
     // 3. INNE (RapidAPI - NHL, MLB)
     if (!_isMissing(_rapidApiKey)) {
-      final dateStr = referenceNow.toIso8601String().split('T')[0];
+      final dateStr = now.toIso8601String().split('T')[0];
       futures.add(_fetchRapidGeneric('hockey', SportType.nhl, dateStr));
       futures.add(_fetchRapidGeneric('baseball', SportType.mlb, dateStr));
     }
 
     // 4. F1 & TENNIS (Zawsze dostępne)
     futures.add(_fetchF1());
-    futures.add(_fetchTennis(referenceNow));
+    futures.add(_fetchTennis(now));
 
-    try {
-      final results = await Future.wait(futures);
-      for (var list in results) {
-        allEvents.addAll(list);
-      }
-    } catch (e) {
-      debugPrint('Sowa Sports: Błąd krytyczny V4.2: $e');
+    // Zbieramy wyniki jeden po drugim — jeśli jeden API zawiedzie, reszta działa dalej
+    final results = await Future.wait(futures);
+    for (var list in results) {
+      allEvents.addAll(list);
     }
 
     // Usuwamy duplikaty
     final Map<String, SportEvent> unique = {};
     for (var e in allEvents) { unique[e.id] = e; }
     
-    debugPrint('Sowa Sports V4.2: Zakończono. Łącznie unikalnych: ${unique.length}');
+    debugPrint('Sowa Sports V6.0: Zakończono. Łącznie unikalnych: ${unique.length}');
     return unique.values.toList();
   }
 
-  /// POBIERA WSZYSTKIE MECZE LIGI (+/- 7 DNI RADARU)
-  Future<List<SportEvent>> _fetchLeagueEvents(String leagueId, DateTime referenceNow) async {
-    try {
-      final url = 'https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsleague.php?id=$leagueId';
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+  /// POBIERA MECZE PIŁKI NOŻNEJ — eventsday.php (DZIŚ + JUTRO + Wczoraj)
+  final Set<String> _soccerLeagueIds = {'4422', '4328', '4335', '4331', '4332', '4334'};
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List events = data['events'] ?? [];
-        
-        // Radar 14-dniowy (+/- 7 dni), aby na pewno złapać mecze przy przesunięciu lat
-        final filtered = events.where((e) {
-          try {
-             final matchDate = DateTime.parse(e['dateEvent']);
-             final diff = matchDate.difference(referenceNow).inDays.abs();
-             return diff <= 7;
-          } catch (_) { return false; }
-        });
+  Future<List<SportEvent>> _fetchFootballDays(DateTime now) async {
+    final List<SportEvent> events = [];
+    final List<Future<void>> futures = [];
 
-        return filtered.map((e) {
-          DateTime? matchDateTime;
-          try {
-            // Pancerne parowanie daty i czasu
-            final datePart = e['dateEvent'];
-            final timePart = e['strTime'] ?? '00:00:00';
-            matchDateTime = DateTime.parse("${datePart}T$timePart");
-          } catch (_) {
-            matchDateTime = DateTime.parse(e['dateEvent']);
+    for (int offset in [-1, 0, 1]) {
+      final date = now.add(Duration(days: offset));
+      final dateStr = date.toIso8601String().split('T')[0];
+      futures.add(() async {
+        try {
+          final url = 'https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsday.php?d=$dateStr';
+          final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+          if (response.statusCode == 200) {
+            final data = json.decode(response.body);
+            final List allEvents = data['events'] ?? [];
+            for (var e in allEvents) {
+              final leagueId = e['idLeague']?.toString();
+              if (leagueId == null || !_soccerLeagueIds.contains(leagueId)) continue;
+              DateTime? matchDateTime;
+              try {
+                final datePart = e['dateEvent'];
+                final timePart = e['strTime'] ?? '00:00:00';
+                matchDateTime = DateTime.parse("${datePart}T$timePart");
+              } catch (_) {
+                try { matchDateTime = DateTime.parse(e['dateEvent']); } catch (_) { continue; }
+              }
+              events.add(MatchEvent(
+                id: 'tsdb_fb_${e['idEvent']}',
+                type: SportType.football,
+                date: matchDateTime.toLocal(),
+                status: _mapTsdbStatus(e['strStatus']),
+                homeTeam: e['strHomeTeam'] ?? '?',
+                awayTeam: e['strAwayTeam'] ?? '?',
+                score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "v",
+                competition: e['strLeague'] ?? 'Piłka Nożna',
+                homeLogo: e['strHomeTeamBadge'],
+                awayLogo: e['strAwayTeamBadge'],
+              ));
+            }
+          } else {
+            debugPrint('Sowa Sports: TheSportsDB eventsday $dateStr — HTTP ${response.statusCode}');
           }
+        } catch (e) {
+          debugPrint('Sowa Sports: Błąd eventsday $dateStr: $e');
+        }
+      }());
+    }
 
-          return MatchEvent(
-            id: 'tsdb_fb_${e['idEvent']}',
-            type: SportType.football,
-            date: matchDateTime.toLocal(),
-            status: _mapTsdbStatus(e['strStatus']),
-            homeTeam: e['strHomeTeam'] ?? '?',
-            awayTeam: e['strAwayTeam'] ?? '?',
-            score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "v",
-            competition: e['strLeague'] ?? 'Piłka Nożna',
-            homeLogo: e['strHomeTeamBadge'],
-            awayLogo: e['strAwayTeamBadge'],
-          );
-        }).toList();
-      }
-    } catch (_) {}
-    return [];
+    await Future.wait(futures);
+    debugPrint('Sowa Sports: Piłka nożna — ${events.length} meczy (dziś±1)');
+    return events;
   }
 
   Future<List<SportEvent>> _fetchNBA(String date) async {
@@ -129,8 +124,12 @@ class SportsService {
           score: "${g['home_team_score']} - ${g['visitor_team_score']}",
           competition: 'NBA',
         )).toList();
+      } else {
+        debugPrint('Sowa Sports: NBA — HTTP ${response.statusCode}');
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Sowa Sports: Błąd NBA: $e');
+    }
     return [];
   }
 
@@ -162,36 +161,67 @@ class SportsService {
             awayLogo: teams['away']['logo'],
           );
         }).toList();
+      } else {
+        debugPrint('Sowa Sports: RapidAPI $endpoint — HTTP ${response.statusCode}');
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Sowa Sports: Błąd RapidAPI $endpoint: $e');
+    }
     return [];
   }
 
   Future<List<SportEvent>> _fetchF1() async {
     try {
-      final response = await http.get(Uri.parse('https://api.jolpica.org/ergast/f1/current/next.json'));
+      final year = DateTime.now().year;
+      final response = await http.get(Uri.parse('https://api.openf1.org/v1/sessions?year=$year')).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final races = data['MRData']['RaceTable']['Races'];
-        if (races.isEmpty) return [];
-        final r = races[0];
-        return [RaceEvent(id: 'f1_${r['round']}', type: SportType.f1, date: DateTime.parse("${r['date']}T${r['time']}"), status: EventStatus.scheduled, raceName: r['raceName'], circuitName: r['Circuit']['circuitName'], countryCode: r['Circuit']['Location']['country'])];
+        final List sessions = data is List ? data : [];
+        final nowUtc = DateTime.now().toUtc();
+        final nextRaces = sessions
+            .where((s) => s['session_type'] == 'Race')
+            .where((s) {
+              try { return DateTime.parse(s['date_start']).isAfter(nowUtc); } catch (_) { return false; }
+            })
+            .toList()
+          ..sort((a, b) => DateTime.parse(a['date_start']).compareTo(DateTime.parse(b['date_start'])));
+        if (nextRaces.isNotEmpty) {
+          final r = nextRaces[0];
+          final meeting = r['meeting'] ?? {};
+          return [RaceEvent(
+            id: 'f1_${r['session_key']}',
+            type: SportType.f1,
+            date: DateTime.parse(r['date_start']),
+            status: EventStatus.scheduled,
+            raceName: r['session_name'] ?? meeting['meeting_name'] ?? 'F1 Race',
+            circuitName: meeting['circuit_short_name'] ?? '',
+            countryCode: meeting['country_code'] ?? '',
+          )];
+        }
+      } else {
+        debugPrint('Sowa Sports: F1 — HTTP ${response.statusCode}');
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Sowa Sports: Błąd F1: $e');
+    }
     return [];
   }
 
-  Future<List<SportEvent>> _fetchTennis(DateTime referenceNow) async {
+  Future<List<SportEvent>> _fetchTennis(DateTime now) async {
     try {
-      final dateStr = referenceNow.toIso8601String().split('T')[0];
+      final dateStr = now.toIso8601String().split('T')[0];
       final url = 'https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsday.php?d=$dateStr&s=Tennis';
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List events = data['events'] ?? [];
         return events.map((e) => MatchEvent(id: 'tennis_${e['idEvent']}', type: SportType.tennis, date: DateTime.parse("${e['dateEvent']}T${e['strTime']}"), status: e['strStatus'] == 'FT' ? EventStatus.finished : EventStatus.scheduled, homeTeam: e['strHomeTeam'], awayTeam: e['strAwayTeam'], score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "v", competition: e['strLeague'], homeLogo: e['strHomeTeamBadge'], awayLogo: e['strAwayTeamBadge'])).toList();
+      } else {
+        debugPrint('Sowa Sports: Tenis — HTTP ${response.statusCode}');
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Sowa Sports: Błąd tenisa: $e');
+    }
     return [];
   }
 

@@ -28,7 +28,7 @@ class ArticleDetailScreen extends StatelessWidget {
                       imageUrl: article.imageUrl!,
                       fit: BoxFit.cover,
                     )
-                  : Container(color: const Color(0xFF0D0D0D)),
+                  : Container(color: const Color(0xFF1E2126)),
             ),
             actions: [
               Consumer<NewsProvider>(
