@@ -8,6 +8,7 @@ import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/services/storage_service.dart';
 import 'package:prasowka/services/sports_service.dart';
 import 'package:prasowka/services/user_interest_service.dart';
+import 'package:prasowka/services/notification_history.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -80,7 +81,7 @@ void callbackDispatcher() {
               if (event.status == EventStatus.live) {
                 shouldNotify = true;
               } else if (event.status == EventStatus.scheduled) {
-                final diff = now.difference(event.date).inMinutes;
+                final diff = event.date.difference(now).inMinutes;
                 if (diff >= 0 && diff <= 15) shouldNotify = true;
               }
               if (!shouldNotify) continue;
@@ -143,6 +144,15 @@ Future<void> _showNotification(Article article) async {
     platformChannelSpecifics,
     payload: article.url,
   );
+
+  await NotificationHistory().add(NotificationEntry(
+    id: article.id,
+    title: 'Sowa znalazła coś dla Ciebie! 🦉',
+    body: article.title,
+    url: article.url,
+    timestamp: DateTime.now(),
+    type: 'article',
+  ));
 }
 
 Future<void> _showSportNotification(MatchEvent event) async {
@@ -178,6 +188,14 @@ Future<void> _showSportNotification(MatchEvent event) async {
     body,
     platformChannelSpecifics,
   );
+
+  await NotificationHistory().add(NotificationEntry(
+    id: 'sport_${event.id}',
+    title: title,
+    body: body,
+    timestamp: DateTime.now(),
+    type: 'sport',
+  ));
 }
 
 class BackgroundService {

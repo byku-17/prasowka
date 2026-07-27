@@ -10,6 +10,7 @@ import 'package:prasowka/providers/sports_provider.dart';
 import 'package:prasowka/screens/main_screen.dart';
 import 'package:prasowka/screens/onboarding_screen.dart';
 import 'package:prasowka/services/background_service.dart';
+import 'package:prasowka/services/notification_history.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,7 @@ void main() async {
 
   await settings.init();
   await news.init();
+  await NotificationHistory().init();
 
   // Inicjalizacja powiadomień + sprawdzenie cold startu
   if (settings.notificationsEnabled) {

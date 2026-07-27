@@ -6,6 +6,8 @@ import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/widgets/category_news_list.dart';
 import 'package:prasowka/theme/app_theme.dart';
+import 'package:prasowka/services/notification_history.dart';
+import 'package:prasowka/screens/notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -66,6 +68,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  Widget _buildNotificationBell(BuildContext context) {
+    final unread = NotificationHistory().unreadCount;
+    return IconButton(
+      icon: Badge(
+        isLabelVisible: unread > 0,
+        label: Text(unread > 99 ? '99+' : '$unread', style: const TextStyle(fontSize: 10)),
+        backgroundColor: Colors.red,
+        child: const Icon(Icons.notifications_outlined),
+      ),
+      tooltip: 'Powiadomienia',
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+        ).then((_) => setState(() {}));
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_activeCategories.isEmpty) {
@@ -96,6 +117,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             fontSize: 20,
           ),
         ),
+        actions: [
+          _buildNotificationBell(context),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
           child: Column(

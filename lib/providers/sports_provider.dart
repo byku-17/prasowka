@@ -11,6 +11,8 @@ class SportsProvider with ChangeNotifier {
   bool _isLoading = false;
   DateTime? _lastFetch;
   Timer? _refreshTimer;
+  List<String>? _currentFavorites;
+  bool _currentOnlyFavorites = true;
 
   List<SportEvent> get events => _events;
   List<String> get debugLogs => _debugLogs;
@@ -50,8 +52,10 @@ class SportsProvider with ChangeNotifier {
       }
       
       // Zarządzanie odświeżaniem LIVE
+      _currentFavorites = favoriteKeywords;
+      _currentOnlyFavorites = onlyFavoriteTeams;
       if (_events.any((e) => e.status == EventStatus.live)) {
-        _startAutoRefresh(favoriteKeywords, onlyFavoriteTeams);
+        _startAutoRefresh();
       } else {
         _stopAutoRefresh();
       }
@@ -63,11 +67,11 @@ class SportsProvider with ChangeNotifier {
     }
   }
 
-  void _startAutoRefresh(List<String>? favs, bool onlyFavs) {
+  void _startAutoRefresh() {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
        final newEvents = await _service.fetchAllEvents();
-       _events = _filterAndSortEvents(newEvents, favs, onlyFavs);
+       _events = _filterAndSortEvents(newEvents, _currentFavorites, _currentOnlyFavorites);
        notifyListeners();
        if (!_events.any((e) => e.status == EventStatus.live)) _stopAutoRefresh();
     });

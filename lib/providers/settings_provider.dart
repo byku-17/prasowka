@@ -85,7 +85,9 @@ class SettingsProvider with ChangeNotifier {
 
     // 3. Ustawienia ogólne
     final themeIndex = settingsBox.get(themeKey, defaultValue: ThemeMode.system.index);
-    _themeMode = ThemeMode.values[themeIndex];
+    _themeMode = (themeIndex is int && themeIndex >= 0 && themeIndex < ThemeMode.values.length)
+        ? ThemeMode.values[themeIndex]
+        : ThemeMode.system;
     _onboardingCompleted = settingsBox.get(onboardingKey, defaultValue: false);
     _showSportsBar = settingsBox.get(sportsBarKey, defaultValue: true);
     _onlyFavoriteTeams = settingsBox.get(onlyFavoriteTeamsKey, defaultValue: true);
