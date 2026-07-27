@@ -81,30 +81,30 @@ class _ScoresBarState extends State<ScoresBar> {
     final List<Widget> tiles = [];
     final selectedIds = settings.selectedLeagueIds;
 
-    // Grupuj eventy z API po ID ligi
-    final Map<String, List<SportEvent>> eventsByLeague = {};
+    // 1. Pokaż WSZYSTKIE eventy z API (nie filtruj po ligach — provider już przefiltrował)
+    for (final event in provider.events) {
+      if (event is MatchEvent) {
+        tiles.add(_MatchScoreTile(event: event));
+      } else if (event is RaceEvent) {
+        tiles.add(_RaceTile(event: event));
+      }
+    }
+
+    // 2. Dodaj fallback tiles dla wybranych lig bez danych z API
+    final matchedLeagueIds = <String>{};
     for (final event in provider.events) {
       if (event is MatchEvent) {
         for (final id in selectedIds) {
           final league = SportLeague.findById(id);
           if (league != null && _eventMatchesLeague(event, league)) {
-            eventsByLeague.putIfAbsent(id, () => []).add(event);
-            break;
+            matchedLeagueIds.add(id);
           }
         }
       }
     }
 
-    // Dodaj eventy z API dla wybranych lig
     for (final id in selectedIds) {
-      if (eventsByLeague.containsKey(id)) {
-        for (final event in eventsByLeague[id]!) {
-          if (event is MatchEvent) {
-            tiles.add(_MatchScoreTile(event: event));
-          }
-        }
-      } else {
-        // Brak danych z API — pokaż fallback tile
+      if (!matchedLeagueIds.contains(id)) {
         final league = SportLeague.findById(id);
         if (league != null) {
           tiles.add(_FallbackLeagueTile(league: league));
@@ -112,15 +112,10 @@ class _ScoresBarState extends State<ScoresBar> {
       }
     }
 
-    // F1 — osobna obsługa (RaceEvent)
-    if (selectedIds.contains('f1')) {
-      final f1Event = provider.events.whereType<RaceEvent>().firstOrNull;
-      if (f1Event != null) {
-        tiles.insert(0, _RaceTile(event: f1Event));
-      } else if (!tiles.any((t) => t is _FallbackLeagueTile)) {
-        final f1League = SportLeague.findById('f1');
-        if (f1League != null) tiles.insert(0, _FallbackLeagueTile(league: f1League));
-      }
+    // 3. F1 — fallback gdy brak w eventach
+    if (selectedIds.contains('f1') && !tiles.any((t) => t is _RaceTile)) {
+      final f1League = SportLeague.findById('f1');
+      if (f1League != null) tiles.add(_FallbackLeagueTile(league: f1League));
     }
 
     return tiles;
