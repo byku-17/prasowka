@@ -242,7 +242,7 @@ class ArticleDetailScreen extends StatelessWidget {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Nie udało się otworzyć linku')),
+          SnackBar(content: const Text('Nie udało się otworzyć linku')),
         );
       }
     }

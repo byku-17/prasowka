@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/services/sports_service.dart';
+import 'package:prasowka/utils/text_utils.dart';
 
 class SportsProvider with ChangeNotifier {
   final SportsService _service = SportsService();
@@ -91,13 +92,13 @@ class SportsProvider with ChangeNotifier {
   List<SportEvent> _filterAndSortEvents(List<SportEvent> list, List<String>? favorites, bool onlyFavs) {
     // Filtrowanie wyłącznie po zainteresowaniach (jeśli opcja włączona)
     if (onlyFavs && favorites != null && favorites.isNotEmpty) {
-      final normalizedFavs = favorites.map((f) => _normalize(f)).toList();
+      final normalizedFavs = favorites.map((f) => TextUtils.normalize(f)).toList();
       list = list.where((e) {
         if (e is MatchEvent) {
-          final searchable = _normalize("${e.homeTeam} ${e.awayTeam} ${e.competition}");
+          final searchable = TextUtils.normalize("${e.homeTeam} ${e.awayTeam} ${e.competition}");
           return normalizedFavs.any((f) => searchable.contains(f));
         } else if (e is RaceEvent) {
-          final searchable = _normalize("${e.raceName} ${e.circuitName}");
+          final searchable = TextUtils.normalize("${e.raceName} ${e.circuitName}");
           return normalizedFavs.any((f) => searchable.contains(f));
         }
         return false;
@@ -111,11 +112,11 @@ class SportsProvider with ChangeNotifier {
 
       // Priorytet dla dopasowania 1:1 (jeśli nazwa dokładnie taka jak hasło)
       if (favorites != null && favorites.isNotEmpty) {
-         final normalizedFavs = favorites.map((f) => _normalize(f)).toList();
+         final normalizedFavs = favorites.map((f) => TextUtils.normalize(f)).toList();
          bool aExact = false;
          bool bExact = false;
-         if (a is MatchEvent) aExact = normalizedFavs.any((f) => _normalize(a.homeTeam) == f || _normalize(a.awayTeam) == f);
-         if (b is MatchEvent) bExact = normalizedFavs.any((f) => _normalize(b.homeTeam) == f || _normalize(b.awayTeam) == f);
+         if (a is MatchEvent) aExact = normalizedFavs.any((f) => TextUtils.normalize(a.homeTeam) == f || TextUtils.normalize(a.awayTeam) == f);
+         if (b is MatchEvent) bExact = normalizedFavs.any((f) => TextUtils.normalize(b.homeTeam) == f || TextUtils.normalize(b.awayTeam) == f);
          if (aExact && !bExact) return -1;
          if (!aExact && bExact) return 1;
       }
@@ -124,17 +125,5 @@ class SportsProvider with ChangeNotifier {
     });
 
     return list;
-  }
-
-  String _normalize(String text) {
-    var str = text.toLowerCase();
-    const polish = 'ąćęłńóśźż';
-    const latin = 'acelnoszz';
-    for (int i = 0; i < polish.length; i++) {
-      str = str.replaceAll(polish[i], latin[i]);
-    }
-    // Usuwamy zbędne dodatki dla lepszego dopasowania
-    str = str.replaceAll('fc ', '').replaceAll(' ks ', '').replaceAll(' gks ', '').replaceAll(' pko bp ', '');
-    return str.trim();
   }
 }

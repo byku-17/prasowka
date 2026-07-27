@@ -115,7 +115,7 @@ class SettingsProvider with ChangeNotifier {
       debugPrint('Sowa Settings: Zapisano nową kolejność: $_categoryOrder');
     }
 
-    // 4. Aktywne kategorie
+    // 5. Aktywne kategorie
     _activeCategoryIds = List<String>.from(settingsBox.get(
       activeCategoriesKey,
       defaultValue: _allCategories.map((c) => c.id).toList(),

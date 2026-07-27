@@ -165,4 +165,44 @@ class RssService {
       }
     }
   }
+
+  /// Wyszukuje artykuły w Google News RSS
+  Future<List<Article>> searchGoogleNews(String query) async {
+    if (query.trim().isEmpty) return [];
+    final url = 'https://news.google.com/rss/search?q=${Uri.encodeComponent(query)}&hl=pl&gl=PL&ceid=PL:pl';
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final xml = utf8.decode(response.bodyBytes, allowMalformed: true);
+        final feed = RssFeed.parse(xml.trim());
+        return feed.items.map((item) => Article(
+          id: 'search_${item.guid ?? item.link ?? DateTime.now().toIso8601String()}',
+          title: (item.title ?? 'Bez tytułu').trim(),
+          description: _cleanHtml(item.description ?? ''),
+          content: item.content?.value ?? item.description ?? '',
+          url: item.link ?? '',
+          publishedAt: _parseDate(item.pubDate),
+          sourceName: _extractSource(item.title ?? ''),
+          imageUrl: _getImg(item),
+        )).toList();
+      }
+    } catch (e) {
+      debugPrint('Sowa Search: Błąd Google News RSS: $e');
+    }
+    return [];
+  }
+
+  /// Wyciąga nazwę źródła z tytułu Google News (np. "Tytuł - TVN24" → "TVN24")
+  String _extractSource(String title) {
+    final dashIdx = title.lastIndexOf(' - ');
+    if (dashIdx > 0) return title.substring(dashIdx + 3).trim();
+    return 'Google News';
+  }
 }

@@ -52,7 +52,6 @@ class NewsProvider with ChangeNotifier {
 
   Future<void> init() async {
     try {
-      await _storageService.init();
       await _interestService.init();
       notifyListeners();
     } catch (e) {
@@ -149,6 +148,8 @@ class NewsProvider with ChangeNotifier {
           _lastDebugMessage = 'Pobrano ${accumulated.length} newsów...';
           _hasEverLoadedMap[categoryId] = true;
           if (accumulated.length % 200 == 0) _calculateRecommendations();
+          // Progressive loading — aktualizuj UI po każdym batchu
+          _articlesMap[categoryId] = List.from(accumulated);
           notifyListeners();
         }
       }

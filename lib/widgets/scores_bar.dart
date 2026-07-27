@@ -34,11 +34,18 @@ class _ScoresBarState extends State<ScoresBar> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final settings = context.read<SettingsProvider>();
+    if (settings.showSportsBar) {
+      _checkAndRefresh(settings);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     if (!settings.showSportsBar) return const SizedBox.shrink();
-
-    _checkAndRefresh(settings);
 
     return Consumer<SportsProvider>(
       builder: (context, provider, child) {

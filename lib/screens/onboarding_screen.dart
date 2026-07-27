@@ -23,6 +23,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<String> _favoriteKeywords = [];
   final TextEditingController _keywordController = TextEditingController();
 
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _keywordController.dispose();
+    super.dispose();
+  }
+
   void _nextPage() {
     if (_currentPage < 2) {
       _pageController.nextPage(

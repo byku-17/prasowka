@@ -16,6 +16,11 @@ void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
+  FlutterError.onError = (details) {
+    debugPrint('Sowa Flutter Error: ${details.exception}');
+    debugPrint(details.stack.toString());
+  };
+
   await dotenv.load(fileName: ".env");
   await Hive.initFlutter();
 
@@ -27,9 +32,8 @@ void main() async {
   await news.init();
   await NotificationHistory().init();
 
-  // Inicjalizacja powiadomień + sprawdzenie cold startu
+  // Sprawdzenie cold startu (aplikacja uruchomiona z powiadomienia)
   if (settings.notificationsEnabled) {
-    await BackgroundService().init();
     await BackgroundService().checkNotificationLaunch();
   }
 

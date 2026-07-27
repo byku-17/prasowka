@@ -183,7 +183,7 @@ class AppearanceSettingsPage extends StatelessWidget {
             color: settings.preferredCity == c['name'] ? AppTheme.accentGold : null,
           ),
           title: Text(c['name'] as String),
-          trailing: settings.preferredCity == c['name'] ? Icon(Icons.check, color: AppTheme.accentGold) : null,
+          trailing: settings.preferredCity == c['name'] ? const Icon(Icons.check, color: AppTheme.accentGold) : null,
           onTap: () {
             settings.setPreferredCity(c['name'] as String, c['lat'] as double, c['lon'] as double);
             Navigator.pop(context);
@@ -304,6 +304,12 @@ class InterestsSettingsPage extends StatefulWidget {
 
 class InterestsSettingsPageState extends State<InterestsSettingsPage> {
   final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   void _submit(SettingsProvider settings) {
     if (_controller.text.isNotEmpty) {

@@ -9,6 +9,7 @@ import 'package:prasowka/services/storage_service.dart';
 import 'package:prasowka/services/sports_service.dart';
 import 'package:prasowka/services/user_interest_service.dart';
 import 'package:prasowka/services/notification_history.dart';
+import 'package:prasowka/utils/text_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -69,12 +70,12 @@ void callbackDispatcher() {
             final sportsBox = Hive.box(_sportsNotifiedBoxName);
             final sportsService = SportsService();
             final events = await sportsService.fetchAllEvents();
-            final normalizedFavs = favoriteTeams.map((f) => _normalize(f)).toList();
+            final normalizedFavs = favoriteTeams.map((f) => TextUtils.normalize(f)).toList();
             final now = DateTime.now();
 
             for (var event in events) {
               if (event is! MatchEvent) continue;
-              final searchable = _normalize("${event.homeTeam} ${event.awayTeam} ${event.competition}");
+              final searchable = TextUtils.normalize("${event.homeTeam} ${event.awayTeam} ${event.competition}");
               if (!normalizedFavs.any((f) => searchable.contains(f))) continue;
 
               bool shouldNotify = false;
@@ -107,17 +108,6 @@ void callbackDispatcher() {
       return Future.value(false);
     }
   });
-}
-
-String _normalize(String text) {
-  var str = text.toLowerCase();
-  const polish = 'ąćęłńóśźż';
-  const latin = 'acelnoszz';
-  for (int i = 0; i < polish.length; i++) {
-    str = str.replaceAll(polish[i], latin[i]);
-  }
-  str = str.replaceAll('fc ', '').replaceAll(' ks ', '').replaceAll(' gks ', '').replaceAll(' pko bp ', '');
-  return str.trim();
 }
 
 Future<void> _showNotification(Article article) async {
@@ -211,8 +201,16 @@ class BackgroundService {
   Future<void> init() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/launcher_icon');
-    const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
+    const DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
     
     await _notifications.initialize(
       initializationSettings,
