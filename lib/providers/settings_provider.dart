@@ -34,7 +34,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> _favoriteTeams = [];
   List<String> _categoryOrder = [];
   List<NewsSource> _allSources = [];
-  bool _onlyFavoriteTeams = true; // Domyślnie filtrujemy do zainteresowań
+  bool _onlyFavoriteTeams = true; 
   bool _notificationsEnabled = false;
   bool _onboardingCompleted = false;
   bool _showSportsBar = true;
@@ -60,7 +60,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> get selectedLeagueIds => List.unmodifiable(_selectedLeagueIds);
 
   Future<void> init() async {
-    debugPrint('Sowa Settings: Inicjalizacja V4.2...');
+    debugPrint('Sowa Settings: Inicjalizacja V4.5...');
     
     await StorageService().init();
     final settingsBox = await Hive.openBox(settingsBoxName);
@@ -70,7 +70,6 @@ class SettingsProvider with ChangeNotifier {
     if (categoriesBox.isEmpty) {
       await categoriesBox.putAll({for (var c in NewsCategory.defaultCategories) c.id: c});
     }
-    // Upewnij się, że nowe kategorie (np. "deals") są obecne dla starych użytkowników
     for (final cat in NewsCategory.defaultCategories) {
       if (!categoriesBox.containsKey(cat.id)) {
         await categoriesBox.put(cat.id, cat);
@@ -102,10 +101,10 @@ class SettingsProvider with ChangeNotifier {
     // 4a. Wybrane ligi sportowe
     _selectedLeagueIds = List<String>.from(settingsBox.get(
       selectedLeaguesKey,
-      defaultValue: <String>[], // Pusta lista na start — użytkownik wybiera sam
+      defaultValue: <String>[], 
     ));
 
-    // 4. Kolejność kategorii — MIGRACJA: dodaj brakujące, usuń nieistniejące
+    // 4. Kolejność kategorii
     _categoryOrder = List<String>.from(settingsBox.get(
       categoryOrderKey,
       defaultValue: _allCategories.map((c) => c.id).toList(),
@@ -115,13 +114,11 @@ class SettingsProvider with ChangeNotifier {
       if (!_categoryOrder.contains(cat.id)) {
         _categoryOrder.add(cat.id);
         orderChanged = true;
-        debugPrint('Sowa Settings: Dodano do kolejności: ${cat.id}');
       }
     }
     _categoryOrder.removeWhere((id) => !_allCategories.any((c) => c.id == id));
     if (orderChanged) {
       await settingsBox.put(categoryOrderKey, _categoryOrder);
-      debugPrint('Sowa Settings: Zapisano nową kolejność: $_categoryOrder');
     }
 
     // 5. Aktywne kategorie
@@ -130,7 +127,6 @@ class SettingsProvider with ChangeNotifier {
       defaultValue: _allCategories.map((c) => c.id).toList(),
     ));
 
-    // Dodaj nowe kategorie do aktywnych dla starych użytkowników
     bool changed = false;
     for (final cat in _allCategories) {
       if (!_activeCategoryIds.contains(cat.id)) {
@@ -142,7 +138,7 @@ class SettingsProvider with ChangeNotifier {
       await Hive.box(settingsBoxName).put(activeCategoriesKey, _activeCategoryIds);
     }
 
-    // 5. Włączone źródła (domyślnie te z isDefault)
+    // 5. Włączone źródła
     _enabledSourceIds = List<String>.from(settingsBox.get(
       sourcesEnabledKey,
       defaultValue: _allSources.where((s) => s.isDefault).map((s) => s.id).toList(),
@@ -153,7 +149,7 @@ class SettingsProvider with ChangeNotifier {
       await saveEnabledSources();
     }
 
-    // 6. Zainteresowania (słowa kluczowe)
+    // 6. Zainteresowania
     _favoriteTeams = List<String>.from(settingsBox.get(teamsKey, defaultValue: <String>[]));
 
     // 7. Powiadomienia
@@ -165,10 +161,9 @@ class SettingsProvider with ChangeNotifier {
 
     await _ensureNewSourcesRegistered();
     notifyListeners();
-    debugPrint('Sowa Settings: Gotowe (Tryb Personalizacji OK)');
+    debugPrint('Sowa Settings: Gotowe (V4.5 Clean)');
   }
 
-  /// Upewnia się, że nowe źródła są obecne u starych użytkowników
   Future<void> _ensureNewSourcesRegistered() async {
     final box = await Hive.openBox<NewsSource>(sourcesBoxName);
     final newIds = ['natemat_pl', 'gryonline_promocje', 'purepc_promocje', 'lowcygier', 'kodpromo', 'warszawa_pl', 'warszawa_wpigulce', 'uw_news'];
@@ -284,6 +279,12 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> toggleAllSources(bool enable) async {
+    _enabledSourceIds = enable ? _allSources.map((s) => s.id).toList() : [];
+    await saveEnabledSources();
+    notifyListeners();
+  }
+
   Future<void> reorderCategories(int old, int neu) async {
     if (neu > old) neu -= 1;
     final item = _categoryOrder.removeAt(old);
@@ -292,7 +293,6 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Wszystkie kategorie (aktywne i nieaktywne) w kolejności ustawionej przez użytkownika
   List<NewsCategory> get allCategoriesOrdered {
     List<NewsCategory> ordered = [];
     for (var id in _categoryOrder) {
@@ -305,13 +305,9 @@ class SettingsProvider with ChangeNotifier {
     return ordered;
   }
 
-  /// Sprawdza czy kategoria o danym ID jest aktywna
   bool isCategoryActive(String id) => _activeCategoryIds.contains(id);
-
-  /// Sprawdza czy źródło o danym ID jest włączone
   bool isSourceActive(String id) => _enabledSourceIds.contains(id);
 
-  /// Zwraca tylko aktywne kategorie w kolejności ustawionej przez użytkownika
   List<NewsCategory> get activeCategories {
     return allCategoriesOrdered.where((c) => _activeCategoryIds.contains(c.id)).toList();
   }
@@ -360,18 +356,10 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Dodaje nową kategorię użytkownika (np. "AI", "Finanse")
   Future<void> addCustomCategory(String name, IconData icon) async {
     final id = 'custom_${name.toLowerCase().replaceAll(' ', '_')}';
     if (_allCategories.any((c) => c.id == id)) return;
-
-    final newCategory = NewsCategory(
-      id: id,
-      name: name,
-      iconCode: icon.codePoint,
-      isCustom: true,
-    );
-
+    final newCategory = NewsCategory(id: id, name: name, iconCode: icon.codePoint, isCustom: true);
     final box = Hive.box<NewsCategory>(categoriesBoxName);
     await box.put(id, newCategory);
     _allCategories = box.values.toList();
@@ -382,18 +370,13 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Ustawia listę aktywnych kategorii (używane przy onboardingu)
   Future<void> setSelectedCategories(List<String> ids) async {
     _activeCategoryIds = List<String>.from(ids);
-    // Upewnij się, że kategoria "all" jest zawsze aktywna
-    if (!_activeCategoryIds.contains('all')) {
-      _activeCategoryIds.insert(0, 'all');
-    }
+    if (!_activeCategoryIds.contains('all')) _activeCategoryIds.insert(0, 'all');
     await Hive.box(settingsBoxName).put(activeCategoriesKey, _activeCategoryIds);
     notifyListeners();
   }
 
-  /// Oznacza onboardig jako zakończony
   Future<void> completeOnboarding() async {
     _onboardingCompleted = true;
     await Hive.box(settingsBoxName).put(onboardingKey, true);

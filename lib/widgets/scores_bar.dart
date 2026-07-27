@@ -52,15 +52,12 @@ class _ScoresBarState extends State<ScoresBar> {
 
     return Consumer<SportsProvider>(
       builder: (context, provider, child) {
-        if (provider.isLoading && provider.events.isEmpty && settings.selectedLeagueIds.isEmpty) {
+        if (provider.isLoading && provider.events.isEmpty) {
           return _buildLoading();
         }
 
-        // Build tiles: API events + fallback tiles for leagues without data
-        final tiles = _buildTiles(provider, settings);
-
-        if (tiles.isEmpty) {
-          return _buildEmptyState(context);
+        if (provider.events.isEmpty) {
+          return _buildEmptyState(context, settings.selectedLeagueIds.isEmpty);
         }
 
         return Container(
@@ -69,90 +66,23 @@ class _ScoresBarState extends State<ScoresBar> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: tiles.length,
-            itemBuilder: (context, index) => tiles[index],
+            itemCount: provider.events.length,
+            itemBuilder: (context, index) {
+              final event = provider.events[index];
+              if (event is MatchEvent) {
+                return _MatchScoreTile(event: event);
+              } else if (event is RaceEvent) {
+                return _RaceTile(event: event);
+              }
+              return const SizedBox.shrink();
+            },
           ),
         );
       },
     );
   }
 
-  List<Widget> _buildTiles(SportsProvider provider, SettingsProvider settings) {
-    final List<Widget> tiles = [];
-    final selectedIds = settings.selectedLeagueIds;
-
-    // Group API events by league/competition
-    final Map<String, List<SportEvent>> eventsByLeague = {};
-    for (final event in provider.events) {
-      if (event is MatchEvent) {
-        // Try to match event to a selected league by competition name
-        for (final id in selectedIds) {
-          final league = SportLeague.findById(id);
-          if (league != null && _eventMatchesLeague(event, league)) {
-            eventsByLeague.putIfAbsent(id, () => []).add(event);
-            break;
-          }
-        }
-      } else if (event is RaceEvent) {
-        // F1 events
-        if (selectedIds.contains('f1')) {
-          tiles.add(_RaceTile(event: event));
-        }
-      }
-    }
-
-    // Add API events for selected leagues
-    for (final id in selectedIds) {
-      if (eventsByLeague.containsKey(id)) {
-        final events = eventsByLeague[id]!;
-        for (final event in events) {
-          if (event is MatchEvent) {
-            tiles.add(_MatchScoreTile(event: event));
-          }
-        }
-      } else {
-        // No API data — show fallback tile
-        final league = SportLeague.findById(id);
-        if (league != null) {
-          tiles.add(_FallbackLeagueTile(league: league));
-        }
-      }
-    }
-
-    // Add F1 tile if selected and has event
-    if (selectedIds.contains('f1') && !tiles.any((t) => t is _RaceTile)) {
-      // Check if F1 event exists in provider
-      final f1Event = provider.events.whereType<RaceEvent>().firstOrNull;
-      if (f1Event != null) {
-        tiles.insert(0, _RaceTile(event: f1Event));
-      } else {
-        tiles.insert(0, _FallbackLeagueTile(league: SportLeague.findById('f1')!));
-      }
-    }
-
-    return tiles;
-  }
-
-  bool _eventMatchesLeague(MatchEvent event, SportLeague league) {
-    // Simple string matching on competition name
-    final eventName = event.competition.toLowerCase();
-    final leagueName = league.name.toLowerCase();
-
-    if (eventName.contains(leagueName)) return true;
-    if (leagueName.contains(eventName)) return true;
-
-    // Check country
-    if (league.country == 'Polska' && eventName.contains('pol')) return true;
-    if (league.countryCode == 'GB' && eventName.contains('eng')) return true;
-    if (league.countryCode == 'IT' && eventName.contains('ita')) return true;
-    if (league.countryCode == 'ES' && eventName.contains('esp')) return true;
-    if (league.countryCode == 'DE' && eventName.contains('ger')) return true;
-    if (league.countryCode == 'FR' && eventName.contains('fra')) return true;
-
-    return false;
-  }
-
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, bool noLeagues) {
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SportSettingsScreen())),
       child: Container(
@@ -170,13 +100,13 @@ class _ScoresBarState extends State<ScoresBar> {
           children: [
             const Icon(Icons.sports_soccer, size: 28, color: Colors.grey),
             const SizedBox(height: 8),
-            const Text(
-              'Wybierz ligi sportowe',
-              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+            Text(
+              noLeagues ? 'Wybierz ligi sportowe' : 'Brak meczów Twoich faworytów',
+              style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
-              'Kliknij aby dodać wyniki',
+              'Kliknij, aby spersonalizować pasek',
               style: TextStyle(fontSize: 10, color: Colors.grey.withValues(alpha: 0.6)),
             ),
           ],
@@ -204,9 +134,30 @@ class _ScoresBarState extends State<ScoresBar> {
       ),
     );
   }
-}
 
-// ─── TILE: MECZ Z API ───
+  void _showDebugDialog(BuildContext context, List<String> logs) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('DIAGNOSTYKA V4.5'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: logs.length,
+            itemBuilder: (context, i) => Text(
+              logs[i],
+              style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ZAMKNIJ')),
+        ],
+      ),
+    );
+  }
+}
 
 class _MatchScoreTile extends StatelessWidget {
   final MatchEvent event;
@@ -315,8 +266,6 @@ class _MatchScoreTile extends StatelessWidget {
   }
 }
 
-// ─── TILE: WYŚCIG (F1 / WRC) ───
-
 class _RaceTile extends StatelessWidget {
   final RaceEvent event;
   const _RaceTile({required this.event});
@@ -357,82 +306,5 @@ class _RaceTile extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-// ─── TILE: FALLBACK (brak danych z API) ───
-
-class _FallbackLeagueTile extends StatelessWidget {
-  final SportLeague league;
-  const _FallbackLeagueTile({required this.league});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _openFlashscore(context),
-      child: Container(
-        width: 170,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    league.discipline.emoji,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-                Icon(Icons.open_in_new, size: 12, color: AppTheme.accentGold.withValues(alpha: 0.6)),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              league.name,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              league.country,
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppTheme.accentGold.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'SPRAWDŹ NA FLASHSCORE',
-                style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: AppTheme.accentGold.withValues(alpha: 0.8)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openFlashscore(BuildContext context) async {
-    final url = league.flashscoreUrl ?? 'https://www.flashscore.com';
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie można otworzyć: $url')),
-      );
-    }
   }
 }

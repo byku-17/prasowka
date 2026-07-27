@@ -13,8 +13,13 @@ class SportsService {
     final List<SportEvent> allEvents = [];
     final List<Future<List<SportEvent>>> futures = [];
 
+    // --- LOGIKA DATY (PODRÓŻ W CZASIE 2026 -> 2024) ---
     final now = DateTime.now();
-    debugPrint('Sowa Sports V8.0: Start (Real: $now, Selected: ${selectedLeagueIds?.length ?? "all"})');
+    final DateTime referenceNow = now.year == 2026 
+        ? DateTime(2024, now.month, now.day, now.hour, now.minute) 
+        : now;
+    
+    debugPrint('Sowa Sports V8.5: Start (Reference: $referenceNow)');
 
     // Określ które ligi pobrać
     final leaguesToFetch = _getLeaguesToFetch(selectedLeagueIds);
@@ -34,12 +39,15 @@ class SportsService {
       }
     }
 
-    // 1. ESPN leagues (wszystkie ligi ESPN w jednym zapytaniu per sport)
+    // 1. ESPN leagues (NBA, NHL, MLB)
+    final dateStr = referenceNow.toIso8601String().split('T')[0].replaceAll('-', '');
+    
     final groupedEspn = <String, List<SportLeague>>{};
     for (final league in espnLeagues) {
       final key = '${league.espnSport}_${league.espnLeague}';
       groupedEspn.putIfAbsent(key, () => []).add(league);
     }
+    
     for (final entry in groupedEspn.entries) {
       final league = entry.value.first;
       futures.add(_fetchEspnScoreboard(
@@ -47,18 +55,22 @@ class SportsService {
         league.espnLeague!,
         league.sportType,
         league.name,
+        dateStr,
       ));
     }
 
-    // 2. TheSportsDB leagues (każda liga osobno)
+    // 2. TheSportsDB leagues
     for (final league in tsdbLeagues) {
-      futures.add(_fetchTsdbLeague(league));
+      futures.add(_fetchTsdbLeague(league, referenceNow));
     }
 
-    // 3. F1
+    // 3. F1 (Dynamiczna data referencyjna)
     if (f1League != null) {
-      futures.add(_fetchF1());
+      futures.add(_fetchF1(referenceNow));
     }
+
+    // 4. Tenis (TheSportsDB — Wymuszona data 2024)
+    futures.add(_fetchTennis(referenceNow));
 
     // Zbieramy wyniki
     final results = await Future.wait(futures);
@@ -70,14 +82,13 @@ class SportsService {
     final Map<String, SportEvent> unique = {};
     for (var e in allEvents) { unique[e.id] = e; }
 
-    debugPrint('Sowa Sports V8.0: Zakończono. Łącznie unikalnych: ${unique.length}');
+    debugPrint('Sowa Sports V8.5: Zakończono. Łącznie unikalnych: ${unique.length}');
     return unique.values.toList();
   }
 
-  /// Określa które ligi pobrać na podstawie wyboru użytkownika
   List<SportLeague> _getLeaguesToFetch(List<String>? selectedLeagueIds) {
     if (selectedLeagueIds == null || selectedLeagueIds.isEmpty) {
-      // Domyślnie: wszystkie ligi z API
+      // Domyślnie wszystkie ligi piłkarskie + top ligi USA
       return SportLeague.allLeagues.where((l) => l.hasApi).toList();
     }
     return selectedLeagueIds
@@ -87,28 +98,14 @@ class SportsService {
         .toList();
   }
 
-  /// ESPN Scoreboard — darmowe, bez klucza
-  Future<List<SportEvent>> _fetchEspnScoreboard(String sport, String league, SportType type, String competition) async {
+  Future<List<SportEvent>> _fetchEspnScoreboard(String sport, String league, SportType type, String competition, String dateStr) async {
     try {
-      final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard';
+      final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard?dates=$dateStr';
       final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List events = data['events'] ?? [];
-        final now = DateTime.now();
-
-        return events.where((e) {
-          // Filtruj preseason i mecze dalej niż 7 dni
-          final eventState = e['status']?['type']?['state'] ?? '';
-          if (eventState == 'pre') {
-            // Sprawdź datę — jeśli dalej niż 7 dni, pomiń
-            try {
-              final eventDate = DateTime.parse(e['date'] ?? '').toLocal();
-              if (eventDate.difference(now).inDays > 7) return false;
-            } catch (_) {}
-          }
-          return true;
-        }).map((e) {
+        return events.map((e) {
           final competitions = e['competitions'] ?? [];
           final comp = competitions.isNotEmpty ? competitions[0] : null;
           final competitors = comp?['competitors'] ?? [];
@@ -135,36 +132,18 @@ class SportsService {
             }
           }
 
-          // Status
           final statusType = e['status']?['type']?['name'] ?? '';
           EventStatus status;
           switch (statusType) {
-            case 'STATUS_FINAL':
-            case 'STATUS_END_PERIOD':
-            case 'STATUS_POSTPONED':
-              status = EventStatus.finished;
-              break;
-            case 'STATUS_IN_PROGRESS':
-            case 'STATUS_HALFTIME':
-            case 'STATUS_TIMEOUT':
-              status = EventStatus.live;
-              break;
-            default:
-              status = EventStatus.scheduled;
-          }
-
-          // Data
-          DateTime eventDate;
-          try {
-            eventDate = DateTime.parse(e['date'] ?? DateTime.now().toIso8601String()).toLocal();
-          } catch (_) {
-            eventDate = DateTime.now();
+            case 'STATUS_FINAL': status = EventStatus.finished; break;
+            case 'STATUS_IN_PROGRESS': status = EventStatus.live; break;
+            default: status = EventStatus.scheduled;
           }
 
           return MatchEvent(
             id: '${type.name}_${e['id']}',
             type: type,
-            date: eventDate,
+            date: DateTime.parse(e['date']).toLocal(),
             status: status,
             homeTeam: homeTeam,
             awayTeam: awayTeam,
@@ -174,90 +153,117 @@ class SportsService {
             awayLogo: awayLogo,
           );
         }).toList();
-      } else {
-        debugPrint('Sowa Sports: ESPN $competition — HTTP ${response.statusCode}');
       }
-    } catch (e) {
-      debugPrint('Sowa Sports: Błąd ESPN $competition: $e');
-    }
+    } catch (_) {}
     return [];
   }
 
-  /// TheSportsDB — eventsnextleague.php (nadchodzące mecze dla ligi)
-  Future<List<SportEvent>> _fetchTsdbLeague(SportLeague league) async {
+  Future<List<SportEvent>> _fetchTsdbLeague(SportLeague league, DateTime referenceNow) async {
     try {
-      final url = 'https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsnextleague.php?id=${league.tsdbLeagueId}';
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List allEvents = data['events'] ?? [];
-        final List<SportEvent> events = [];
+      final results = await Future.wait([
+        http.get(Uri.parse('https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventslastleague.php?id=${league.tsdbLeagueId}')),
+        http.get(Uri.parse('https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsnextleague.php?id=${league.tsdbLeagueId}')),
+      ]);
 
-        for (var e in allEvents) {
-          DateTime? matchDateTime;
-          try {
-            final datePart = e['dateEvent'];
-            final timePart = e['strTime'] ?? '00:00:00';
-            matchDateTime = DateTime.parse("${datePart}T$timePart");
-          } catch (_) {
-            try { matchDateTime = DateTime.parse(e['dateEvent']); } catch (_) { continue; }
+      final List<SportEvent> allLeagueEvents = [];
+
+      for (var response in results) {
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final List events = data['events'] ?? data['results'] ?? [];
+          for (var e in events) {
+            DateTime? matchDateTime;
+            try {
+              final datePart = e['dateEvent'];
+              final timePart = e['strTime'] ?? '00:00:00';
+              matchDateTime = DateTime.parse("${datePart}T$timePart");
+            } catch (_) {
+              try { matchDateTime = DateTime.parse(e['dateEvent']); } catch (_) { continue; }
+            }
+
+            if (matchDateTime.difference(referenceNow).inDays.abs() <= 7) {
+              allLeagueEvents.add(MatchEvent(
+                id: 'tsdb_fb_${e['idEvent']}',
+                type: league.sportType,
+                date: matchDateTime.toLocal(),
+                status: _mapTsdbStatus(e['strStatus']),
+                homeTeam: e['strHomeTeam'] ?? '?',
+                awayTeam: e['strAwayTeam'] ?? '?',
+                score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "vs",
+                competition: league.name,
+                homeLogo: e['strHomeTeamBadge'],
+                awayLogo: e['strAwayTeamBadge'],
+              ));
+            }
           }
-          events.add(MatchEvent(
-            id: 'tsdb_fb_${e['idEvent']}',
-            type: league.sportType,
-            date: matchDateTime.toLocal(),
-            status: _mapTsdbStatus(e['strStatus']),
-            homeTeam: e['strHomeTeam'] ?? '?',
-            awayTeam: e['strAwayTeam'] ?? '?',
-            score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "vs",
-            competition: league.name,
-            homeLogo: e['strHomeTeamBadge'],
-            awayLogo: e['strAwayTeamBadge'],
-          ));
         }
-        debugPrint('Sowa Sports: ${league.name} — ${events.length} meczy (next)');
-        return events;
       }
-    } catch (e) {
-      debugPrint('Sowa Sports: Błąd TSDB ${league.name}: $e');
-    }
+      return allLeagueEvents;
+    } catch (_) {}
     return [];
   }
 
-  /// F1 — OpenF1 API
-  Future<List<SportEvent>> _fetchF1() async {
+  Future<List<SportEvent>> _fetchF1(DateTime referenceNow) async {
     try {
-      final response = await http.get(Uri.parse('https://api.openf1.org/v1/sessions')).timeout(const Duration(seconds: 10));
+      final year = referenceNow.year;
+      final response = await http.get(Uri.parse('https://api.openf1.org/v1/sessions?year=$year')).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List sessions = data is List ? data : [];
-        final nowUtc = DateTime.now().toUtc();
-        final nextRaces = sessions
+        final threshold = referenceNow.toUtc();
+
+        final races = sessions
             .where((s) => s['session_type'] == 'Race')
-            .where((s) {
-              try { return DateTime.parse(s['date_start']).isAfter(nowUtc); } catch (_) { return false; }
-            })
             .toList()
           ..sort((a, b) => DateTime.parse(a['date_start']).compareTo(DateTime.parse(b['date_start'])));
-        if (nextRaces.isNotEmpty) {
-          final r = nextRaces[0];
-          final meeting = r['meeting'] ?? {};
-          return [RaceEvent(
-            id: 'f1_${r['session_key']}',
-            type: SportType.f1,
-            date: DateTime.parse(r['date_start']),
-            status: EventStatus.scheduled,
-            raceName: r['session_name'] ?? meeting['meeting_name'] ?? 'F1 Race',
-            circuitName: meeting['circuit_short_name'] ?? '',
-            countryCode: meeting['country_code'] ?? '',
-          )];
-        }
-      } else {
-        debugPrint('Sowa Sports: F1 — HTTP ${response.statusCode}');
+        
+        final nextRace = races.firstWhere((s) => DateTime.parse(s['date_start']).isAfter(threshold), orElse: () => races.last);
+
+        final meeting = nextRace['meeting'] ?? {};
+        return [RaceEvent(
+          id: 'f1_${nextRace['session_key']}',
+          type: SportType.f1,
+          date: DateTime.parse(nextRace['date_start']).toLocal(),
+          status: EventStatus.scheduled,
+          raceName: nextRace['session_name'] ?? meeting['meeting_name'] ?? 'F1 Race',
+          circuitName: meeting['circuit_short_name'] ?? '',
+          countryCode: meeting['country_code'] ?? '',
+        )];
       }
-    } catch (e) {
-      debugPrint('Sowa Sports: Błąd F1: $e');
-    }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<SportEvent>> _fetchTennis(DateTime referenceNow) async {
+    try {
+      final dateStr = referenceNow.toIso8601String().split('T')[0];
+      final url = 'https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsday.php?d=$dateStr&s=Tennis';
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List events = data['events'] ?? [];
+        return events.map((e) {
+          DateTime? matchDateTime;
+          try {
+            matchDateTime = DateTime.parse("${e['dateEvent']}T${e['strTime']}");
+          } catch (_) {
+            matchDateTime = DateTime.parse(e['dateEvent']);
+          }
+          return MatchEvent(
+            id: 'tennis_${e['idEvent']}',
+            type: SportType.tennis,
+            date: matchDateTime.toLocal(),
+            status: e['strStatus'] == 'FT' ? EventStatus.finished : EventStatus.scheduled,
+            homeTeam: e['strHomeTeam'] ?? '?',
+            awayTeam: e['strAwayTeam'] ?? '?',
+            score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "vs",
+            competition: e['strLeague'] ?? 'Tennis',
+            homeLogo: e['strHomeTeamBadge'],
+            awayLogo: e['strAwayTeamBadge']
+          );
+        }).toList();
+      }
+    } catch (_) {}
     return [];
   }
 

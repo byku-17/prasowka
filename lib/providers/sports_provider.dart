@@ -26,39 +26,40 @@ class SportsProvider with ChangeNotifier {
     List<String>? selectedLeagueIds,
     bool force = false
   }) async {
-    // Odświeżamy co 5 minut, chyba że wymuszono (force)
     if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!).inMinutes < 5) {
       return;
     }
 
     _isLoading = true;
     _debugLogs.clear();
-    _debugLogs.add('--- DIAGNOSTYKA V8.0 ---');
+    _debugLogs.add('--- DIAGNOSTYKA V8.5 ---');
     _debugLogs.add('Start: ${DateTime.now().toString().split('.')[0]}');
-    _debugLogs.add('Wybrane ligi: ${selectedLeagueIds?.length ?? "wszystkie"}');
-    _debugLogs.add('Zainteresowania: ${favoriteKeywords?.join(', ') ?? 'brak'}');
     notifyListeners();
 
     try {
       final newEvents = await _service.fetchAllEvents(selectedLeagueIds: selectedLeagueIds);
-      _events = _filterAndSortEvents(newEvents, favoriteKeywords, onlyFavoriteTeams);
-      _lastFetch = DateTime.now();
       
-      _debugLogs.add('Serwer zwrócił: ${newEvents.length} meczów');
-      _debugLogs.add('Po filtrach: ${_events.length} meczów');
+      // 1. Filtrujemy pod zainteresowania
+      var filtered = _filterAndSortEvents(newEvents, favoriteKeywords, onlyFavoriteTeams);
       
-      if (_events.isEmpty && newEvents.isNotEmpty) {
-        _debugLogs.add('HINT: Żadne hasło nie pasuje do pobranych danych.');
-        if (newEvents.isNotEmpty) {
-          final competitions = newEvents.whereType<MatchEvent>().map((e) => e.competition).toSet();
-          _debugLogs.add('Dostępne ligi: ${competitions.take(3).join(', ')}');
-        }
+      // 2. TRYB DISCOVERY: Jeśli pusto, ale serwer coś ma -> pokaż hity dnia
+      if (filtered.isEmpty && newEvents.isNotEmpty && onlyFavoriteTeams) {
+        _debugLogs.add('INFO: Brak Twoich drużyn. Włączam Tryb Discovery.');
+        // Weź 5 najważniejszych meczów ze świata
+        filtered = newEvents.take(8).toList();
+        // Dodaj flagę lub informację do logów
+        _debugLogs.add('Discovery: Pokazuję ${filtered.length} hitów dnia.');
       }
+
+      _events = filtered;
+      _lastFetch = DateTime.now();
+      _debugLogs.add('Serwer zwrócił: ${newEvents.length} meczów');
+      _debugLogs.add('Widoczne na pasku: ${_events.length} meczów');
       
-      // Zarządzanie odświeżaniem LIVE
       _currentFavorites = favoriteKeywords;
       _currentOnlyFavorites = onlyFavoriteTeams;
       _currentSelectedLeagues = selectedLeagueIds;
+
       if (_events.any((e) => e.status == EventStatus.live)) {
         _startAutoRefresh();
       } else {
@@ -94,7 +95,6 @@ class SportsProvider with ChangeNotifier {
   }
 
   List<SportEvent> _filterAndSortEvents(List<SportEvent> list, List<String>? favorites, bool onlyFavs) {
-    // Filtrowanie wyłącznie po zainteresowaniach (jeśli opcja włączona)
     if (onlyFavs && favorites != null && favorites.isNotEmpty) {
       final normalizedFavs = favorites.map((f) => TextUtils.normalize(f)).toList();
       list = list.where((e) {
@@ -109,22 +109,9 @@ class SportsProvider with ChangeNotifier {
       }).toList();
     }
 
-    // Sortowanie: LIVE > Data (najnowsze na górze)
     list.sort((a, b) {
       if (a.status == EventStatus.live && b.status != EventStatus.live) return -1;
       if (a.status != EventStatus.live && b.status == EventStatus.live) return 1;
-
-      // Priorytet dla dopasowania 1:1 (jeśli nazwa dokładnie taka jak hasło)
-      if (favorites != null && favorites.isNotEmpty) {
-         final normalizedFavs = favorites.map((f) => TextUtils.normalize(f)).toList();
-         bool aExact = false;
-         bool bExact = false;
-         if (a is MatchEvent) aExact = normalizedFavs.any((f) => TextUtils.normalize(a.homeTeam) == f || TextUtils.normalize(a.awayTeam) == f);
-         if (b is MatchEvent) bExact = normalizedFavs.any((f) => TextUtils.normalize(b.homeTeam) == f || TextUtils.normalize(b.awayTeam) == f);
-         if (aExact && !bExact) return -1;
-         if (!aExact && bExact) return 1;
-      }
-
       return b.date.compareTo(a.date);
     });
 
