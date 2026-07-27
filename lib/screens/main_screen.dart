@@ -20,18 +20,21 @@ class _MainScreenState extends State<MainScreen> {
   late final PageController _pageController;
   DateTime? _lastBackPressTime;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    SearchScreen(),
-    SavedScreen(),
-    SettingsScreen(),
-  ];
+  final _searchScreenKey = GlobalKey<SearchScreenState>();
+
+  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = context.read<SettingsProvider>().lastTabIndex;
     _pageController = PageController(initialPage: _currentIndex);
+    _screens = [
+      const HomeScreen(),
+      SearchScreen(key: _searchScreenKey),
+      const SavedScreen(),
+      const SettingsScreen(),
+    ];
   }
 
   @override
@@ -41,6 +44,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _onTabTapped(int index) {
+    // Tap na ten sam tab → aktywuj klawiaturę w SearchScreen
+    if (index == _currentIndex && index == 1) {
+      _searchScreenKey.currentState?.activateSearch();
+      return;
+    }
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 250),

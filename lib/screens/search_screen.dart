@@ -10,10 +10,10 @@ class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  State<SearchScreen> createState() => SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
+class SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final RssService _rssService = RssService();
@@ -31,7 +31,7 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
-  void _activateSearch() {
+  void activateSearch() {
     setState(() => _isSearchActive = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
@@ -121,7 +121,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
               ],
             )
-          : AppBar(title: const Text('SZKAJ')),
+          : AppBar(title: const Text('SZUKAJ')),
       body: _isSearchActive ? _buildActiveBody() : _buildIdleBody(),
     );
   }
@@ -129,7 +129,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildIdleBody() {
     return Center(
       child: GestureDetector(
-        onTap: _activateSearch,
+        onTap: activateSearch,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
