@@ -94,4 +94,44 @@ class Article extends HiveObject {
     final minutes = (words / 200).ceil();
     return minutes > 0 ? minutes : 1;
   }
+
+  /// Konwersja do Map (bezpieczna dla isolate boundaries)
+  Map<String, dynamic> toTransferMap() => {
+    'id': id,
+    'title': title,
+    'description': description,
+    'content': content,
+    'url': url,
+    'imageUrl': imageUrl,
+    'publishedAt': publishedAt.millisecondsSinceEpoch,
+    'sourceName': sourceName,
+    'isFavorite': isFavorite,
+    'readLater': readLater,
+    'fullContent': fullContent,
+    'isLiked': isLiked,
+    'isDisliked': isDisliked,
+    'translatedTitle': translatedTitle,
+    'translatedDescription': translatedDescription,
+    'translatedFullContent': translatedFullContent,
+  };
+
+  /// Odtworzenie z Map (bezpieczna dla isolate boundaries)
+  factory Article.fromTransferMap(Map<String, dynamic> m) => Article(
+    id: m['id'] ?? '',
+    title: m['title'] ?? '',
+    description: m['description'] ?? '',
+    content: m['content'] ?? '',
+    url: m['url'] ?? '',
+    imageUrl: m['imageUrl'],
+    publishedAt: DateTime.fromMillisecondsSinceEpoch(m['publishedAt'] ?? 0),
+    sourceName: m['sourceName'] ?? '',
+    isFavorite: m['isFavorite'] ?? false,
+    readLater: m['readLater'] ?? false,
+    fullContent: m['fullContent'],
+    isLiked: m['isLiked'] ?? false,
+    isDisliked: m['isDisliked'] ?? false,
+    translatedTitle: m['translatedTitle'],
+    translatedDescription: m['translatedDescription'],
+    translatedFullContent: m['translatedFullContent'],
+  );
 }

@@ -157,8 +157,10 @@ class NewsProvider with ChangeNotifier {
       _articlesMap[categoryId] = accumulated;
       
       if (accumulated.length > 50) {
+        // Konwertuj do Map przed compute (bezpieczne dla isolate boundaries z Article/HiveObject)
+        final transferList = accumulated.map((a) => a.toTransferMap()).toList();
         final mixed = await compute(_sortAndMixArticlesStatic, {
-          'list': accumulated,
+          'list': transferList,
           'teams': favoriteTeams ?? _lastFavoriteTeams,
           'categoryId': categoryId,
         });
@@ -200,7 +202,9 @@ class NewsProvider with ChangeNotifier {
   }
 
   static List<Article> _sortAndMixArticlesStatic(Map<String, dynamic> params) {
-    final List<Article> list = List<Article>.from(params['list']);
+    final List<Article> list = (params['list'] as List)
+        .map((m) => m is Map<String, dynamic> ? Article.fromTransferMap(m) : m as Article)
+        .toList();
     final List<String>? teams = params['teams'];
     final String categoryId = params['categoryId'];
 
