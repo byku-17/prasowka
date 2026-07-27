@@ -17,23 +17,38 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   late int _currentIndex;
+  late final PageController _pageController;
   DateTime? _lastBackPressTime;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const SearchScreen(),
-    const SavedScreen(),
-    const SettingsScreen(),
+  final List<Widget> _screens = const [
+    HomeScreen(),
+    SearchScreen(),
+    SavedScreen(),
+    SettingsScreen(),
   ];
 
   @override
   void initState() {
     super.initState();
-    // Inicjalizacja indeksu z ustawień
     _currentIndex = context.read<SettingsProvider>().lastTabIndex;
+    _pageController = PageController(initialPage: _currentIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   void _onTabTapped(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _onPageChanged(int index) {
     setState(() => _currentIndex = index);
     context.read<SettingsProvider>().setLastTabIndex(index);
   }
@@ -41,23 +56,20 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // Blokujemy domyślne wyjście
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
 
-        // 1. Jeśli nie jesteśmy na pierwszej zakładce -> wróć do pierwszej
         if (_currentIndex != 0) {
-          setState(() => _currentIndex = 0);
-          context.read<SettingsProvider>().setLastTabIndex(0);
+          _onTabTapped(0);
           return;
         }
 
-        // 2. Jeśli jesteśmy na pierwszej zakładce -> logika "podwójnego kliknięcia"
         final now = DateTime.now();
-        if (_lastBackPressTime == null || 
+        if (_lastBackPressTime == null ||
             now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
           _lastBackPressTime = now;
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text(
@@ -74,12 +86,13 @@ class _MainScreenState extends State<MainScreen> {
           return;
         }
 
-        // 3. Jeśli drugie kliknięcie nastąpiło szybko -> wyjdź
         await SystemNavigator.pop();
       },
       child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
+        body: PageView(
+          controller: _pageController,
+          onPageChanged: _onPageChanged,
+          physics: const ClampingScrollPhysics(),
           children: _screens,
         ),
         bottomNavigationBar: BottomNavigationBar(

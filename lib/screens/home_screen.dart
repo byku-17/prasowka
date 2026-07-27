@@ -141,6 +141,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       body: _tabController != null 
         ? TabBarView(
             controller: _tabController,
+            physics: const ClampingScrollPhysics(),
             children: _activeCategories.map((cat) => CategoryNewsList(category: cat)).toList(),
           )
         : const Center(child: CircularProgressIndicator()),
