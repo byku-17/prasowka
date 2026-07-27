@@ -56,8 +56,11 @@ class _ScoresBarState extends State<ScoresBar> {
           return _buildLoading();
         }
 
-        if (provider.events.isEmpty) {
-          return _buildEmptyState(context, settings.selectedLeagueIds.isEmpty);
+        // Buduj kafelki: eventy z API + fallback dla lig bez danych
+        final tiles = _buildTiles(provider, settings);
+
+        if (tiles.isEmpty) {
+          return _buildEmptyState(context, settings);
         }
 
         return Container(
@@ -66,23 +69,88 @@ class _ScoresBarState extends State<ScoresBar> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: provider.events.length,
-            itemBuilder: (context, index) {
-              final event = provider.events[index];
-              if (event is MatchEvent) {
-                return _MatchScoreTile(event: event);
-              } else if (event is RaceEvent) {
-                return _RaceTile(event: event);
-              }
-              return const SizedBox.shrink();
-            },
+            itemCount: tiles.length,
+            itemBuilder: (context, index) => tiles[index],
           ),
         );
       },
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, bool noLeagues) {
+  List<Widget> _buildTiles(SportsProvider provider, SettingsProvider settings) {
+    final List<Widget> tiles = [];
+    final selectedIds = settings.selectedLeagueIds;
+
+    // Grupuj eventy z API po ID ligi
+    final Map<String, List<SportEvent>> eventsByLeague = {};
+    for (final event in provider.events) {
+      if (event is MatchEvent) {
+        for (final id in selectedIds) {
+          final league = SportLeague.findById(id);
+          if (league != null && _eventMatchesLeague(event, league)) {
+            eventsByLeague.putIfAbsent(id, () => []).add(event);
+            break;
+          }
+        }
+      }
+    }
+
+    // Dodaj eventy z API dla wybranych lig
+    for (final id in selectedIds) {
+      if (eventsByLeague.containsKey(id)) {
+        for (final event in eventsByLeague[id]!) {
+          if (event is MatchEvent) {
+            tiles.add(_MatchScoreTile(event: event));
+          }
+        }
+      } else {
+        // Brak danych z API — pokaż fallback tile
+        final league = SportLeague.findById(id);
+        if (league != null) {
+          tiles.add(_FallbackLeagueTile(league: league));
+        }
+      }
+    }
+
+    // F1 — osobna obsługa (RaceEvent)
+    if (selectedIds.contains('f1')) {
+      final f1Event = provider.events.whereType<RaceEvent>().firstOrNull;
+      if (f1Event != null) {
+        tiles.insert(0, _RaceTile(event: f1Event));
+      } else if (!tiles.any((t) => t is _FallbackLeagueTile)) {
+        final f1League = SportLeague.findById('f1');
+        if (f1League != null) tiles.insert(0, _FallbackLeagueTile(league: f1League));
+      }
+    }
+
+    return tiles;
+  }
+
+  bool _eventMatchesLeague(MatchEvent event, SportLeague league) {
+    final eventName = event.competition.toLowerCase();
+    final leagueName = league.name.toLowerCase();
+
+    if (eventName.contains(leagueName) || leagueName.contains(eventName)) return true;
+
+    // Dopasowanie po kraju
+    switch (league.countryCode) {
+      case 'PL': return eventName.contains('pol');
+      case 'GB': return eventName.contains('eng') || eventName.contains('premier');
+      case 'IT': return eventName.contains('ita') || eventName.contains('serie a');
+      case 'ES': return eventName.contains('esp') || eventName.contains('laliga') || eventName.contains('la liga');
+      case 'DE': return eventName.contains('ger') || eventName.contains('bundesliga');
+      case 'FR': return eventName.contains('fra') || eventName.contains('ligue');
+      case 'NL': return eventName.contains('ned') || eventName.contains('eredivisie');
+      case 'PT': return eventName.contains('por') || eventName.contains('liga portugal');
+      case 'EU': return eventName.contains('champions') || eventName.contains('europa league') || eventName.contains('uefa');
+      case 'US': return eventName.contains('nba') || eventName.contains('nhl') || eventName.contains('mlb') || eventName.contains('nfl') || eventName.contains('mls');
+    }
+    return false;
+  }
+
+  Widget _buildEmptyState(BuildContext context, SettingsProvider settings) {
+    final hasLeagues = settings.selectedLeagueIds.isNotEmpty;
+
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SportSettingsScreen())),
       child: Container(
@@ -98,10 +166,10 @@ class _ScoresBarState extends State<ScoresBar> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.sports_soccer, size: 28, color: Colors.grey),
+            Icon(hasLeagues ? Icons.search_off : Icons.sports_soccer, size: 28, color: Colors.grey),
             const SizedBox(height: 8),
             Text(
-              noLeagues ? 'Wybierz ligi sportowe' : 'Brak meczów Twoich faworytów',
+              hasLeagues ? 'Brak meczów Twoich faworytów' : 'Wybierz ligi sportowe',
               style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
@@ -134,30 +202,9 @@ class _ScoresBarState extends State<ScoresBar> {
       ),
     );
   }
-
-  void _showDebugDialog(BuildContext context, List<String> logs) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('DIAGNOSTYKA V4.5'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: logs.length,
-            itemBuilder: (context, i) => Text(
-              logs[i],
-              style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ZAMKNIJ')),
-        ],
-      ),
-    );
-  }
 }
+
+// ─── TILE: MECZ Z API ───
 
 class _MatchScoreTile extends StatelessWidget {
   final MatchEvent event;
@@ -235,13 +282,8 @@ class _MatchScoreTile extends StatelessWidget {
     );
   }
 
-  String _formatDateShort(DateTime date) {
-    return "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}";
-  }
-
-  String _formatTime(DateTime date) {
-    return "${date.hour}:${date.minute.toString().padLeft(2, '0')}";
-  }
+  String _formatDateShort(DateTime date) => "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}";
+  String _formatTime(DateTime date) => "${date.hour}:${date.minute.toString().padLeft(2, '0')}";
 
   String _formatDateLabel(DateTime date) {
     final now = DateTime.now();
@@ -265,6 +307,8 @@ class _MatchScoreTile extends StatelessWidget {
     );
   }
 }
+
+// ─── TILE: WYŚCIG (F1 / WRC) ───
 
 class _RaceTile extends StatelessWidget {
   final RaceEvent event;
@@ -306,5 +350,67 @@ class _RaceTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ─── TILE: FALLBACK (brak danych z API) ───
+
+class _FallbackLeagueTile extends StatelessWidget {
+  final SportLeague league;
+  const _FallbackLeagueTile({required this.league});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _openFlashscore(context),
+      child: Container(
+        width: 170,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(league.discipline.emoji, style: const TextStyle(fontSize: 16)),
+                Icon(Icons.open_in_new, size: 12, color: AppTheme.accentGold.withValues(alpha: 0.6)),
+              ],
+            ),
+            const Spacer(),
+            Text(league.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(league.country, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.accentGold.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'SPRAWDŹ NA FLASHSCORE',
+                style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: AppTheme.accentGold.withValues(alpha: 0.8)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFlashscore(BuildContext context) async {
+    final url = league.flashscoreUrl ?? 'https://www.flashscore.com';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Nie można otworzyć: $url')));
+    }
   }
 }

@@ -8,30 +8,25 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class SportsService {
   String get _theSportsDbKey => dotenv.env['THESPORTSDB_API_KEY'] ?? '3';
 
-  /// Pobiera wydarzenia sportowe TYLKO dla wybranych lig
   Future<List<SportEvent>> fetchAllEvents({List<String>? selectedLeagueIds}) async {
     final List<SportEvent> allEvents = [];
     final List<Future<List<SportEvent>>> futures = [];
 
-    // --- LOGIKA DATY (PODRÓŻ W CZASIE 2026 -> 2024) ---
     final now = DateTime.now();
-    final DateTime referenceNow = now.year == 2026 
-        ? DateTime(2024, now.month, now.day, now.hour, now.minute) 
-        : now;
-    
-    debugPrint('Sowa Sports V8.5: Start (Reference: $referenceNow)');
+    debugPrint('Sowa Sports V8.6: Start ($now, Selected: ${selectedLeagueIds?.length ?? "all"})');
 
-    // Określ które ligi pobrać
     final leaguesToFetch = _getLeaguesToFetch(selectedLeagueIds);
 
-    // Grupuj ligi po źródle danych
     final espnLeagues = <SportLeague>[];
     final tsdbLeagues = <SportLeague>[];
     SportLeague? f1League;
+    bool needsTennis = false;
 
     for (final league in leaguesToFetch) {
       if (league.id == 'f1') {
         f1League = league;
+      } else if (league.id == 'tennis_wta' || league.id == 'tennis_atp') {
+        needsTennis = true;
       } else if (league.espnSport != null && league.espnLeague != null) {
         espnLeagues.add(league);
       } else if (league.tsdbLeagueId != null) {
@@ -39,15 +34,14 @@ class SportsService {
       }
     }
 
-    // 1. ESPN leagues (NBA, NHL, MLB)
-    final dateStr = referenceNow.toIso8601String().split('T')[0].replaceAll('-', '');
-    
+    // ESPN — jeden request per liga, z datą ddmmYYYY dla ESPN
+    final dateStr = '${now.day.toString().padLeft(2, '0')}${now.month.toString().padLeft(2, '0')}${now.year}';
+
     final groupedEspn = <String, List<SportLeague>>{};
     for (final league in espnLeagues) {
       final key = '${league.espnSport}_${league.espnLeague}';
       groupedEspn.putIfAbsent(key, () => []).add(league);
     }
-    
     for (final entry in groupedEspn.entries) {
       final league = entry.value.first;
       futures.add(_fetchEspnScoreboard(
@@ -59,36 +53,35 @@ class SportsService {
       ));
     }
 
-    // 2. TheSportsDB leagues
+    // TheSportsDB — 1 zapytanie per liga (eventsnextleague)
     for (final league in tsdbLeagues) {
-      futures.add(_fetchTsdbLeague(league, referenceNow));
+      futures.add(_fetchTsdbLeague(league));
     }
 
-    // 3. F1 (Dynamiczna data referencyjna)
+    // F1 — bez ?year=, pobieramy wszystkie sesje i filtrujemy
     if (f1League != null) {
-      futures.add(_fetchF1(referenceNow));
+      futures.add(_fetchF1());
     }
 
-    // 4. Tenis (TheSportsDB — Wymuszona data 2024)
-    futures.add(_fetchTennis(referenceNow));
+    // Tenis — tylko gdy wybrany
+    if (needsTennis) {
+      futures.add(_fetchTennis(now));
+    }
 
-    // Zbieramy wyniki
     final results = await Future.wait(futures);
     for (var list in results) {
       allEvents.addAll(list);
     }
 
-    // Usuwamy duplikaty
     final Map<String, SportEvent> unique = {};
     for (var e in allEvents) { unique[e.id] = e; }
 
-    debugPrint('Sowa Sports V8.5: Zakończono. Łącznie unikalnych: ${unique.length}');
+    debugPrint('Sowa Sports V8.6: Zakończono. Unikalnych: ${unique.length}');
     return unique.values.toList();
   }
 
   List<SportLeague> _getLeaguesToFetch(List<String>? selectedLeagueIds) {
     if (selectedLeagueIds == null || selectedLeagueIds.isEmpty) {
-      // Domyślnie wszystkie ligi piłkarskie + top ligi USA
       return SportLeague.allLeagues.where((l) => l.hasApi).toList();
     }
     return selectedLeagueIds
@@ -98,6 +91,7 @@ class SportsService {
         .toList();
   }
 
+  /// ESPN — z filtrem preseason (>7 dni w przyszłość = pomijamy)
   Future<List<SportEvent>> _fetchEspnScoreboard(String sport, String league, SportType type, String competition, String dateStr) async {
     try {
       final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard?dates=$dateStr';
@@ -105,7 +99,19 @@ class SportsService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List events = data['events'] ?? [];
-        return events.map((e) {
+        final now = DateTime.now();
+
+        return events.where((e) {
+          // Filtruj preseason + mecze >7 dni w przyszłość
+          final eventState = e['status']?['type']?['state'] ?? '';
+          if (eventState == 'pre') {
+            try {
+              final eventDate = DateTime.parse(e['date'] ?? '').toLocal();
+              if (eventDate.difference(now).inDays > 7) return false;
+            } catch (_) {}
+          }
+          return true;
+        }).map((e) {
           final competitions = e['competitions'] ?? [];
           final comp = competitions.isNotEmpty ? competitions[0] : null;
           final competitors = comp?['competitors'] ?? [];
@@ -135,15 +141,31 @@ class SportsService {
           final statusType = e['status']?['type']?['name'] ?? '';
           EventStatus status;
           switch (statusType) {
-            case 'STATUS_FINAL': status = EventStatus.finished; break;
-            case 'STATUS_IN_PROGRESS': status = EventStatus.live; break;
-            default: status = EventStatus.scheduled;
+            case 'STATUS_FINAL':
+            case 'STATUS_END_PERIOD':
+            case 'STATUS_POSTPONED':
+              status = EventStatus.finished;
+              break;
+            case 'STATUS_IN_PROGRESS':
+            case 'STATUS_HALFTIME':
+            case 'STATUS_TIMEOUT':
+              status = EventStatus.live;
+              break;
+            default:
+              status = EventStatus.scheduled;
+          }
+
+          DateTime eventDate;
+          try {
+            eventDate = DateTime.parse(e['date'] ?? DateTime.now().toIso8601String()).toLocal();
+          } catch (_) {
+            eventDate = DateTime.now();
           }
 
           return MatchEvent(
             id: '${type.name}_${e['id']}',
             type: type,
-            date: DateTime.parse(e['date']).toLocal(),
+            date: eventDate,
             status: status,
             homeTeam: homeTeam,
             awayTeam: awayTeam,
@@ -158,110 +180,109 @@ class SportsService {
     return [];
   }
 
-  Future<List<SportEvent>> _fetchTsdbLeague(SportLeague league, DateTime referenceNow) async {
+  /// TheSportsDB — 1 zapytanie per liga (eventsnextleague)
+  Future<List<SportEvent>> _fetchTsdbLeague(SportLeague league) async {
     try {
-      final results = await Future.wait([
-        http.get(Uri.parse('https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventslastleague.php?id=${league.tsdbLeagueId}')),
-        http.get(Uri.parse('https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsnextleague.php?id=${league.tsdbLeagueId}')),
-      ]);
+      final url = 'https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsnextleague.php?id=${league.tsdbLeagueId}';
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List events = data['events'] ?? [];
+        final List<SportEvent> result = [];
 
-      final List<SportEvent> allLeagueEvents = [];
-
-      for (var response in results) {
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          final List events = data['events'] ?? data['results'] ?? [];
-          for (var e in events) {
-            DateTime? matchDateTime;
-            try {
-              final datePart = e['dateEvent'];
-              final timePart = e['strTime'] ?? '00:00:00';
-              matchDateTime = DateTime.parse("${datePart}T$timePart");
-            } catch (_) {
-              try { matchDateTime = DateTime.parse(e['dateEvent']); } catch (_) { continue; }
-            }
-
-            if (matchDateTime.difference(referenceNow).inDays.abs() <= 7) {
-              allLeagueEvents.add(MatchEvent(
-                id: 'tsdb_fb_${e['idEvent']}',
-                type: league.sportType,
-                date: matchDateTime.toLocal(),
-                status: _mapTsdbStatus(e['strStatus']),
-                homeTeam: e['strHomeTeam'] ?? '?',
-                awayTeam: e['strAwayTeam'] ?? '?',
-                score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "vs",
-                competition: league.name,
-                homeLogo: e['strHomeTeamBadge'],
-                awayLogo: e['strAwayTeamBadge'],
-              ));
-            }
+        for (var e in events) {
+          DateTime? matchDateTime;
+          try {
+            final datePart = e['dateEvent'];
+            final timePart = e['strTime'] ?? '00:00:00';
+            matchDateTime = DateTime.parse("${datePart}T$timePart");
+          } catch (_) {
+            try { matchDateTime = DateTime.parse(e['dateEvent']); } catch (_) { continue; }
           }
+
+          result.add(MatchEvent(
+            id: 'tsdb_${league.id}_${e['idEvent']}',
+            type: league.sportType,
+            date: matchDateTime.toLocal(),
+            status: _mapTsdbStatus(e['strStatus']),
+            homeTeam: e['strHomeTeam'] ?? '?',
+            awayTeam: e['strAwayTeam'] ?? '?',
+            score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "vs",
+            competition: league.name,
+            homeLogo: e['strHomeTeamBadge'],
+            awayLogo: e['strAwayTeamBadge'],
+          ));
         }
+        debugPrint('Sowa Sports: ${league.name} — ${result.length} meczy');
+        return result;
       }
-      return allLeagueEvents;
     } catch (_) {}
     return [];
   }
 
-  Future<List<SportEvent>> _fetchF1(DateTime referenceNow) async {
+  /// F1 — bez ?year=, pobiera wszystkie sesje i filtruje przyszłe
+  Future<List<SportEvent>> _fetchF1() async {
     try {
-      final year = referenceNow.year;
-      final response = await http.get(Uri.parse('https://api.openf1.org/v1/sessions?year=$year')).timeout(const Duration(seconds: 10));
+      final response = await http.get(Uri.parse('https://api.openf1.org/v1/sessions')).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List sessions = data is List ? data : [];
-        final threshold = referenceNow.toUtc();
+        final nowUtc = DateTime.now().toUtc();
 
         final races = sessions
             .where((s) => s['session_type'] == 'Race')
+            .where((s) {
+              try { return DateTime.parse(s['date_start']).isAfter(nowUtc); } catch (_) { return false; }
+            })
             .toList()
           ..sort((a, b) => DateTime.parse(a['date_start']).compareTo(DateTime.parse(b['date_start'])));
-        
-        final nextRace = races.firstWhere((s) => DateTime.parse(s['date_start']).isAfter(threshold), orElse: () => races.last);
 
-        final meeting = nextRace['meeting'] ?? {};
-        return [RaceEvent(
-          id: 'f1_${nextRace['session_key']}',
-          type: SportType.f1,
-          date: DateTime.parse(nextRace['date_start']).toLocal(),
-          status: EventStatus.scheduled,
-          raceName: nextRace['session_name'] ?? meeting['meeting_name'] ?? 'F1 Race',
-          circuitName: meeting['circuit_short_name'] ?? '',
-          countryCode: meeting['country_code'] ?? '',
-        )];
+        if (races.isNotEmpty) {
+          final r = races[0];
+          final meeting = r['meeting'] ?? {};
+          return [RaceEvent(
+            id: 'f1_${r['session_key']}',
+            type: SportType.f1,
+            date: DateTime.parse(r['date_start']).toLocal(),
+            status: EventStatus.scheduled,
+            raceName: r['session_name'] ?? meeting['meeting_name'] ?? 'F1 Race',
+            circuitName: meeting['circuit_short_name'] ?? '',
+            countryCode: meeting['country_code'] ?? '',
+          )];
+        }
       }
     } catch (_) {}
     return [];
   }
 
-  Future<List<SportEvent>> _fetchTennis(DateTime referenceNow) async {
+  /// Tenis — TheSportsDB eventsday.php (tylko gdy user wybrał)
+  Future<List<SportEvent>> _fetchTennis(DateTime now) async {
     try {
-      final dateStr = referenceNow.toIso8601String().split('T')[0];
+      final dateStr = now.toIso8601String().split('T')[0];
       final url = 'https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsday.php?d=$dateStr&s=Tennis';
       final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List events = data['events'] ?? [];
-        return events.map((e) {
-          DateTime? matchDateTime;
+        final List<SportEvent> result = [];
+        for (var e in events) {
           try {
-            matchDateTime = DateTime.parse("${e['dateEvent']}T${e['strTime']}");
-          } catch (_) {
-            matchDateTime = DateTime.parse(e['dateEvent']);
-          }
-          return MatchEvent(
-            id: 'tennis_${e['idEvent']}',
-            type: SportType.tennis,
-            date: matchDateTime.toLocal(),
-            status: e['strStatus'] == 'FT' ? EventStatus.finished : EventStatus.scheduled,
-            homeTeam: e['strHomeTeam'] ?? '?',
-            awayTeam: e['strAwayTeam'] ?? '?',
-            score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "vs",
-            competition: e['strLeague'] ?? 'Tennis',
-            homeLogo: e['strHomeTeamBadge'],
-            awayLogo: e['strAwayTeamBadge']
-          );
-        }).toList();
+            final matchDate = DateTime.parse("${e['dateEvent']}T${e['strTime'] ?? '00:00:00'}");
+            result.add(MatchEvent(
+              id: 'tennis_${e['idEvent']}',
+              type: SportType.tennis,
+              date: matchDate.toLocal(),
+              status: e['strStatus'] == 'FT' ? EventStatus.finished : EventStatus.scheduled,
+              homeTeam: e['strHomeTeam'] ?? '?',
+              awayTeam: e['strAwayTeam'] ?? '?',
+              score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "v",
+              competition: e['strLeague'] ?? 'Tennis',
+              homeLogo: e['strHomeTeamBadge'],
+              awayLogo: e['strAwayTeamBadge'],
+            ));
+          } catch (_) {}
+        }
+        return result;
       }
     } catch (_) {}
     return [];
