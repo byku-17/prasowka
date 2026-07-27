@@ -221,34 +221,37 @@ class ArticleCard extends StatelessWidget {
   }
 
   Widget _buildActions(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _ReactionButton(
-          iconBuilder: (isActive) => isActive ? Icons.thumb_up : Icons.thumb_up_outlined,
-          colorBuilder: (isActive) => isActive ? AppTheme.accentGold : Colors.grey,
-          selector: (p) => article.isLiked,
-          onPressed: () => context.read<NewsProvider>().toggleLike(article),
-        ),
-        _ReactionButton(
-          iconBuilder: (isActive) => isActive ? Icons.thumb_down : Icons.thumb_down_outlined,
-          colorBuilder: (isActive) => isActive ? Colors.red : Colors.grey,
-          selector: (p) => article.isDisliked,
-          onPressed: () => context.read<NewsProvider>().toggleDislike(article),
-        ),
-        _ReactionButton(
-          iconBuilder: (isActive) => isActive ? Icons.bookmark : Icons.bookmark_border,
-          colorBuilder: (isActive) => isActive ? Colors.blue : Colors.grey,
-          selector: (p) => article.readLater,
-          onPressed: () => context.read<NewsProvider>().toggleReadLater(article),
-        ),
-        _ReactionButton(
-          iconBuilder: (isActive) => isActive ? Icons.favorite : Icons.favorite_border,
-          colorBuilder: (isActive) => isActive ? Colors.red : Colors.grey,
-          selector: (p) => article.isFavorite,
-          onPressed: () => context.read<NewsProvider>().toggleFavorite(article),
-        ),
-      ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ReactionButton(
+            iconBuilder: (isActive) => isActive ? Icons.thumb_up : Icons.thumb_up_outlined,
+            colorBuilder: (isActive) => isActive ? AppTheme.accentGold : Colors.grey,
+            selector: (p) => article.isLiked,
+            onPressed: () => context.read<NewsProvider>().toggleLike(article),
+          ),
+          _ReactionButton(
+            iconBuilder: (isActive) => isActive ? Icons.thumb_down : Icons.thumb_down_outlined,
+            colorBuilder: (isActive) => isActive ? Colors.red : Colors.grey,
+            selector: (p) => article.isDisliked,
+            onPressed: () => context.read<NewsProvider>().toggleDislike(article),
+          ),
+          _ReactionButton(
+            iconBuilder: (isActive) => isActive ? Icons.bookmark : Icons.bookmark_border,
+            colorBuilder: (isActive) => isActive ? Colors.blue : Colors.grey,
+            selector: (p) => article.readLater,
+            onPressed: () => context.read<NewsProvider>().toggleReadLater(article),
+          ),
+          _ReactionButton(
+            iconBuilder: (isActive) => isActive ? Icons.favorite : Icons.favorite_border,
+            colorBuilder: (isActive) => isActive ? Colors.red : Colors.grey,
+            selector: (p) => article.isFavorite,
+            onPressed: () => context.read<NewsProvider>().toggleFavorite(article),
+          ),
+        ],
+      ),
     );
   }
 
@@ -299,7 +302,7 @@ class _ReactionButtonState extends State<_ReactionButton> {
           onTap: _handleTap,
           behavior: HitTestBehavior.opaque,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: AnimatedScale(
               scale: _isPressed ? 1.3 : 1.0,
               duration: const Duration(milliseconds: 150),
@@ -307,7 +310,7 @@ class _ReactionButtonState extends State<_ReactionButton> {
               child: Icon(
                 widget.iconBuilder(isActive),
                 color: widget.colorBuilder(isActive),
-                size: 20,
+                size: 22,
                 shadows: isActive ? [
                   Shadow(
                     color: widget.colorBuilder(isActive).withValues(alpha: 0.3),
