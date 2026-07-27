@@ -15,17 +15,38 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   final RssService _rssService = RssService();
   Timer? _debounce;
   List<Article> _results = [];
   bool _isLoading = false;
   bool _hasSearched = false;
+  bool _isSearchActive = false;
 
   @override
   void dispose() {
     _searchController.dispose();
+    _focusNode.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  void _activateSearch() {
+    setState(() => _isSearchActive = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
+
+  void _deactivateSearch() {
+    _searchController.clear();
+    setState(() {
+      _isSearchActive = false;
+      _results = [];
+      _hasSearched = false;
+      _isLoading = false;
+    });
+    _focusNode.unfocus();
   }
 
   void _onSearchChanged(String query) {
@@ -59,9 +80,7 @@ class _SearchScreenState extends State<SearchScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -69,38 +88,92 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _searchController,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Szukaj w Google News...',
-            hintStyle: TextStyle(color: Colors.white70),
-            border: InputBorder.none,
-          ),
-          onChanged: _onSearchChanged,
-        ),
-        actions: [
-          if (_searchController.text.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
-                _searchController.clear();
-                setState(() {
-                  _results = [];
-                  _hasSearched = false;
-                  _isLoading = false;
-                });
-              },
-            ),
-        ],
-      ),
-      body: _buildBody(),
+      appBar: _isSearchActive
+          ? AppBar(
+              title: TextField(
+                controller: _searchController,
+                focusNode: _focusNode,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'Szukaj w Google News...',
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: InputBorder.none,
+                ),
+                onChanged: _onSearchChanged,
+              ),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: _deactivateSearch,
+              ),
+              actions: [
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _results = [];
+                        _hasSearched = false;
+                        _isLoading = false;
+                      });
+                      _focusNode.requestFocus();
+                    },
+                  ),
+              ],
+            )
+          : AppBar(title: const Text('SZKAJ')),
+      body: _isSearchActive ? _buildActiveBody() : _buildIdleBody(),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildIdleBody() {
+    return Center(
+      child: GestureDetector(
+        onTap: _activateSearch,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.accentGold.withValues(alpha: 0.1),
+                border: Border.all(
+                  color: AppTheme.accentGold.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.search,
+                size: 56,
+                color: AppTheme.accentGold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Kliknij, aby szukać',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Wyszukaj newsy w Google News',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveBody() {
     if (_isLoading) {
       return const Center(
         child: Column(
@@ -115,17 +188,15 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     if (!_hasSearched) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('Wpisz frazę, aby wyszukać', style: TextStyle(color: Colors.grey)),
-            SizedBox(height: 8),
+            Icon(Icons.search, size: 48, color: Colors.grey.shade700),
+            const SizedBox(height: 16),
             Text(
-              'Wyniki z Google News',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              'Wpisz frazę (min. 3 znaki)',
+              style: TextStyle(color: Colors.grey.shade500),
             ),
           ],
         ),
