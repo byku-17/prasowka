@@ -26,13 +26,11 @@ class SportsProvider with ChangeNotifier {
     List<String>? selectedLeagueIds,
     bool force = false
   }) async {
-    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!).inMinutes < 5) {
-      return;
-    }
+    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!).inMinutes < 5) return;
 
     _isLoading = true;
     _debugLogs.clear();
-    _debugLogs.add('--- DIAGNOSTYKA V8.5 ---');
+    _debugLogs.add('--- DIAGNOSTYKA V8.8 ---');
     _debugLogs.add('Start: ${DateTime.now().toString().split('.')[0]}');
     notifyListeners();
 
@@ -42,19 +40,18 @@ class SportsProvider with ChangeNotifier {
       // 1. Filtrujemy pod zainteresowania
       var filtered = _filterAndSortEvents(newEvents, favoriteKeywords, onlyFavoriteTeams);
       
-      // 2. TRYB DISCOVERY: Jeśli pusto, ale serwer coś ma -> pokaż hity dnia
+      // 2. TRYB DISCOVERY: Jeśli pusto dla Twoich, ale serwer coś ma -> pokaż hity dnia
       if (filtered.isEmpty && newEvents.isNotEmpty && onlyFavoriteTeams) {
-        _debugLogs.add('INFO: Brak Twoich drużyn. Włączam Tryb Discovery.');
-        // Weź 5 najważniejszych meczów ze świata
-        filtered = newEvents.take(8).toList();
-        // Dodaj flagę lub informację do logów
-        _debugLogs.add('Discovery: Pokazuję ${filtered.length} hitów dnia.');
+        _debugLogs.add('Discovery Mode: Pokazuję najważniejsze mecze ze świata.');
+        // Weź mecze z najwyższą ligą (np. te z logami)
+        filtered = newEvents.where((e) => e is MatchEvent && e.homeLogo != null).take(10).toList();
+        if (filtered.isEmpty) filtered = newEvents.take(5).toList();
       }
 
       _events = filtered;
       _lastFetch = DateTime.now();
       _debugLogs.add('Serwer zwrócił: ${newEvents.length} meczów');
-      _debugLogs.add('Widoczne na pasku: ${_events.length} meczów');
+      _debugLogs.add('Pasek wyświetla: ${_events.length} meczów');
       
       _currentFavorites = favoriteKeywords;
       _currentOnlyFavorites = onlyFavoriteTeams;

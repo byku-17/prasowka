@@ -131,7 +131,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   indicatorColor: AppTheme.accentGold,
                   labelColor: AppTheme.accentGold,
                   unselectedLabelColor: Colors.white70,
-                  tabs: _activeCategories.map((cat) => Tab(text: cat.name.toUpperCase())).toList(),
+                  tabs: _activeCategories.map((cat) {
+                    String label = cat.name.toUpperCase();
+                    if (cat.id == 'warsaw') {
+                      label = context.read<SettingsProvider>().preferredCity.toUpperCase();
+                    }
+                    return Tab(text: label);
+                  }).toList(),
                 ),
               const SizedBox(height: 2),
             ],

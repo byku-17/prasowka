@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_category.dart';
+import 'package:prasowka/models/news_source.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/screens/article_detail_screen.dart';
@@ -29,9 +30,25 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
 
   void _fetch() {
     final settings = context.read<SettingsProvider>();
-    context.read<NewsProvider>().fetchNews(
+    final newsProvider = context.read<NewsProvider>();
+    
+    // Obsługa dynamicznego miasta
+    List<NewsSource>? extraSources;
+    if (widget.category.id == 'warsaw' && settings.preferredCity.toLowerCase() != 'warszawa') {
+      final city = settings.preferredCity;
+      extraSources = [
+        NewsSource(
+          id: 'dynamic_city_${city.toLowerCase()}',
+          name: 'Wiadomości: $city',
+          rssUrl: 'https://news.google.com/rss/search?q=${Uri.encodeComponent(city)}&hl=pl&gl=PL&ceid=PL:pl',
+          categoryId: 'warsaw',
+        )
+      ];
+    }
+
+    newsProvider.fetchNews(
       category: widget.category,
-      allSources: settings.allSources,
+      allSources: extraSources != null ? [...settings.allSources, ...extraSources] : settings.allSources,
       enabledSourceIds: settings.enabledSourceIds,
       favoriteTeams: settings.favoriteTeams,
     );
