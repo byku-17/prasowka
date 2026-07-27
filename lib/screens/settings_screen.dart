@@ -4,7 +4,6 @@ import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/models/news_source.dart';
-import 'package:prasowka/services/background_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
