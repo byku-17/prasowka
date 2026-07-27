@@ -1,6 +1,4 @@
-import 'package:flutter/material.dart';
-
-enum SportType { football, nba, f1, tennis, volleyball, handball, nhl, mlb, nfl }
+enum SportType { football, nba, f1, tennis, volleyball, handball, nhl, mlb, nfl, wrc }
 
 enum EventStatus { live, finished, scheduled }
 

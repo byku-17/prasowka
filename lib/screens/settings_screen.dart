@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
-import 'package:prasowka/models/news_category.dart';
-import 'package:prasowka/models/news_source.dart';
+import 'package:prasowka/screens/sport_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -44,6 +43,13 @@ class SettingsScreen extends StatelessWidget {
             title: 'Moje Zainteresowania',
             subtitle: 'Kluby, ligi i tematy newsów',
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InterestsSettingsPage())),
+          ),
+          _buildSettingsTile(
+            context,
+            icon: Icons.sports_soccer_outlined,
+            title: 'Moje Sporty',
+            subtitle: 'Wybierz ligi do wyników na żywo',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SportSettingsScreen())),
           ),
           const Divider(height: 32),
           const Padding(

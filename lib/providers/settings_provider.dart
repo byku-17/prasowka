@@ -25,6 +25,7 @@ class SettingsProvider with ChangeNotifier {
   static const String preferredCityKey = 'preferredCity';
   static const String cityLatKey = 'cityLatitude';
   static const String cityLonKey = 'cityLongitude';
+  static const String selectedLeaguesKey = 'selectedLeagueIds';
 
   ThemeMode _themeMode = ThemeMode.system;
   List<NewsCategory> _allCategories = [];
@@ -41,6 +42,7 @@ class SettingsProvider with ChangeNotifier {
   String _preferredCity = 'Warszawa';
   double _cityLatitude = 52.2297;
   double _cityLongitude = 21.0122;
+  List<String> _selectedLeagueIds = [];
 
   ThemeMode get themeMode => _themeMode;
   List<NewsCategory> get allCategories => _allCategories;
@@ -55,6 +57,7 @@ class SettingsProvider with ChangeNotifier {
   int get lastTabIndex => _lastTabIndex;
   String get preferredCity => _preferredCity;
   CityCoordinates get cityCoordinates => CityCoordinates(name: _preferredCity, latitude: _cityLatitude, longitude: _cityLongitude);
+  List<String> get selectedLeagueIds => List.unmodifiable(_selectedLeagueIds);
 
   Future<void> init() async {
     debugPrint('Sowa Settings: Inicjalizacja V4.2...');
@@ -95,6 +98,12 @@ class SettingsProvider with ChangeNotifier {
     _preferredCity = settingsBox.get(preferredCityKey, defaultValue: 'Warszawa');
     _cityLatitude = settingsBox.get(cityLatKey, defaultValue: 52.2297);
     _cityLongitude = settingsBox.get(cityLonKey, defaultValue: 21.0122);
+    
+    // 4a. Wybrane ligi sportowe
+    _selectedLeagueIds = List<String>.from(settingsBox.get(
+      selectedLeaguesKey,
+      defaultValue: <String>[], // Pusta lista na start — użytkownik wybiera sam
+    ));
 
     // 4. Kolejność kategorii — MIGRACJA: dodaj brakujące, usuń nieistniejące
     _categoryOrder = List<String>.from(settingsBox.get(
@@ -332,6 +341,22 @@ class SettingsProvider with ChangeNotifier {
     await box.put(preferredCityKey, name);
     await box.put(cityLatKey, lat);
     await box.put(cityLonKey, lon);
+    notifyListeners();
+  }
+
+  Future<void> toggleLeague(String leagueId) async {
+    if (_selectedLeagueIds.contains(leagueId)) {
+      _selectedLeagueIds.remove(leagueId);
+    } else {
+      _selectedLeagueIds.add(leagueId);
+    }
+    await Hive.box(settingsBoxName).put(selectedLeaguesKey, _selectedLeagueIds);
+    notifyListeners();
+  }
+
+  Future<void> setSelectedLeagues(List<String> ids) async {
+    _selectedLeagueIds = List<String>.from(ids);
+    await Hive.box(settingsBoxName).put(selectedLeaguesKey, _selectedLeagueIds);
     notifyListeners();
   }
 

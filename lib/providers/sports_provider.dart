@@ -14,6 +14,7 @@ class SportsProvider with ChangeNotifier {
   Timer? _refreshTimer;
   List<String>? _currentFavorites;
   bool _currentOnlyFavorites = true;
+  List<String>? _currentSelectedLeagues;
 
   List<SportEvent> get events => _events;
   List<String> get debugLogs => _debugLogs;
@@ -22,6 +23,7 @@ class SportsProvider with ChangeNotifier {
   Future<void> fetchEvents({
     List<String>? favoriteKeywords, 
     bool onlyFavoriteTeams = true,
+    List<String>? selectedLeagueIds,
     bool force = false
   }) async {
     // Odświeżamy co 5 minut, chyba że wymuszono (force)
@@ -31,13 +33,14 @@ class SportsProvider with ChangeNotifier {
 
     _isLoading = true;
     _debugLogs.clear();
-    _debugLogs.add('--- DIAGNOSTYKA V4.2 ---');
+    _debugLogs.add('--- DIAGNOSTYKA V8.0 ---');
     _debugLogs.add('Start: ${DateTime.now().toString().split('.')[0]}');
+    _debugLogs.add('Wybrane ligi: ${selectedLeagueIds?.length ?? "wszystkie"}');
     _debugLogs.add('Zainteresowania: ${favoriteKeywords?.join(', ') ?? 'brak'}');
     notifyListeners();
 
     try {
-      final newEvents = await _service.fetchAllEvents();
+      final newEvents = await _service.fetchAllEvents(selectedLeagueIds: selectedLeagueIds);
       _events = _filterAndSortEvents(newEvents, favoriteKeywords, onlyFavoriteTeams);
       _lastFetch = DateTime.now();
       
@@ -55,6 +58,7 @@ class SportsProvider with ChangeNotifier {
       // Zarządzanie odświeżaniem LIVE
       _currentFavorites = favoriteKeywords;
       _currentOnlyFavorites = onlyFavoriteTeams;
+      _currentSelectedLeagues = selectedLeagueIds;
       if (_events.any((e) => e.status == EventStatus.live)) {
         _startAutoRefresh();
       } else {
@@ -71,7 +75,7 @@ class SportsProvider with ChangeNotifier {
   void _startAutoRefresh() {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
-       final newEvents = await _service.fetchAllEvents();
+       final newEvents = await _service.fetchAllEvents(selectedLeagueIds: _currentSelectedLeagues);
        _events = _filterAndSortEvents(newEvents, _currentFavorites, _currentOnlyFavorites);
        notifyListeners();
        if (!_events.any((e) => e.status == EventStatus.live)) _stopAutoRefresh();

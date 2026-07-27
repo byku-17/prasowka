@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/widgets/article_card.dart';
