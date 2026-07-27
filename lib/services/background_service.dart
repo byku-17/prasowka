@@ -82,12 +82,16 @@ void callbackDispatcher() {
               if (event.status == EventStatus.live) {
                 shouldNotify = true;
               } else if (event.status == EventStatus.scheduled) {
-                final diff = event.date.difference(now).inMinutes;
-                if (diff >= 0 && diff <= 15) shouldNotify = true;
+                // Porównuj czas (godzina:minuta) zamiast pełną datę
+                // bo API może mieć inny rok niż telefon
+                final eventMinutes = event.date.hour * 60 + event.date.minute;
+                final nowMinutes = now.hour * 60 + now.minute;
+                final diffMinutes = eventMinutes - nowMinutes;
+                if (diffMinutes >= 0 && diffMinutes <= 15) shouldNotify = true;
               }
               if (!shouldNotify) continue;
 
-              final notifiedKey = '${event.id}_${now.year}_${now.month}_${now.day}';
+              final notifiedKey = '${event.id}_${event.date.year}_${event.date.month}_${event.date.day}';
               if (sportsBox.get(notifiedKey, defaultValue: false) == true) continue;
 
               await _showSportNotification(event);

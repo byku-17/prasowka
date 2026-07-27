@@ -180,8 +180,9 @@ class SportsService {
 
   Future<List<SportEvent>> _fetchF1() async {
     try {
-      final year = DateTime.now().year;
-      final response = await http.get(Uri.parse('https://api.openf1.org/v1/sessions?year=$year')).timeout(const Duration(seconds: 10));
+      // Nie używaj DateTime.now().year — API może nie mieć danych z przyszłego roku
+      // Pobierz wszystkie sesje i filtruj po dacie
+      final response = await http.get(Uri.parse('https://api.openf1.org/v1/sessions')).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List sessions = data is List ? data : [];
@@ -223,7 +224,27 @@ class SportsService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List events = data['events'] ?? [];
-        return events.map((e) => MatchEvent(id: 'tennis_${e['idEvent']}', type: SportType.tennis, date: DateTime.parse("${e['dateEvent']}T${e['strTime']}"), status: e['strStatus'] == 'FT' ? EventStatus.finished : EventStatus.scheduled, homeTeam: e['strHomeTeam'], awayTeam: e['strAwayTeam'], score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "v", competition: e['strLeague'], homeLogo: e['strHomeTeamBadge'], awayLogo: e['strAwayTeamBadge'])).toList();
+        final List<SportEvent> result = [];
+        for (var e in events) {
+          try {
+            final matchDate = DateTime.parse("${e['dateEvent']}T${e['strTime'] ?? '00:00:00'}");
+            result.add(MatchEvent(
+              id: 'tennis_${e['idEvent']}',
+              type: SportType.tennis,
+              date: matchDate,
+              status: e['strStatus'] == 'FT' ? EventStatus.finished : EventStatus.scheduled,
+              homeTeam: e['strHomeTeam'] ?? '?',
+              awayTeam: e['strAwayTeam'] ?? '?',
+              score: e['intHomeScore'] != null ? "${e['intHomeScore']} - ${e['intAwayScore']}" : "v",
+              competition: e['strLeague'] ?? 'Tennis',
+              homeLogo: e['strHomeTeamBadge'],
+              awayLogo: e['strAwayTeamBadge'],
+            ));
+          } catch (_) {
+            continue;
+          }
+        }
+        return result;
       } else {
         debugPrint('Sowa Sports: Tenis — HTTP ${response.statusCode}');
       }
