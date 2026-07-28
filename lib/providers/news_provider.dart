@@ -25,6 +25,7 @@ class NewsProvider with ChangeNotifier {
   String? _lastTechnicalError; 
   
   List<Article> _recommendedArticles = [];
+  final Set<String> _fetchFailedIds = {};
   bool _isFetchingFullContent = false;
   bool _isTranslating = false;
   NewsCategory _selectedCategory = NewsCategory.defaultCategories.first;
@@ -42,6 +43,7 @@ class NewsProvider with ChangeNotifier {
   NewsCategory get selectedCategory => _selectedCategory;
   bool get isFetchingFullContent => _isFetchingFullContent;
   bool get isTranslating => _isTranslating;
+  Set<String> get fetchFailedIds => _fetchFailedIds;
   String get lastDebugMessage => _lastDebugMessage;
   String? get lastTechnicalError => _lastTechnicalError;
 
@@ -323,13 +325,13 @@ class NewsProvider with ChangeNotifier {
   }
 
   Future<void> fetchFullArticleContent(Article article) async {
-    if (article.fullContent != null) return;
     if (RssService.isGoogleNewsUrl(article.url)) return;
     _isFetchingFullContent = true;
+    _fetchFailedIds.remove(article.id);
     notifyListeners();
     try {
       final full = await _readerService.extractFullContent(article.url);
-      if (full != null) {
+      if (full != null && full.trim().isNotEmpty) {
         article.fullContent = full;
         final s = _storageService.getStoredArticle(article.id);
         if (s != null) { s.fullContent = full; await s.save(); }
@@ -338,7 +340,12 @@ class NewsProvider with ChangeNotifier {
         } else {
           await _storageService.saveCategoryCache(_selectedCategory.id, articles);
         }
+        _fetchFailedIds.remove(article.id);
+      } else {
+        _fetchFailedIds.add(article.id);
       }
+    } catch (e) {
+      _fetchFailedIds.add(article.id);
     } finally {
       _isFetchingFullContent = false;
       notifyListeners();

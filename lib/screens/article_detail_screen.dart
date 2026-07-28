@@ -111,7 +111,7 @@ class ArticleDetailScreen extends StatelessWidget {
                   
                   Consumer<NewsProvider>(
                     builder: (context, provider, child) {
-                      final hasFullContent = article.fullContent != null && article.fullContent!.isNotEmpty;
+                      final hasFullContent = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,38 +144,61 @@ class ArticleDetailScreen extends StatelessWidget {
                                   },
                                 ),
                                 const SizedBox(height: 24),
-                                Center(
-                                  child: RssService.isGoogleNewsUrl(article.url)
-                                      ? ElevatedButton.icon(
-                                          onPressed: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) => ArticleWebViewScreen(
-                                                  url: article.url,
-                                                  title: article.title,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          icon: const Icon(Icons.auto_stories),
-                                          label: const Text('CZYTAJ ARTYKUŁ'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppTheme.accentGold,
-                                            foregroundColor: AppTheme.primaryNavy,
-                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                if (RssService.isGoogleNewsUrl(article.url))
+                                  Center(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => ArticleWebViewScreen(
+                                              url: article.url,
+                                              title: article.title,
+                                            ),
                                           ),
-                                        )
-                                      : ElevatedButton.icon(
-                                          onPressed: () => provider.fetchFullArticleContent(article),
-                                          icon: const Icon(Icons.auto_stories),
-                                          label: const Text('POBIERZ PEŁNĄ TREŚĆ'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppTheme.accentGold,
-                                            foregroundColor: AppTheme.primaryNavy,
-                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                          ),
-                                        ),
-                                ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.auto_stories),
+                                      label: const Text('CZYTAJ ARTYKUŁ'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.accentGold,
+                                        foregroundColor: AppTheme.primaryNavy,
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                      ),
+                                    ),
+                                  )
+                                else ...[
+                                  Center(
+                                    child: ElevatedButton.icon(
+                                      onPressed: provider.isFetchingFullContent
+                                          ? null
+                                          : () => provider.fetchFullArticleContent(article),
+                                      icon: provider.isFetchingFullContent
+                                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                          : const Icon(Icons.auto_stories),
+                                      label: Text(provider.fetchFailedIds.contains(article.id)
+                                          ? 'SPRÓBUJ PONOWNIE'
+                                          : 'POBIERZ PEŁNĄ TREŚĆ'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.accentGold,
+                                        foregroundColor: AppTheme.primaryNavy,
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Center(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => _launchUrl(context, article.url),
+                                      icon: const Icon(Icons.open_in_browser, size: 18),
+                                      label: const Text('OTWÓRZ W PRZEGLĄDARCE'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppTheme.accentGold,
+                                        side: const BorderSide(color: AppTheme.accentGold),
+                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             )
                           else
