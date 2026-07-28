@@ -113,12 +113,6 @@ class _ScoresBarState extends State<ScoresBar> {
       }
     }
 
-    // 3. F1 — fallback gdy brak w eventach
-    if (selectedIds.contains('f1') && !tiles.any((t) => t is _RaceTile)) {
-      final f1League = SportLeague.findById('f1');
-      if (f1League != null) tiles.add(_FallbackLeagueTile(league: f1League));
-    }
-
     return tiles;
   }
 
