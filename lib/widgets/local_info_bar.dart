@@ -76,6 +76,10 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
 
   @override
   Widget build(BuildContext context) {
+    // Utwórz dependencję na SettingsProvider, aby didChangeDependencies
+    // było wywoływane przy zmianie miasta
+    context.watch<SettingsProvider>();
+
     if (_isLoading) {
       return const SizedBox(
         height: 90,
