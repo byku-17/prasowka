@@ -179,16 +179,34 @@ class ArticleDetailScreen extends StatelessWidget {
                               ],
                             )
                           else
-                            HtmlWidget(
-                              article.translatedFullContent ?? article.fullContent!,
-                              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                fontSize: 18,
-                                height: 1.6,
-                              ),
-                              onTapUrl: (url) async {
-                                await _launchUrl(context, url);
-                                return true;
-                              },
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                HtmlWidget(
+                                  article.translatedFullContent ?? article.fullContent!,
+                                  textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    fontSize: 18,
+                                    height: 1.6,
+                                  ),
+                                  onTapUrl: (url) async {
+                                    await _launchUrl(context, url);
+                                    return true;
+                                  },
+                                ),
+                                const SizedBox(height: 24),
+                                Center(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _launchUrl(context, article.url),
+                                    icon: const Icon(Icons.open_in_browser, size: 18),
+                                    label: const Text('CZYTAJ W PRZEGLĄDARCE'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppTheme.accentGold,
+                                      side: const BorderSide(color: AppTheme.accentGold),
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                         ],
                       );
