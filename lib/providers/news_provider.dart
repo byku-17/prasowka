@@ -76,17 +76,17 @@ class NewsProvider with ChangeNotifier {
     if (favoriteTeams != null) _lastFavoriteTeams = favoriteTeams;
 
     final cached = _storageService.getCategoryCache(categoryId);
-    if (cached.isNotEmpty) {
+    if (cached.isNotEmpty && !forceRefresh) {
       _articlesMap[categoryId] = cached;
       _hasEverLoadedMap[categoryId] = true;
       _calculateRecommendations();
-      if (!forceRefresh) {
-        final lastFetch = _lastFetchTimes[categoryId];
-        if (lastFetch != null && DateTime.now().difference(lastFetch).inMinutes < 5) {
-          notifyListeners();
-          return;
-        }
+      final lastFetch = _lastFetchTimes[categoryId];
+      if (lastFetch != null && DateTime.now().difference(lastFetch).inMinutes < 5) {
+        notifyListeners();
+        return;
       }
+    } else if (cached.isNotEmpty) {
+      _hasEverLoadedMap[categoryId] = true;
     }
 
     _loadingMap[categoryId] = true;
@@ -112,9 +112,8 @@ class NewsProvider with ChangeNotifier {
       }
 
       if (sourcesToFetch.isEmpty) {
-        final staticSources = NewsSource.defaultSources;
-        sourcesToFetch = staticSources.where((s) => s.categoryId == categoryId).toList();
-        if (categoryId == 'all') sourcesToFetch = staticSources.take(30).toList();
+        sourcesToFetch = baseSources.where((s) => s.categoryId == categoryId).toList();
+        if (categoryId == 'all') sourcesToFetch = baseSources.take(30).toList();
       }
 
       List<Article> accumulated = [];
@@ -315,7 +314,7 @@ class NewsProvider with ChangeNotifier {
     if (_selectedCategory.id == category.id) return;
     _selectedCategory = category;
     notifyListeners();
-    fetchNews(); 
+    // Nie fetchuj tu — widget CategoryNewsList zrobi to przez _fetchIfNeeded z właściwymi źródłami
   }
 
   Future<void> fetchFullArticleContent(Article article) async {
