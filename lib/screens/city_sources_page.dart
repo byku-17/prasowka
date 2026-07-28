@@ -59,7 +59,7 @@ class CitySourcesPage extends StatelessWidget {
             )
           else
             ...citySources.map((src) => CheckboxListTile(
-              secondary: Icon(Icons.rss_feed, color: AppTheme.accentGold, size: 20),
+              secondary: const Icon(Icons.rss_feed, color: AppTheme.accentGold, size: 20),
               title: Text(src.name, style: const TextStyle(fontSize: 14)),
               subtitle: Text(
                 src.rssUrl,

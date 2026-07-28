@@ -177,7 +177,9 @@ class RssService {
     
     // Sprawdzamy standardowe rozszerzenia
     if (u.contains('.jpg') || u.contains('.jpeg') || u.contains('.png') || 
-        u.contains('.webp') || u.contains('.gif')) return true;
+        u.contains('.webp') || u.contains('.gif')) {
+      return true;
+    }
     
     // Obsługa dynamicznych URL-i (np. image.php?id=...)
     if (u.contains('image') || u.contains('img') || u.contains('photo')) {

@@ -166,7 +166,7 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
       debugPrint('WebView load error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Nie udało się załadować strony')),
+          const SnackBar(content: Text('Nie udało się załadować strony')),
         );
         Navigator.of(context).pop();
       }

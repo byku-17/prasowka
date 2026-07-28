@@ -45,7 +45,6 @@ class AirQualityData {
 class WeatherService {
   static const String _weatherBase = 'https://api.open-meteo.com/v1/forecast';
   static const String _airBase = 'https://air-quality-api.open-meteo.com/v1/air-quality';
-  static const String _geoBase = 'https://geocoding-api.open-meteo.com/v1/search';
 
   Future<WeatherData?> fetchWeather(CityCoordinates city) async {
     try {

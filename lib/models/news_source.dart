@@ -57,6 +57,7 @@ class NewsSource extends HiveObject {
     required this.categoryId,
     bool isDefault = false,
     this.logoUrl,
+  // ignore: prefer_initializing_formals – public param name `isDefault` != private field `_isDefault`
   }) : _isDefault = isDefault;
 
   /// Pełna lista 130 źródeł z wybranymi "Top 3" (isDefault: true)

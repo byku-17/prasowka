@@ -24,7 +24,7 @@ class NewsCategory extends HiveObject {
     this.isCustom = false,
   });
 
-  // Pomocniczy getter do pobierania IconData
+  // ignore: non_const_argument_for_const_parameter – iconCode jest runtime (Hive int)
   IconData get icon => IconData(iconCode, fontFamily: 'MaterialIcons');
 
   static final List<NewsCategory> defaultCategories = [

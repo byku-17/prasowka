@@ -129,7 +129,7 @@ class SportSettingsScreen extends StatelessWidget {
         trailing: Switch(
           value: isSelected,
           onChanged: (_) => settings.toggleLeague(league.id),
-          activeColor: AppTheme.accentGold,
+          activeThumbColor: AppTheme.accentGold,
         ),
         onTap: () => settings.toggleLeague(league.id),
       ),
@@ -307,7 +307,7 @@ class _LeaguePickerScreenState extends State<_LeaguePickerScreen> {
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
                 secondary: selected
-                    ? Icon(Icons.check_circle, color: AppTheme.accentGold, size: 20)
+                    ? const Icon(Icons.check_circle, color: AppTheme.accentGold, size: 20)
                     : Icon(Icons.circle_outlined, color: Colors.grey.withValues(alpha: 0.5), size: 20),
               );
             }).toList(),

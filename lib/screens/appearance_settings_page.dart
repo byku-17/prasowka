@@ -30,7 +30,7 @@ class AppearanceSettingsPage extends StatelessWidget {
             subtitle: const Text('Sowa będzie szukać newsów w tle i da znać o tych, które pasują do Twoich polubień.'),
             value: settings.notificationsEnabled,
             onChanged: (val) => settings.toggleNotifications(val),
-            activeColor: AppTheme.accentGold,
+            activeThumbColor: AppTheme.accentGold,
           ),
           const SectionHeader('WIDOK SPORTOWY'),
           SwitchListTile(
@@ -39,7 +39,7 @@ class AppearanceSettingsPage extends StatelessWidget {
             subtitle: const Text('Wyświetla pasek z wynikami na górze sekcji Sport.'),
             value: settings.showSportsBar,
             onChanged: (val) => settings.toggleSportsBar(val),
-            activeColor: AppTheme.accentGold,
+            activeThumbColor: AppTheme.accentGold,
           ),
           if (settings.showSportsBar)
             SwitchListTile(
@@ -47,7 +47,7 @@ class AppearanceSettingsPage extends StatelessWidget {
               subtitle: const Text('Pokazuje wyłącznie mecze klubów i lig wpisanych w zainteresowaniach.', style: TextStyle(fontSize: 11)),
               value: settings.onlyFavoriteTeams,
               onChanged: (val) => settings.setOnlyFavoriteTeams(val),
-              activeColor: AppTheme.accentGold,
+              activeThumbColor: AppTheme.accentGold,
               dense: true,
             ),
           const Divider(),

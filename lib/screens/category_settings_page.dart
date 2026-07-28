@@ -14,7 +14,7 @@ class CategorySettingsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('KATEGORIE')),
       body: ReorderableListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        onReorder: (oldIndex, newIndex) => settings.reorderCategories(oldIndex, newIndex),
+        onReorderItem: (oldIndex, newIndex) => settings.reorderCategories(oldIndex, newIndex),
         children: settings.allCategoriesOrdered.map((cat) {
           final isActive = settings.isCategoryActive(cat.id);
           return ListTile(
@@ -26,7 +26,7 @@ class CategorySettingsPage extends StatelessWidget {
                 : Switch(
                     value: isActive,
                     onChanged: (_) => settings.toggleCategory(cat.id),
-                    activeColor: AppTheme.accentGold,
+                    activeThumbColor: AppTheme.accentGold,
                   ),
           );
         }).toList(),

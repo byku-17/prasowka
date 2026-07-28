@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_category.dart';
@@ -138,7 +139,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
                   controller: _scrollController,
                   padding: EdgeInsets.zero,
                   addRepaintBoundaries: true,
-                  cacheExtent: 1000.0,
+                  scrollCacheExtent: const ScrollCacheExtent.pixels(1000.0),
                   itemCount: articles.length + (showRecs ? 1 : 0),
                   itemBuilder: (context, index) {
                     // Sekcja Wszystkie: Rekomendacje na górze

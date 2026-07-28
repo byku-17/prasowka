@@ -192,7 +192,11 @@ class SettingsProvider with ChangeNotifier {
     }
     _notificationsEnabled = enabled;
     await Hive.box(settingsBoxName).put(notificationsKey, enabled);
-    if (enabled) await BackgroundService().registerPeriodicTask(); else await BackgroundService().cancelAllTasks();
+    if (enabled) {
+      await BackgroundService().registerPeriodicTask();
+    } else {
+      await BackgroundService().cancelAllTasks();
+    }
     notifyListeners();
   }
 
@@ -295,7 +299,6 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> reorderCategories(int old, int neu) async {
-    if (neu > old) neu -= 1;
     final item = _categoryOrder.removeAt(old);
     _categoryOrder.insert(neu, item);
     await Hive.box(settingsBoxName).put(categoryOrderKey, _categoryOrder);
