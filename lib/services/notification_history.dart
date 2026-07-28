@@ -102,6 +102,26 @@ class NotificationHistory {
     }
   }
 
+  Future<void> markRead(String id) async {
+    final map = box.get(id);
+    if (map != null) {
+      map['isRead'] = true;
+      await box.put(id, map);
+    }
+  }
+
+  Future<void> markUnread(String id) async {
+    final map = box.get(id);
+    if (map != null) {
+      map['isRead'] = false;
+      await box.put(id, map);
+    }
+  }
+
+  Future<void> delete(String id) async {
+    await box.delete(id);
+  }
+
   Future<void> clear() async {
     await box.clear();
   }

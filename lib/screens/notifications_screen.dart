@@ -32,21 +32,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         title: const Text('POWIADOMIENIA'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline),
-            tooltip: 'Dodaj testowy wpis',
-            onPressed: () async {
-              await NotificationHistory().add(NotificationEntry(
-                id: 'test_${DateTime.now().millisecondsSinceEpoch}',
-                title: 'Test Sowy 🦉',
-                body: 'To jest testowe powiadomienie. Jeśli to widzisz, historia działa poprawnie!',
-                url: 'https://example.com',
-                timestamp: DateTime.now(),
-                type: 'article',
-              ));
-              if (context.mounted) setState(() {});
-            },
-          ),
           if (entries.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_outlined),
@@ -58,8 +43,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     title: const Text('Wyczyścić historię?'),
                     content: const Text('Wszystkie powiadomienia zostaną usunięte.'),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ANULUJ')),
-                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('WYCZYŚĆ', style: TextStyle(color: Colors.red))),
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('ANULUJ')),
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('WYCZYŚĆ',
+                              style: TextStyle(color: Colors.red))),
                     ],
                   ),
                 );
@@ -78,7 +68,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 children: [
                   Icon(Icons.notifications_none, size: 64, color: Colors.grey[600]),
                   const SizedBox(height: 16),
-                  Text('Brak powiadomień', style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+                  Text('Brak powiadomień',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 16)),
                   const SizedBox(height: 8),
                   Text(
                     'Sowa poinformuje Cię o ważnych tematach',
@@ -90,7 +81,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           : ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: entries.length,
-              separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+              separatorBuilder: (_, __) =>
+                  const Divider(height: 1, indent: 72),
               itemBuilder: (context, index) {
                 final entry = entries[index];
                 return _buildTile(context, entry);
@@ -105,33 +97,75 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final icon = isSport ? Icons.sports_soccer : Icons.article_outlined;
     final iconColor = isSport ? Colors.green : AppTheme.accentGold;
 
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: iconColor.withValues(alpha: 0.15),
-        child: Icon(icon, color: iconColor, size: 20),
+    return Dismissible(
+      key: ValueKey(entry.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.red,
+        child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
-      title: Text(
-        entry.body,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: entry.isRead ? FontWeight.normal : FontWeight.w600,
+      confirmDismiss: (_) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Usunąć powiadomienie?'),
+            content: const Text('Tej operacji nie można cofnąć.'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('ANULUJ')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child:
+                      const Text('USUŃ', style: TextStyle(color: Colors.red))),
+            ],
+          ),
+        );
+      },
+      onDismissed: (_) async {
+        await NotificationHistory().delete(entry.id);
+        setState(() {});
+      },
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: iconColor.withValues(alpha: 0.15),
+          child: Icon(icon, color: iconColor, size: 20),
         ),
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Text(
-          '$timeStr · ${entry.title.replaceAll('🦉', '').trim()}',
-          style: TextStyle(color: Colors.grey[500], fontSize: 11),
-          maxLines: 1,
+        title: Text(
+          entry.body,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight:
+                entry.isRead ? FontWeight.normal : FontWeight.w600,
+          ),
         ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            '$timeStr · ${entry.title.replaceAll('🦉', '').trim()}',
+            style: TextStyle(color: Colors.grey[500], fontSize: 11),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        trailing: entry.url != null
+            ? Icon(Icons.chevron_right, color: Colors.grey[600], size: 20)
+            : null,
+        onTap: entry.url != null ? () => _openArticle(context, entry) : null,
+        onLongPress: () async {
+          final history = NotificationHistory();
+          if (entry.isRead) {
+            await history.markUnread(entry.id);
+          } else {
+            await history.markRead(entry.id);
+          }
+          setState(() {});
+        },
       ),
-      trailing: entry.url != null
-          ? Icon(Icons.chevron_right, color: Colors.grey[600], size: 20)
-          : null,
-      onTap: entry.url != null ? () => _openArticle(context, entry) : null,
     );
   }
 
@@ -147,12 +181,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ArticleDetailScreen(article: cachedArticle.first),
+          builder: (_) =>
+              ArticleDetailScreen(article: cachedArticle.first),
         ),
       );
     } else {
-      // Artykuł nie jest w cache — otwórz URL w zewnętrznym przeglądarce
-      launchUrl(Uri.parse(entry.url!), mode: LaunchMode.externalApplication);
+      launchUrl(Uri.parse(entry.url!),
+          mode: LaunchMode.externalApplication);
     }
   }
 
