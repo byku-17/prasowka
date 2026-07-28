@@ -31,17 +31,27 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
 
   List<NewsSource> _getSourcesForCategory(SettingsProvider settings) {
     final city = settings.preferredCity;
+    final catId = widget.category.id;
     
     // Dla kategorii "warsaw" podmień źródła na te przypisane do wybranego miasta
-    if (widget.category.id == 'warsaw') {
+    if (catId == 'warsaw') {
       final sourceIds = NewsSource.cityRssSourceIds[city];
       if (sourceIds != null) {
         return settings.allSources.where((s) => sourceIds.contains(s.id)).toList();
       }
-      // Fallback: jeśli miasto nie ma przypisanych źródeł, użyj źródeł Warszawy
       return settings.allSources.where((s) => s.categoryId == 'warsaw').toList();
     }
-    return settings.allSources;
+
+    // Dla "api_news" nie potrzebujemy źródeł RSS
+    if (catId == 'api_news') return [];
+
+    // Dla "all" zwróć top źródła
+    if (catId == 'all') {
+      return settings.allSources.where((s) => NewsSource.topSourceIds.contains(s.id) || s.id.startsWith('custom_')).toList();
+    }
+
+    // Dla pozostałych kategorii — filtruj po categoryId
+    return settings.allSources.where((s) => s.categoryId == catId).toList();
   }
 
   void _fetchIfNeeded() {

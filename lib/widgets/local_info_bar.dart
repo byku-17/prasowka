@@ -28,23 +28,39 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAndFetch());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkAndFetch();
+  }
+
   Future<void> _fetchData(CityCoordinates city) async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final results = await Future.wait([_weather.fetchWeather(city), _weather.fetchAirQuality(city)]);
-    if (mounted) {
-      setState(() {
-        _weatherData = results[0] as WeatherData?;
-        _airData = results[1] as AirQualityData?;
-        _isLoading = false;
-      });
+    try {
+      final results = await Future.wait([_weather.fetchWeather(city), _weather.fetchAirQuality(city)]);
+      if (mounted) {
+        setState(() {
+          _weatherData = results[0] as WeatherData?;
+          _airData = results[1] as AirQualityData?;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    context.watch<SettingsProvider>();
-    _checkAndFetch();
-
     if (_isLoading) {
       return const SizedBox(
         height: 90,

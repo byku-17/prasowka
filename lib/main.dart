@@ -28,13 +28,18 @@ void main() async {
   final news = NewsProvider();
   final sports = SportsProvider();
 
-  await settings.init();
-  await news.init();
-  await NotificationHistory().init();
+  try {
+    await settings.init();
+    await news.init();
+    await NotificationHistory().init();
 
-  // Sprawdzenie cold startu (aplikacja uruchomiona z powiadomienia)
-  if (settings.notificationsEnabled) {
-    await BackgroundService().checkNotificationLaunch();
+    // Sprawdzenie cold startu (aplikacja uruchomiona z powiadomienia)
+    if (settings.notificationsEnabled) {
+      await BackgroundService().checkNotificationLaunch();
+    }
+  } catch (e, stack) {
+    debugPrint('Sowa Init Error: $e');
+    debugPrint(stack.toString());
   }
 
   FlutterNativeSplash.remove();

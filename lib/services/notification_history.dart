@@ -83,7 +83,8 @@ class NotificationHistory {
   }
 
   List<NotificationEntry> get all {
-    final entries = box.values.map((m) => NotificationEntry.fromMap(m)).toList();
+    if (_box == null || !_box!.isOpen) return [];
+    final entries = _box!.values.map((m) => NotificationEntry.fromMap(m)).toList();
     entries.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return entries;
   }
@@ -93,36 +94,41 @@ class NotificationHistory {
   }
 
   Future<void> markAllRead() async {
-    for (var key in box.keys) {
-      final map = box.get(key);
+    if (_box == null || !_box!.isOpen) return;
+    for (var key in _box!.keys) {
+      final map = _box!.get(key);
       if (map != null && map['isRead'] == false) {
         map['isRead'] = true;
-        await box.put(key, map);
+        await _box!.put(key, map);
       }
     }
   }
 
   Future<void> markRead(String id) async {
-    final map = box.get(id);
+    if (_box == null || !_box!.isOpen) return;
+    final map = _box!.get(id);
     if (map != null) {
       map['isRead'] = true;
-      await box.put(id, map);
+      await _box!.put(id, map);
     }
   }
 
   Future<void> markUnread(String id) async {
-    final map = box.get(id);
+    if (_box == null || !_box!.isOpen) return;
+    final map = _box!.get(id);
     if (map != null) {
       map['isRead'] = false;
-      await box.put(id, map);
+      await _box!.put(id, map);
     }
   }
 
   Future<void> delete(String id) async {
-    await box.delete(id);
+    if (_box == null || !_box!.isOpen) return;
+    await _box!.delete(id);
   }
 
   Future<void> clear() async {
-    await box.clear();
+    if (_box == null || !_box!.isOpen) return;
+    await _box!.clear();
   }
 }

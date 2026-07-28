@@ -133,7 +133,7 @@ Future<void> _showNotification(Article article) async {
       FlutterLocalNotificationsPlugin();
 
   await flutterLocalNotificationsPlugin.show(
-    article.id.hashCode,
+    article.id.hashCode.abs(),
     'Sowa znalazła coś dla Ciebie! 🦉',
     article.title,
     platformChannelSpecifics,
@@ -178,7 +178,7 @@ Future<void> _showSportNotification(MatchEvent event) async {
   }
 
   await flutterLocalNotificationsPlugin.show(
-    event.id.hashCode,
+    event.id.hashCode.abs(),
     title,
     body,
     platformChannelSpecifics,
