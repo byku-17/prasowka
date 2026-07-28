@@ -5,6 +5,17 @@ import 'package:prasowka/services/weather_service.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
+/// Mapowanie miast → oficjalne strony stacji powietrza GIOS
+const Map<String, String> _airQualityUrls = {
+  'Warszawa': 'https://powietrze.gios.gov.pl/pjp/current/station/64',
+  'Kraków': 'https://powietrze.gios.gov.pl/pjp/current/station/117',
+  'Wrocław': 'https://powietrze.gios.gov.pl/pjp/current/station/102',
+  'Gdańsk': 'https://powietrze.gios.gov.pl/pjp/current/station/83',
+  'Poznań': 'https://powietrze.gios.gov.pl/pjp/current/station/92',
+  'Łódź': 'https://powietrze.gios.gov.pl/pjp/current/station/86',
+  'Katowice': 'https://powietrze.gios.gov.pl/pjp/current/station/108',
+};
+
 class LocalInfoBar extends StatefulWidget {
   const LocalInfoBar({super.key});
 
@@ -17,6 +28,7 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
   WeatherData? _weatherData;
   AirQualityData? _airData;
   bool _isLoading = true;
+  bool _hasError = false;
   String? _lastCityHash;
 
   void _checkAndFetch() {
@@ -42,9 +54,11 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
 
   Future<void> _fetchData(CityCoordinates city) async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _hasError = false; });
     try {
-      final results = await Future.wait([_weather.fetchWeather(city), _weather.fetchAirQuality(city)]);
+      final results = await Future.wait(
+        [_weather.fetchWeather(city), _weather.fetchAirQuality(city)],
+      ).timeout(const Duration(seconds: 12));
       if (mounted) {
         setState(() {
           _weatherData = results[0] as WeatherData?;
@@ -53,8 +67,9 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
         });
       }
     } catch (e) {
+      debugPrint('LocalInfoBar fetch error: $e');
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() { _isLoading = false; _hasError = true; });
       }
     }
   }
@@ -68,6 +83,28 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
       );
     }
 
+    if (_hasError) {
+      return SizedBox(
+        height: 60,
+        child: Center(
+          child: GestureDetector(
+            onTap: _retryFetch,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.wifi_off, color: Colors.white.withValues(alpha: 0.5), size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Brak danych pogodowych — dotknij, aby spróbować ponownie',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -78,6 +115,12 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
         ],
       ),
     );
+  }
+
+  void _retryFetch() {
+    final settings = context.read<SettingsProvider>();
+    _lastCityHash = null;
+    _fetchData(settings.cityCoordinates);
   }
 
   Widget _buildWeatherTile() {
@@ -140,8 +183,11 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
                 ? Colors.orange
                 : Colors.red;
 
+    final airUrl = _airQualityUrls[city]
+        ?? 'https://www.google.com/search?q=jakość+powietrza+$city';
+
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse('https://www.google.com/search?q=jakość+powietrza+$city'), mode: LaunchMode.externalApplication),
+      onTap: () => launchUrl(Uri.parse(airUrl), mode: LaunchMode.externalApplication),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
