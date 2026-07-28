@@ -32,9 +32,11 @@ void main() async {
     await settings.init();
     await news.init();
     await NotificationHistory().init();
+    await BackgroundService().init();
 
     // Sprawdzenie cold startu (aplikacja uruchomiona z powiadomienia)
     if (settings.notificationsEnabled) {
+      await BackgroundService().registerPeriodicTask();
       await BackgroundService().checkNotificationLaunch();
     }
   } catch (e, stack) {

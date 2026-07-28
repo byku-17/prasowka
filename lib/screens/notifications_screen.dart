@@ -16,14 +16,6 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationHistory().markAllRead();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final history = NotificationHistory();
     final entries = history.all;
@@ -167,6 +159,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         },
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    NotificationHistory().markAllRead();
+    super.dispose();
   }
 
   void _openArticle(BuildContext context, NotificationEntry entry) {

@@ -190,7 +190,7 @@ class ArticleDetailScreen extends StatelessWidget {
                                     child: OutlinedButton.icon(
                                       onPressed: () => _launchUrl(context, article.url),
                                       icon: const Icon(Icons.open_in_browser, size: 18),
-                                      label: const Text('OTWÓRZ W PRZEGLĄDARCE'),
+                                      label: const Text('CZYTAJ W PRZEGLĄDARCE'),
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppTheme.accentGold,
                                         side: const BorderSide(color: AppTheme.accentGold),

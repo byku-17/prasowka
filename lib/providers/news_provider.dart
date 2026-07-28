@@ -374,8 +374,6 @@ class NewsProvider with ChangeNotifier {
         if (s != null) { s.fullContent = full; await s.save(); }
         if (article.translatedTitle != null) {
           await translateArticle(article);
-        } else {
-          await _storageService.saveCategoryCache(_selectedCategory.id, articles);
         }
         _fetchFailedIds.remove(article.id);
       } else {
@@ -416,7 +414,6 @@ class NewsProvider with ChangeNotifier {
         stored.translatedFullContent = article.translatedFullContent;
         await stored.save();
       }
-      await _storageService.saveCategoryCache(_selectedCategory.id, articles);
     } finally {
       _isTranslating = false;
       notifyListeners();

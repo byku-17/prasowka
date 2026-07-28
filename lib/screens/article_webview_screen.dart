@@ -153,6 +153,7 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
         },
         onWebResourceError: (error) {
           debugPrint('WebView error: ${error.description}');
+          if (mounted) setState(() => _isLoading = false);
         },
       ));
 

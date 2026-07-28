@@ -163,7 +163,6 @@ class SettingsProvider with ChangeNotifier {
 
     // 7. Powiadomienia
     _notificationsEnabled = settingsBox.get(notificationsKey, defaultValue: false);
-    await BackgroundService().init();
     if (_notificationsEnabled) {
       await BackgroundService().registerPeriodicTask();
     }
@@ -188,7 +187,8 @@ class SettingsProvider with ChangeNotifier {
   Future<void> toggleNotifications(bool enabled) async {
     if (enabled) {
       final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-      await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+      final granted = await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+      if (granted == false) return;
     }
     _notificationsEnabled = enabled;
     await Hive.box(settingsBoxName).put(notificationsKey, enabled);

@@ -200,9 +200,6 @@ class BackgroundService {
 
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   
-  /// URL z powiadomienia, z którego użytkownik uruchomił aplikację (cold start)
-  static String? pendingPayload;
-
   Future<void> init() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/launcher_icon');
@@ -223,7 +220,6 @@ class BackgroundService {
         final payload = response.payload;
         if (payload != null && payload.isNotEmpty) {
           debugPrint('Sowa Notyfikacje: Kliknięto powiadomienie, payload: $payload');
-          pendingPayload = payload;
           _openUrl(payload);
         }
       },
@@ -247,7 +243,6 @@ class BackgroundService {
       final payload = details.notificationResponse?.payload;
       if (payload != null && payload.isNotEmpty) {
         debugPrint('Sowa Notyfikacje: Cold start z powiadomienia, payload: $payload');
-        pendingPayload = payload;
         _openUrl(payload);
       }
     }
