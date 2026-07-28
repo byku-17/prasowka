@@ -32,6 +32,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         title: const Text('POWIADOMIENIA'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: 'Dodaj testowy wpis',
+            onPressed: () async {
+              await NotificationHistory().add(NotificationEntry(
+                id: 'test_${DateTime.now().millisecondsSinceEpoch}',
+                title: 'Test Sowy 🦉',
+                body: 'To jest testowe powiadomienie. Jeśli to widzisz, historia działa poprawnie!',
+                url: 'https://example.com',
+                timestamp: DateTime.now(),
+                type: 'article',
+              ));
+              if (context.mounted) setState(() {});
+            },
+          ),
           if (entries.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_outlined),
