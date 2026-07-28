@@ -60,10 +60,12 @@ class RssService {
           if (trimmedXml.contains('<rss') || trimmedXml.contains('<channel')) {
             final feed = RssFeed.parse(trimmedXml);
             for (var item in feed.items) {
+              final title = (item.title ?? 'Bez tytułu').trim();
+              final cleanDesc = _cleanHtml(item.description ?? '');
               articles.add(Article(
                 id: item.guid ?? item.link ?? DateTime.now().toIso8601String(),
-                title: (item.title ?? 'Bez tytułu').trim(),
-                description: _cleanHtml(item.description ?? ''),
+                title: title,
+                description: cleanDesc.isNotEmpty ? cleanDesc : 'Artykuł ze źródła: ${source.name}',
                 content: item.content?.value ?? item.description ?? '',
                 url: item.link ?? '',
                 publishedAt: _parseDate(item.pubDate),
@@ -74,10 +76,12 @@ class RssService {
           } else {
             final feed = AtomFeed.parse(trimmedXml);
             for (var item in feed.items) {
+              final title = (item.title ?? 'Bez tytułu').trim();
+              final cleanDesc = _cleanHtml(item.summary ?? '');
               articles.add(Article(
                 id: item.id ?? (item.links.isNotEmpty ? item.links.first.href : null) ?? DateTime.now().toIso8601String(),
-                title: (item.title ?? 'Bez tytułu').trim(),
-                description: _cleanHtml(item.summary ?? ''),
+                title: title,
+                description: cleanDesc.isNotEmpty ? cleanDesc : 'Artykuł ze źródła: ${source.name}',
                 content: item.content ?? item.summary ?? '',
                 url: item.links.isNotEmpty ? item.links.first.href ?? '' : '',
                 publishedAt: _parseDate(item.updated ?? item.published),
@@ -209,16 +213,21 @@ class RssService {
       if (response.statusCode == 200) {
         final xml = utf8.decode(response.bodyBytes, allowMalformed: true);
         final feed = RssFeed.parse(xml.trim());
-        return feed.items.map((item) => Article(
-          id: 'search_${item.guid ?? item.link ?? DateTime.now().toIso8601String()}',
-          title: (item.title ?? 'Bez tytułu').trim(),
-          description: _cleanHtml(item.description ?? ''),
-          content: item.content?.value ?? item.description ?? '',
-          url: item.link ?? '',
-          publishedAt: _parseDate(item.pubDate),
-          sourceName: _extractSource(item.title ?? ''),
-          imageUrl: _getImg(item),
-        )).toList();
+        return feed.items.map((item) {
+          final title = (item.title ?? 'Bez tytułu').trim();
+          final cleanDesc = _cleanHtml(item.description ?? '');
+          final sourceName = _extractSource(title);
+          return Article(
+            id: 'search_${item.guid ?? item.link ?? DateTime.now().toIso8601String()}',
+            title: title,
+            description: cleanDesc.isNotEmpty ? cleanDesc : 'Artykuł ze źródła: $sourceName',
+            content: item.content?.value ?? item.description ?? '',
+            url: item.link ?? '',
+            publishedAt: _parseDate(item.pubDate),
+            sourceName: sourceName,
+            imageUrl: _getImg(item),
+          );
+        }).toList();
       }
     } catch (e) {
       debugPrint('Sowa Search: Błąd Google News RSS: $e');
