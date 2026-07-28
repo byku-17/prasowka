@@ -5,15 +5,15 @@ import 'package:prasowka/services/weather_service.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
-/// Mapowanie miast → oficjalne strony stacji powietrza GIOS
+/// Mapowanie miast → wyszukiwanie jakości powietrza (GIOS stacje zwracają 500)
 const Map<String, String> _airQualityUrls = {
-  'Warszawa': 'https://powietrze.gios.gov.pl/pjp/current/station/64',
-  'Kraków': 'https://powietrze.gios.gov.pl/pjp/current/station/117',
-  'Wrocław': 'https://powietrze.gios.gov.pl/pjp/current/station/102',
-  'Gdańsk': 'https://powietrze.gios.gov.pl/pjp/current/station/83',
-  'Poznań': 'https://powietrze.gios.gov.pl/pjp/current/station/92',
-  'Łódź': 'https://powietrze.gios.gov.pl/pjp/current/station/86',
-  'Katowice': 'https://powietrze.gios.gov.pl/pjp/current/station/108',
+  'Warszawa': 'https://www.google.com/search?q=jakość+powietrza+Warszawa',
+  'Kraków': 'https://www.google.com/search?q=jakość+powietrza+Kraków',
+  'Wrocław': 'https://www.google.com/search?q=jakość+powietrza+Wrocław',
+  'Gdańsk': 'https://www.google.com/search?q=jakość+powietrza+Gdańsk',
+  'Poznań': 'https://www.google.com/search?q=jakość+powietrza+Poznań',
+  'Łódź': 'https://www.google.com/search?q=jakość+powietrza+Łódź',
+  'Katowice': 'https://www.google.com/search?q=jakość+powietrza+Katowice',
 };
 
 class LocalInfoBar extends StatefulWidget {
@@ -131,7 +131,7 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
     final data = _weatherData;
     final city = context.read<SettingsProvider>().preferredCity;
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse('https://www.google.com/search?q=pogoda+$city'), mode: LaunchMode.externalApplication),
+      onTap: () => _launchUrl(context, 'https://www.google.com/search?q=pogoda+$city'),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -191,7 +191,7 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
         ?? 'https://www.google.com/search?q=jakość+powietrza+$city';
 
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse(airUrl), mode: LaunchMode.externalApplication),
+      onTap: () => _launchUrl(context, airUrl),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -232,5 +232,25 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
         ),
       ),
     );
+  }
+
+  Future<void> _launchUrl(BuildContext context, String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Nie udało się otworzyć: $url')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('LocalInfoBar launch error: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nie udało się otworzyć linku')),
+        );
+      }
+    }
   }
 }
