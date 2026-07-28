@@ -29,6 +29,7 @@ void callbackDispatcher() {
       
       await storage.init();
       await interest.init();
+      await NotificationHistory().init();
 
       // --- POWIADOMIENIA RSS ---
       final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
