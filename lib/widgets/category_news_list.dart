@@ -58,6 +58,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
       allSources: sources,
       enabledSourceIds: settings.enabledSourceIds,
       favoriteTeams: settings.favoriteTeams,
+      forceRefresh: true,
     );
   }
 
