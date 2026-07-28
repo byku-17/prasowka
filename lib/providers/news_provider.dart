@@ -198,6 +198,7 @@ class NewsProvider with ChangeNotifier {
       _lastFetchTimes[categoryId] = DateTime.now();
       _articlesMap[categoryId] = accumulated;
       
+      List<Article> finalList;
       if (accumulated.length > 50) {
         // Konwertuj do Map przed compute (bezpieczne dla isolate boundaries z Article/HiveObject)
         final transferList = accumulated.map((a) => a.toTransferMap()).toList();
@@ -207,13 +208,15 @@ class NewsProvider with ChangeNotifier {
           'categoryId': categoryId,
         });
         _articlesMap[categoryId] = mixed;
+        finalList = mixed;
       } else {
         _sortAndMixArticlesSync(accumulated, favoriteTeams ?? _lastFavoriteTeams, categoryId);
         _articlesMap[categoryId] = accumulated;
+        finalList = accumulated;
       }
       
       _calculateRecommendations();
-      await _storageService.saveCategoryCache(categoryId, accumulated);
+      await _storageService.saveCategoryCache(categoryId, finalList);
       
       _loadingMap[categoryId] = false;
       _hasEverLoadedMap[categoryId] = true;

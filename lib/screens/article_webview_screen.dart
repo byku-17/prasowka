@@ -151,8 +151,22 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
         onUrlChange: (change) {
           _currentUrl = change.url;
         },
-      ))
-      ..loadRequest(Uri.parse(widget.url));
+        onWebResourceError: (error) {
+          debugPrint('WebView error: ${error.description}');
+        },
+      ));
+
+    try {
+      await _controller.loadRequest(Uri.parse(widget.url));
+    } catch (e) {
+      debugPrint('WebView load error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Nie udało się załadować strony')),
+        );
+        Navigator.of(context).pop();
+      }
+    }
   }
 
   void _injectReaderCss() {
