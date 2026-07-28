@@ -27,44 +27,11 @@ class ReaderService {
 
   Future<String> _resolveUrl(String url) async {
     if (!url.contains('news.google.com')) return url;
-    try {
-      final response = await http.get(Uri.parse(url), headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      }).timeout(const Duration(seconds: 10));
-
-      final body = response.body;
-
-      // Google News uses <meta http-equiv="refresh" content="0; url=...">
-      final metaRefresh = RegExp(
-        r"""<meta[^>]*http-equiv=["']?refresh["']?[^>]*content=["']?\d+;\s*url=([^"'>\s]+)""",
-        caseSensitive: false,
-      );
-      final metaMatch = metaRefresh.firstMatch(body);
-      if (metaMatch != null) {
-        final redirectUrl = metaMatch.group(1)!;
-        if (redirectUrl.startsWith('http')) return redirectUrl;
-        return Uri.parse(url).resolve(redirectUrl).toString();
-      }
-
-      // Also check for window.location or location.href in scripts
-      final locationRedirect = RegExp(r"""window\.location(?:\.href)?\s*=\s*["']([^"']+)["']""");
-      final locMatch = locationRedirect.firstMatch(body);
-      if (locMatch != null) {
-        final redirectUrl = locMatch.group(1)!;
-        if (redirectUrl.startsWith('http')) return redirectUrl;
-      }
-
-      // Check for data-n-au attribute (new Google News format)
-      final dataNAu = RegExp(r'data-n-au="([^"]+)"');
-      final nauMatch = dataNAu.firstMatch(body);
-      if (nauMatch != null) {
-        final encoded = nauMatch.group(1)!;
-        try {
-          final decoded = utf8.decode(base64Url.decode(encoded));
-          if (decoded.startsWith('http')) return decoded;
-        } catch (_) {}
-      }
-    } catch (_) {}
+    // Google News redirect URLs nie mogą być automatycznie rozwiązywane
+    // (wymagają JS). Prawdziwy URL powinien być już wyodrębniony podczas
+    // parsowania RSS przez RssService.extractRealUrlFromContent().
+    // Jeśli tu dotarliśmy, oznacza to że ekstrakcja się nie powiodła.
+    debugPrint('ReaderService: Próba otwarcia URL Google News bez wyodrębnionego prawdziwego URL: $url');
     return url;
   }
 }

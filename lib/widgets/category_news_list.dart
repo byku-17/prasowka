@@ -31,15 +31,15 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
 
   List<NewsSource> _getSourcesForCategory(SettingsProvider settings) {
     final city = settings.preferredCity;
-    if (widget.category.id == 'warsaw' && city.toLowerCase() != 'warszawa') {
-      return [
-        NewsSource(
-          id: 'dynamic_city_${city.toLowerCase()}',
-          name: 'Google News: $city',
-          rssUrl: 'https://news.google.com/rss/search?q=${Uri.encodeComponent(city)}&hl=pl&gl=PL&ceid=PL:pl',
-          categoryId: 'warsaw',
-        )
-      ];
+    
+    // Dla kategorii "warsaw" podmień źródła na te przypisane do wybranego miasta
+    if (widget.category.id == 'warsaw') {
+      final sourceIds = NewsSource.cityRssSourceIds[city];
+      if (sourceIds != null) {
+        return settings.allSources.where((s) => sourceIds.contains(s.id)).toList();
+      }
+      // Fallback: jeśli miasto nie ma przypisanych źródeł, użyj źródeł Warszawy
+      return settings.allSources.where((s) => s.categoryId == 'warsaw').toList();
     }
     return settings.allSources;
   }

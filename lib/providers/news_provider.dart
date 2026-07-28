@@ -101,6 +101,11 @@ class NewsProvider with ChangeNotifier {
       List<NewsSource> sourcesToFetch;
       if (categoryId == 'all') {
         sourcesToFetch = baseSources.where((s) => NewsSource.topSourceIds.contains(s.id) || s.id.startsWith('custom_')).toList();
+      } else if (categoryId == 'warsaw') {
+        // Dla kategorii "warsaw" użyj wszystkich źródeł z listy (źródła miejskie
+        // mają różne categoryId: 'krakow', 'wroclaw', itd. - zostały już przefiltrowane
+        // przez _getSourcesForCategory w widget)
+        sourcesToFetch = baseSources;
       } else {
         sourcesToFetch = baseSources.where((s) => s.categoryId == categoryId).toList();
       }
@@ -319,6 +324,7 @@ class NewsProvider with ChangeNotifier {
 
   Future<void> fetchFullArticleContent(Article article) async {
     if (article.fullContent != null) return;
+    if (RssService.isGoogleNewsUrl(article.url)) return;
     _isFetchingFullContent = true;
     notifyListeners();
     try {

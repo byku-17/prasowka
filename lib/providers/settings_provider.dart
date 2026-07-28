@@ -83,6 +83,15 @@ class SettingsProvider with ChangeNotifier {
       await resetToDefaultSources();
     } else {
       _allSources = sourcesBox.values.toList();
+      // Dodaj brakujące domyślne źródła (np. nowe źródła miejskie)
+      final existingIds = _allSources.map((s) => s.id).toSet();
+      final missingDefaults = NewsSource.defaultSources.where((s) => !existingIds.contains(s.id));
+      if (missingDefaults.isNotEmpty) {
+        for (final src in missingDefaults) {
+          await sourcesBox.put(src.id, src);
+        }
+        _allSources = sourcesBox.values.toList();
+      }
     }
 
     // 3. Ustawienia ogólne
@@ -330,6 +339,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setPreferredCity(String name, double lat, double lon) async {
+    final oldCity = _preferredCity;
     _preferredCity = name;
     _cityLatitude = lat;
     _cityLongitude = lon;
@@ -337,6 +347,24 @@ class SettingsProvider with ChangeNotifier {
     await box.put(preferredCityKey, name);
     await box.put(cityLatKey, lat);
     await box.put(cityLonKey, lon);
+
+    // Automatycznie przełącz źródła miejskie
+    if (oldCity != name) {
+      // Wyłącz źródła starego miasta
+      final oldSourceIds = NewsSource.cityRssSourceIds[oldCity];
+      if (oldSourceIds != null) {
+        _enabledSourceIds.removeWhere((id) => oldSourceIds.contains(id));
+      }
+      // Włącz źródła nowego miasta
+      final newSourceIds = NewsSource.cityRssSourceIds[name];
+      if (newSourceIds != null) {
+        for (final id in newSourceIds) {
+          if (!_enabledSourceIds.contains(id)) _enabledSourceIds.add(id);
+        }
+      }
+      await saveEnabledSources();
+    }
+
     notifyListeners();
   }
 

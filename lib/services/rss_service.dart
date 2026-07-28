@@ -62,12 +62,15 @@ class RssService {
             for (var item in feed.items) {
               final title = (item.title ?? 'Bez tytułu').trim();
               final cleanDesc = _cleanHtml(item.description ?? '');
+              final rawUrl = item.link ?? '';
+              final contentValue = item.content?.value;
+              final realUrl = extractRealUrlFromContent(contentValue) ?? rawUrl;
               articles.add(Article(
-                id: item.guid ?? item.link ?? DateTime.now().toIso8601String(),
+                id: item.guid ?? (rawUrl.isNotEmpty ? rawUrl : null) ?? DateTime.now().toIso8601String(),
                 title: title,
                 description: cleanDesc.isNotEmpty ? cleanDesc : 'Artykuł ze źródła: ${source.name}',
-                content: item.content?.value ?? item.description ?? '',
-                url: item.link ?? '',
+                content: contentValue ?? item.description ?? '',
+                url: realUrl,
                 publishedAt: _parseDate(item.pubDate),
                 sourceName: source.name,
                 imageUrl: _getImg(item),
@@ -78,12 +81,15 @@ class RssService {
             for (var item in feed.items) {
               final title = (item.title ?? 'Bez tytułu').trim();
               final cleanDesc = _cleanHtml(item.summary ?? '');
+              final rawUrl = item.links.isNotEmpty ? item.links.first.href ?? '' : '';
+              final contentValue = item.content;
+              final realUrl = extractRealUrlFromContent(contentValue) ?? rawUrl;
               articles.add(Article(
-                id: item.id ?? (item.links.isNotEmpty ? item.links.first.href : null) ?? DateTime.now().toIso8601String(),
+                id: item.id ?? (rawUrl.isNotEmpty ? rawUrl : null) ?? DateTime.now().toIso8601String(),
                 title: title,
                 description: cleanDesc.isNotEmpty ? cleanDesc : 'Artykuł ze źródła: ${source.name}',
-                content: item.content ?? item.summary ?? '',
-                url: item.links.isNotEmpty ? item.links.first.href ?? '' : '',
+                content: contentValue ?? item.summary ?? '',
+                url: realUrl,
                 publishedAt: _parseDate(item.updated ?? item.published),
                 sourceName: source.name,
                 imageUrl: _getAtomImg(item),
@@ -217,12 +223,15 @@ class RssService {
           final title = (item.title ?? 'Bez tytułu').trim();
           final cleanDesc = _cleanHtml(item.description ?? '');
           final sourceName = _extractSource(title);
+          final rawUrl = item.link ?? '';
+          final contentValue = item.content?.value;
+          final realUrl = extractRealUrlFromContent(contentValue) ?? rawUrl;
           return Article(
-            id: 'search_${item.guid ?? item.link ?? DateTime.now().toIso8601String()}',
+            id: 'search_${item.guid ?? (rawUrl.isNotEmpty ? rawUrl : null) ?? DateTime.now().toIso8601String()}',
             title: title,
             description: cleanDesc.isNotEmpty ? cleanDesc : 'Artykuł ze źródła: $sourceName',
-            content: item.content?.value ?? item.description ?? '',
-            url: item.link ?? '',
+            content: contentValue ?? item.description ?? '',
+            url: realUrl,
             publishedAt: _parseDate(item.pubDate),
             sourceName: sourceName,
             imageUrl: _getImg(item),
@@ -240,5 +249,33 @@ class RssService {
     final dashIdx = title.lastIndexOf(' - ');
     if (dashIdx > 0) return title.substring(dashIdx + 3).trim();
     return 'Google News';
+  }
+
+  /// Wyodrębnia prawdziwy URL artykułu z pola content RSS Google News.
+  /// Google News RSS zwraca content w formacie: <a href="PRAWDZIWI_URL">...</a>
+  /// Zwraca null jeśli nie udało się wyodrębnić (wtedy pokazujemy "Otwórz w przeglądarce")
+  static String? extractRealUrlFromContent(String? contentValue) {
+    if (contentValue == null || contentValue.isEmpty) return null;
+    try {
+      final doc = parse(contentValue);
+      final links = doc.querySelectorAll('a[href]');
+      for (final link in links) {
+        final href = link.attributes['href'];
+        if (href == null || href.isEmpty) continue;
+        // Pomijamy linki do Google News
+        if (href.contains('news.google.com')) continue;
+        // Akceptujemy tylko http/https
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          return href;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Sprawdza czy URL pochodzi z Google News (prawdziwy URL nie został wyodrębniony)
+  static bool isGoogleNewsUrl(String? url) {
+    if (url == null || url.isEmpty) return false;
+    return url.contains('news.google.com');
   }
 }

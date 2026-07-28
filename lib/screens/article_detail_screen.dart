@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/services/rss_service.dart';
+import 'package:prasowka/screens/article_webview_screen.dart';
 
 class ArticleDetailScreen extends StatelessWidget {
   final Article article;
@@ -143,16 +145,36 @@ class ArticleDetailScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 24),
                                 Center(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () => provider.fetchFullArticleContent(article),
-                                    icon: const Icon(Icons.auto_stories),
-                                    label: const Text('POBIERZ PEŁNĄ TREŚĆ'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.accentGold,
-                                      foregroundColor: AppTheme.primaryNavy,
-                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                    ),
-                                  ),
+                                  child: RssService.isGoogleNewsUrl(article.url)
+                                      ? ElevatedButton.icon(
+                                          onPressed: () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => ArticleWebViewScreen(
+                                                  url: article.url,
+                                                  title: article.title,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          icon: const Icon(Icons.auto_stories),
+                                          label: const Text('CZYTAJ ARTYKUŁ'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.accentGold,
+                                            foregroundColor: AppTheme.primaryNavy,
+                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                          ),
+                                        )
+                                      : ElevatedButton.icon(
+                                          onPressed: () => provider.fetchFullArticleContent(article),
+                                          icon: const Icon(Icons.auto_stories),
+                                          label: const Text('POBIERZ PEŁNĄ TREŚĆ'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.accentGold,
+                                            foregroundColor: AppTheme.primaryNavy,
+                                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                          ),
+                                        ),
                                 ),
                               ],
                             )
@@ -173,18 +195,7 @@ class ArticleDetailScreen extends StatelessWidget {
                     },
                   ),
                   
-                  const SizedBox(height: 40),
                   
-                  Center(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _launchUrl(context, article.url),
-                      icon: const Icon(Icons.link),
-                      label: const Text('CZYTAJ ORYGINAŁ W SERWISIE'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 60),
                 ],
               ),
