@@ -12,6 +12,26 @@ class RssService {
   static final _htmlBannedTagsRegExp = RegExp(r'<(source|picture|script|style|zrodlo|figure|figcaption)[^>]*>.*?</\1>', caseSensitive: false);
   static final _whitespaceRegExp = RegExp(r'\s+');
 
+  static final _socialDomains = RegExp(
+    r'pbs\.twimg\.com|abs\.twimg\.com|platform\.twitter\.com|'
+    r'graph\.facebook\.com|fbcdn\.net|lookaside\.fbsbx\.com|'
+    r'i\.ytimg\.com|cdn\.instagram\.com',
+    caseSensitive: false,
+  );
+
+  static final _socialImgTagRegExp = RegExp(
+    r'<img[^>]*(pbs\.twimg\.com|fbcdn\.net|ytimg\.com|lookaside\.fbsbx\.com|cdn\.instagram\.com)[^>]*/?>',
+    caseSensitive: false,
+  );
+  static final _trackingPixelRegExp = RegExp(
+    r'<img[^>]*(width=.1[^0-9]|height=.1[^0-9]|width=.2[^0-9]|height=.2[^0-9])[^>]*/?>',
+    caseSensitive: false,
+  );
+  static final _socialShareTextRegExp = RegExp(
+    r'(Zrodlo|Źrodlo|Source|source):\s*(Twitter|Facebook|Instagram|YouTube|X\.com)[^.]*\.?',
+    caseSensitive: false,
+  );
+
   Future<List<Article>> fetchArticles(NewsSource source) async {
     final url = source.rssUrl.trim();
     try {
@@ -80,10 +100,15 @@ class RssService {
 
   String _cleanHtml(String htmlString) {
     if (htmlString.isEmpty) return '';
-    if (!htmlString.contains('<')) return htmlString.trim();
+    if (!htmlString.contains('<')) {
+      return htmlString.replaceAll(_socialShareTextRegExp, '').replaceAll(_whitespaceRegExp, ' ').trim();
+    }
     try {
       String cleaned = htmlString.replaceAll(_htmlBannedTagsRegExp, '');
+      cleaned = cleaned.replaceAll(_trackingPixelRegExp, '');
+      cleaned = cleaned.replaceAll(_socialImgTagRegExp, '');
       cleaned = cleaned.replaceAll(_htmlTagRegExp, ' ');
+      cleaned = cleaned.replaceAll(_socialShareTextRegExp, '');
       return cleaned.replaceAll(_whitespaceRegExp, ' ').trim();
     } catch (_) {
       return htmlString.trim();
@@ -138,6 +163,8 @@ class RssService {
 
   bool _isValidImageUrl(String url) {
     final u = url.toLowerCase();
+    if (_socialDomains.hasMatch(u)) return false;
+    
     // Sprawdzamy standardowe rozszerzenia
     if (u.contains('.jpg') || u.contains('.jpeg') || u.contains('.png') || 
         u.contains('.webp') || u.contains('.gif')) return true;
