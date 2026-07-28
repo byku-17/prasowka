@@ -12,10 +12,13 @@ class NewsApiService {
   bool get isConfigured => _apiKey != null && _apiKey!.isNotEmpty;
 
   Future<List<Article>> fetchTopHeadlines({String country = 'pl', int pageSize = 30}) async {
+    debugPrint('NewsAPI: isConfigured=$isConfigured, key=${_apiKey != null ? "${_apiKey!.substring(0, 4)}..." : "null"}');
     if (!isConfigured) return [];
     try {
       final uri = Uri.parse('$_baseUrl/top-headlines?country=$country&pageSize=$pageSize&apiKey=$_apiKey');
+      debugPrint('NewsAPI: requesting $uri');
       final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      debugPrint('NewsAPI: status=${response.statusCode}');
       if (response.statusCode != 200) {
         debugPrint('NewsAPI Error: ${response.statusCode} ${response.body}');
         return [];
@@ -25,6 +28,7 @@ class NewsApiService {
         debugPrint('NewsAPI Error: ${data['message']}');
         return [];
       }
+      debugPrint('NewsAPI: totalResults=${data['totalResults']}');
       return await compute(_parseArticles, response.body);
     } catch (e) {
       debugPrint('NewsAPI Exception: $e');
