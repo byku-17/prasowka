@@ -36,24 +36,26 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
     _lastFetchCityHash = cityHash;
 
     final newsProvider = context.read<NewsProvider>();
+    final city = settings.preferredCity;
     
-    // Obsługa dynamicznego miasta
-    List<NewsSource>? extraSources;
-    if (widget.category.id == 'warsaw' && settings.preferredCity.toLowerCase() != 'warszawa') {
-      final city = settings.preferredCity;
-      extraSources = [
+    // Dla kategorii "warsaw" z innym miastem — zamień źródła warszawskie na Google News
+    List<NewsSource> sources;
+    if (widget.category.id == 'warsaw' && city.toLowerCase() != 'warszawa') {
+      sources = [
         NewsSource(
           id: 'dynamic_city_${city.toLowerCase()}',
-          name: 'Wiadomości: $city',
+          name: 'Google News: $city',
           rssUrl: 'https://news.google.com/rss/search?q=${Uri.encodeComponent(city)}&hl=pl&gl=PL&ceid=PL:pl',
           categoryId: 'warsaw',
         )
       ];
+    } else {
+      sources = settings.allSources;
     }
 
     newsProvider.fetchNews(
       category: widget.category,
-      allSources: extraSources != null ? [...settings.allSources, ...extraSources] : settings.allSources,
+      allSources: sources,
       enabledSourceIds: settings.enabledSourceIds,
       favoriteTeams: settings.favoriteTeams,
     );
@@ -90,7 +92,13 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
   Widget build(BuildContext context) {
     super.build(context);
     final settings = context.watch<SettingsProvider>();
-    _fetchIfNeeded();
+    
+    // Sprawdź czy miasto się zmieniło i zaplanuj odświeżenie
+    final cityHash = "${settings.preferredCity}_${settings.cityCoordinates.latitude}_${settings.cityCoordinates.longitude}";
+    if (_lastFetchCityHash != cityHash) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fetchIfNeeded());
+    }
+    
     final bool isSport = widget.category.id == 'sport';
     final bool isWarsaw = widget.category.id == 'warsaw';
 
