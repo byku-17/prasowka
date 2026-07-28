@@ -5,25 +5,19 @@ import 'package:prasowka/services/weather_service.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
-class WarsawInfoBar extends StatefulWidget {
-  const WarsawInfoBar({super.key});
+class LocalInfoBar extends StatefulWidget {
+  const LocalInfoBar({super.key});
 
   @override
-  State<WarsawInfoBar> createState() => _WarsawInfoBarState();
+  State<LocalInfoBar> createState() => _LocalInfoBarState();
 }
 
-class _WarsawInfoBarState extends State<WarsawInfoBar> {
+class _LocalInfoBarState extends State<LocalInfoBar> {
   final WeatherService _weather = WeatherService();
   WeatherData? _weatherData;
   AirQualityData? _airData;
   bool _isLoading = true;
   String? _lastCityHash;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _checkAndFetch();
-  }
 
   void _checkAndFetch() {
     final settings = context.read<SettingsProvider>();
@@ -48,6 +42,9 @@ class _WarsawInfoBarState extends State<WarsawInfoBar> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<SettingsProvider>();
+    _checkAndFetch();
+
     if (_isLoading) {
       return const SizedBox(
         height: 90,
@@ -71,7 +68,7 @@ class _WarsawInfoBarState extends State<WarsawInfoBar> {
     final data = _weatherData;
     final city = context.read<SettingsProvider>().preferredCity;
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse('https://pogoda.interia.pl/'), mode: LaunchMode.externalApplication),
+      onTap: () => launchUrl(Uri.parse('https://www.google.com/search?q=pogoda+$city'), mode: LaunchMode.externalApplication),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -118,6 +115,7 @@ class _WarsawInfoBarState extends State<WarsawInfoBar> {
 
   Widget _buildAirTile() {
     final data = _airData;
+    final city = context.read<SettingsProvider>().preferredCity;
     final color = data == null
         ? Colors.grey
         : data.pm25 <= 10
@@ -127,7 +125,7 @@ class _WarsawInfoBarState extends State<WarsawInfoBar> {
                 : Colors.red;
 
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse('https://powietrze.gios.gov.pl/pjp/current'), mode: LaunchMode.externalApplication),
+      onTap: () => launchUrl(Uri.parse('https://www.google.com/search?q=jakość+powietrza+$city'), mode: LaunchMode.externalApplication),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(

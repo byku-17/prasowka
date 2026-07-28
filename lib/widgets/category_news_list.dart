@@ -10,7 +10,7 @@ import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/widgets/article_card.dart';
 import 'package:prasowka/widgets/news_skeleton.dart';
 import 'package:prasowka/widgets/scores_bar.dart';
-import 'package:prasowka/widgets/warsaw_info_bar.dart';
+import 'package:prasowka/widgets/local_info_bar.dart';
 
 class CategoryNewsList extends StatefulWidget {
   final NewsCategory category;
@@ -88,7 +88,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
     final bool isSport = widget.category.id == 'sport';
     final bool isWarsaw = widget.category.id == 'warsaw';
 
-    return Consumer<NewsProvider>(
+    final newsContent = Consumer<NewsProvider>(
       builder: (context, provider, child) {
         final articles = provider.getArticlesForCategory(widget.category.id);
         final isLoading = provider.isCategoryLoading(widget.category.id);
@@ -158,20 +158,21 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
           content = _buildEmptyState(context, provider, settings, errorMessage);
         }
 
-        // Jeśli to sekcja SPORT, dodajemy ScoresBar nad treścią (niezależnie od tego czy są newsy)
-        if (isSport || isWarsaw) {
-          return Column(
-            children: [
-              if (isSport) const ScoresBar(),
-              if (isWarsaw) const WarsawInfoBar(),
-              Expanded(child: content),
-            ],
-          );
-        }
-
         return content;
       },
     );
+
+    if (isSport || isWarsaw) {
+      return Column(
+        children: [
+          if (isSport) const ScoresBar(),
+          if (isWarsaw) const LocalInfoBar(),
+          Expanded(child: newsContent),
+        ],
+      );
+    }
+
+    return newsContent;
   }
 
   Widget _buildEmptyState(BuildContext context, NewsProvider provider, SettingsProvider settings, String? errorMessage) {
