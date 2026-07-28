@@ -15,7 +15,9 @@ class NewsApiService {
     debugPrint('NewsAPI: isConfigured=$isConfigured, key=${_apiKey != null ? "${_apiKey!.substring(0, 4)}..." : "null"}');
     if (!isConfigured) return [];
     try {
-      final uri = Uri.parse('$_baseUrl/top-headlines?country=$country&pageSize=$pageSize&apiKey=$_apiKey');
+      final yesterday = DateTime.now().subtract(const Duration(days: 2));
+      final from = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+      final uri = Uri.parse('$_baseUrl/everything?domains=gazeta.pl,wiadomosci.onet.pl,tvn24.pl,radiozetka.pl,wyborcza.pl,interia.pl,wp.pl,wiadomosci.wp.pl&language=pl&from=$from&sortBy=publishedAt&pageSize=$pageSize&apiKey=$_apiKey');
       debugPrint('NewsAPI: requesting $uri');
       final response = await http.get(uri).timeout(const Duration(seconds: 15));
       debugPrint('NewsAPI: status=${response.statusCode}');
