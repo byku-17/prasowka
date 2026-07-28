@@ -11,7 +11,7 @@ class NewsApiService {
 
   bool get isConfigured => _apiKey != null && _apiKey!.isNotEmpty;
 
-  Future<List<Article>> fetchTopHeadlines({String country = 'pl', int pageSize = 30}) async {
+  Future<List<Article>> fetchArticles({int pageSize = 30}) async {
     if (!isConfigured) return [];
     try {
       final yesterday = DateTime.now().subtract(const Duration(days: 2));
@@ -35,6 +35,14 @@ class NewsApiService {
   }
 }
 
+int _simpleHash(String s) {
+  int hash = 0;
+  for (int i = 0; i < s.length; i++) {
+    hash = ((hash << 5) - hash + s.codeUnitAt(i)) & 0x7FFFFFFF;
+  }
+  return hash;
+}
+
 List<Article> _parseArticles(String jsonBody) {
   final data = json.decode(jsonBody);
   final articles = <Article>[];
@@ -50,8 +58,8 @@ List<Article> _parseArticles(String jsonBody) {
         ? DateTime.tryParse(item['publishedAt']) ?? DateTime.now()
         : DateTime.now();
 
-    articles.add(Article(
-      id: 'newsapi_${url.hashCode}',
+      articles.add(Article(
+        id: 'newsapi_${_simpleHash(url)}',
       title: title,
       description: description.isNotEmpty ? description : 'Artykuł ze źródła: $sourceName',
       content: item['content'] ?? '',

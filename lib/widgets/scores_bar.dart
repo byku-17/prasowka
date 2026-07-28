@@ -273,7 +273,7 @@ class _MatchScoreTile extends StatelessWidget {
   }
 
   String _formatDateShort(DateTime date) => "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}";
-  String _formatTime(DateTime date) => "${date.hour}:${date.minute.toString().padLeft(2, '0')}";
+  String _formatTime(DateTime date) => "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
 
   String _formatDateLabel(DateTime date) {
     final now = DateTime.now();

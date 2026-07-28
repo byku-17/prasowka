@@ -89,28 +89,6 @@ class WeatherService {
     return null;
   }
 
-  Future<CityCoordinates?> geocode(String name) async {
-    try {
-      final url = '$_geoBase?name=$name&count=1&language=pl&format=json';
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final results = data['results'];
-        if (results != null && results.isNotEmpty) {
-          final r = results[0];
-          return CityCoordinates(
-            name: r['name'] ?? name,
-            latitude: (r['latitude'] ?? 52.23).toDouble(),
-            longitude: (r['longitude'] ?? 21.01).toDouble(),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Sowa Weather: Błąd geocoding: $e');
-    }
-    return null;
-  }
-
   String _mapWeatherCode(int? code) {
     switch (code) {
       case 0: return 'Słonecznie';

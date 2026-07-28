@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_category.dart';
@@ -73,7 +74,7 @@ void main() {
 
     test('icon getter returns valid IconData', () {
       final category = NewsCategory.defaultCategories.first;
-      expect(category.icon, isA<dynamic>());
+      expect(category.icon, isA<IconData>());
     });
   });
 

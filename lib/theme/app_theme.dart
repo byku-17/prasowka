@@ -8,7 +8,6 @@ class AppTheme {
   
   // Kolory tła i tekstu
   static const Color lightBg = Color(0xFFF8F9FA);
-  static const Color darkBg = Color(0xFF1E2126);
 
   /// Motyw Jasny
   static ThemeData get lightTheme {

@@ -338,6 +338,4 @@ class SportLeague {
     }
   }
 
-  /// Zwraca wszystkie dyscypliny
-  static List<SportDiscipline> get disciplines => SportDiscipline.values;
 }

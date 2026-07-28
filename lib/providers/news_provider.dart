@@ -99,7 +99,7 @@ class NewsProvider with ChangeNotifier {
 
     try {
       if (categoryId == 'api_news') {
-        final articles = await _newsApiService.fetchTopHeadlines();
+        final articles = await _newsApiService.fetchArticles();
         if (_requestIds[categoryId] != requestId) return;
         for (var article in articles) {
           final stored = _storageService.getStoredArticle(article.id);
