@@ -24,12 +24,17 @@ class CategoryNewsList extends StatefulWidget {
 class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepAliveClientMixin {
   final ScrollController _scrollController = ScrollController();
   bool _showBackToTop = false;
+  String? _lastFetchCityHash;
 
   @override
   bool get wantKeepAlive => true;
 
-  void _fetch() {
+  void _fetchIfNeeded() {
     final settings = context.read<SettingsProvider>();
+    final cityHash = "${settings.preferredCity}_${settings.cityCoordinates.latitude}_${settings.cityCoordinates.longitude}";
+    if (_lastFetchCityHash == cityHash) return;
+    _lastFetchCityHash = cityHash;
+
     final newsProvider = context.read<NewsProvider>();
     
     // Obsługa dynamicznego miasta
@@ -64,7 +69,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
         setState(() => _showBackToTop = false);
       }
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetch());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchIfNeeded());
   }
 
   @override
@@ -85,6 +90,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
   Widget build(BuildContext context) {
     super.build(context);
     final settings = context.watch<SettingsProvider>();
+    _fetchIfNeeded();
     final bool isSport = widget.category.id == 'sport';
     final bool isWarsaw = widget.category.id == 'warsaw';
 
