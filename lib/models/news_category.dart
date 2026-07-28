@@ -41,5 +41,6 @@ class NewsCategory extends HiveObject {
     NewsCategory(id: 'lifestyle', name: 'Lifestyle', iconCode: Icons.style.codePoint),
     NewsCategory(id: 'culture', name: 'Kultura', iconCode: Icons.theater_comedy.codePoint),
     NewsCategory(id: 'warsaw', name: 'Warszawa', iconCode: Icons.location_city.codePoint),
+    NewsCategory(id: 'api_news', name: 'API News', iconCode: Icons.api.codePoint),
   ];
 }

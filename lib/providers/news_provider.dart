@@ -8,6 +8,7 @@ import 'package:prasowka/services/storage_service.dart';
 import 'package:prasowka/services/reader_service.dart';
 import 'package:prasowka/services/user_interest_service.dart';
 import 'package:prasowka/services/translation_service.dart';
+import 'package:prasowka/services/news_api_service.dart';
 
 class NewsProvider with ChangeNotifier {
   final RssService _rssService = RssService();
@@ -15,6 +16,7 @@ class NewsProvider with ChangeNotifier {
   final ReaderService _readerService = ReaderService();
   final UserInterestService _interestService = UserInterestService();
   final TranslationService _translationService = TranslationService();
+  final NewsApiService _newsApiService = NewsApiService();
 
   final Map<String, List<Article>> _articlesMap = {};
   final Map<String, bool> _loadingMap = {};
@@ -96,6 +98,30 @@ class NewsProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      if (categoryId == 'api_news') {
+        final articles = await _newsApiService.fetchTopHeadlines();
+        if (_requestIds[categoryId] != requestId) return;
+        for (var article in articles) {
+          final stored = _storageService.getStoredArticle(article.id);
+          if (stored != null) {
+            article.isFavorite = stored.isFavorite;
+            article.readLater = stored.readLater;
+            article.isLiked = stored.isLiked;
+            article.isDisliked = stored.isDisliked;
+            article.fullContent = stored.fullContent;
+          }
+          _interestService.calculateScore(article);
+        }
+        _articlesMap[categoryId] = articles;
+        _lastFetchTimes[categoryId] = DateTime.now();
+        _hasEverLoadedMap[categoryId] = true;
+        _calculateRecommendations();
+        await _storageService.saveCategoryCache(categoryId, articles);
+        _loadingMap[categoryId] = false;
+        notifyListeners();
+        return;
+      }
+
       final List<NewsSource> baseSources = (allSources != null && allSources.isNotEmpty) 
           ? allSources 
           : NewsSource.defaultSources;
