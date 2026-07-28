@@ -156,6 +156,10 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
         },
       ));
 
+    _loadUrl();
+  }
+
+  Future<void> _loadUrl() async {
     try {
       await _controller.loadRequest(Uri.parse(widget.url));
     } catch (e) {
