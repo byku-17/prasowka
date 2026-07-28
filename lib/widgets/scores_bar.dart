@@ -93,12 +93,13 @@ class _ScoresBarState extends State<ScoresBar> {
     // 2. Dodaj fallback tiles dla wybranych lig bez danych z API
     final matchedLeagueIds = <String>{};
     for (final event in provider.events) {
-      if (event is MatchEvent) {
-        for (final id in selectedIds) {
-          final league = SportLeague.findById(id);
-          if (league != null && _eventMatchesLeague(event, league)) {
-            matchedLeagueIds.add(id);
-          }
+      for (final id in selectedIds) {
+        final league = SportLeague.findById(id);
+        if (league == null) continue;
+        if (event is MatchEvent && _eventMatchesLeague(event, league)) {
+          matchedLeagueIds.add(id);
+        } else if (event is RaceEvent && league.sportType == event.type) {
+          matchedLeagueIds.add(id);
         }
       }
     }
