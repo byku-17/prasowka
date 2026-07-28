@@ -89,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
     if (_activeCategories.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('PRASÓWKA')),
@@ -134,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   tabs: _activeCategories.map((cat) {
                     String label = cat.name.toUpperCase();
                     if (cat.id == 'warsaw') {
-                      label = context.read<SettingsProvider>().preferredCity.toUpperCase();
+                      label = settings.preferredCity.toUpperCase();
                     }
                     return Tab(text: label);
                   }).toList(),
