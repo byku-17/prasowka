@@ -33,13 +33,15 @@ class ArticleAdapter extends TypeAdapter<Article> {
       translatedTitle: fields[13] as String?,
       translatedDescription: fields[14] as String?,
       translatedFullContent: fields[15] as String?,
+      readTimeSeconds: fields[16] as int,
+      isRead: fields[17] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Article obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -71,7 +73,11 @@ class ArticleAdapter extends TypeAdapter<Article> {
       ..writeByte(14)
       ..write(obj.translatedDescription)
       ..writeByte(15)
-      ..write(obj.translatedFullContent);
+      ..write(obj.translatedFullContent)
+      ..writeByte(16)
+      ..write(obj.readTimeSeconds)
+      ..writeByte(17)
+      ..write(obj.isRead);
   }
 
   @override

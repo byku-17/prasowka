@@ -207,38 +207,53 @@ class _MatchScoreTile extends StatelessWidget {
     String awayScore = scoreParts.length > 1 ? scoreParts[1] : '';
     bool isScheduled = event.score.toLowerCase() == 'v' || event.status == EventStatus.scheduled;
 
-    return Container(
-      width: 200,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  "${event.competition.toUpperCase()} | ${_formatDateLabel(event.date)}",
-                  style: const TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (event.status == EventStatus.live)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
-                  child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
-                )
-              else if (event.status == EventStatus.finished)
-                const Text('KONIEC', style: TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
-            ],
+    return Consumer<SportsProvider>(
+      builder: (context, sports, _) {
+        final isPinned = sports.isMatchPinned(event.id);
+        return Container(
+          width: 200,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isPinned ? AppTheme.accentGold.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
+              width: isPinned ? 1.5 : 1,
+            ),
           ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      "${event.competition.toUpperCase()} | ${_formatDateLabel(event.date)}",
+                      style: const TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => sports.togglePinMatch(event.id),
+                    child: Icon(
+                      isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                      size: 14,
+                      color: isPinned ? AppTheme.accentGold : Colors.grey.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  if (event.status == EventStatus.live)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                      child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
+                    )
+                  else if (event.status == EventStatus.finished)
+                    const Text('KONIEC', style: TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
+                ],
+              ),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -269,6 +284,8 @@ class _MatchScoreTile extends StatelessWidget {
           ],
         ],
       ),
+    );
+      },
     );
   }
 

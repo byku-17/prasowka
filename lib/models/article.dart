@@ -52,6 +52,12 @@ class Article extends HiveObject {
   @HiveField(15)
   String? translatedFullContent;
 
+  @HiveField(16)
+  int readTimeSeconds;
+
+  @HiveField(17)
+  bool isRead;
+
   // Pola pomocnicze (niezapisywane w Hive)
   List<String>? _cachedTags;
   double? cachedScore;
@@ -86,6 +92,8 @@ class Article extends HiveObject {
     this.translatedTitle,
     this.translatedDescription,
     this.translatedFullContent,
+    this.readTimeSeconds = 0,
+    this.isRead = false,
   });
 
   /// Oblicza przybliżony czas czytania (zakładając średnio 200 słów na minutę)
@@ -113,6 +121,8 @@ class Article extends HiveObject {
     'translatedTitle': translatedTitle,
     'translatedDescription': translatedDescription,
     'translatedFullContent': translatedFullContent,
+    'readTimeSeconds': readTimeSeconds,
+    'isRead': isRead,
   };
 
   /// Odtworzenie z Map (bezpieczna dla isolate boundaries)
@@ -133,5 +143,7 @@ class Article extends HiveObject {
     translatedTitle: m['translatedTitle'],
     translatedDescription: m['translatedDescription'],
     translatedFullContent: m['translatedFullContent'],
+    readTimeSeconds: m['readTimeSeconds'] ?? 0,
+    isRead: m['isRead'] ?? false,
   );
 }

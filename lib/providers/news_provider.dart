@@ -242,7 +242,7 @@ class NewsProvider with ChangeNotifier {
     }).where((e) => e.value > 0).toList();
     
     scored.sort((a, b) => b.value.compareTo(a.value));
-    _recommendedArticles = scored.map((e) => e.key).take(5).toList();
+    _recommendedArticles = scored.map((e) => e.key).take(3).toList();
   }
 
   static List<Article> _sortAndMixArticlesStatic(Map<String, dynamic> params) {
@@ -325,6 +325,19 @@ class NewsProvider with ChangeNotifier {
     await _saveArticleState(article);
     for (var list in _articlesMap.values) { list.removeWhere((a) => a.id == article.id); }
     _calculateRecommendations();
+    notifyListeners();
+  }
+
+  /// Oznacza artykuł jako przeczytany (zapisuje w Hive i odświeża UI)
+  void markArticleRead(Article article) {
+    if (article.isRead) return;
+    article.isRead = true;
+    final s = _storageService.getStoredArticle(article.id);
+    if (s != null) {
+      s.isRead = true;
+      s.readTimeSeconds = article.readTimeSeconds;
+      s.save();
+    }
     notifyListeners();
   }
 

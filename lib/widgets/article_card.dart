@@ -68,16 +68,34 @@ class ArticleCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Consumer<NewsProvider>(
-                  builder: (context, _, child) => Text(
-                    article.translatedTitle ?? article.title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 19,
-                      height: 1.25,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  builder: (context, _, child) {
+                    final isRead = article.isRead;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            article.translatedTitle ?? article.title,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 19,
+                              height: 1.25,
+                              color: isRead ? Colors.white.withValues(alpha: 0.5) : null,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isRead) ...[
+                          const SizedBox(width: 8),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Icon(Icons.check_circle, color: Colors.white.withValues(alpha: 0.3), size: 16),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 8),
                 Consumer<NewsProvider>(
@@ -169,6 +187,7 @@ class ArticleCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         height: 1.2,
+                        color: article.isRead ? Colors.white.withValues(alpha: 0.5) : null,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -184,6 +203,8 @@ class ArticleCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (article.isRead)
+                          Icon(Icons.check_circle, color: Colors.white.withValues(alpha: 0.3), size: 14),
                         _buildActions(context),
                       ],
                     ),

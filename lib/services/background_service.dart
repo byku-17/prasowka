@@ -15,6 +15,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 const int _maxNotificationsPerRun = 5;
 const String _sportsNotifiedBoxName = 'sports_notified_ids';
+const String _pinnedMatchesBoxName = 'pinned_matches';
+const String _pinnedScoresBoxName = 'pinned_match_scores';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -106,6 +108,46 @@ void callbackDispatcher() {
         debugPrint('Sowa Wartownik: Błąd powiadomień sportowych: $e');
       }
 
+      // --- POWIADOMIENIA LIVE SCORE (PRZYPINANIE) ---
+      try {
+        if (!Hive.isBoxOpen(_pinnedMatchesBoxName)) {
+          await Hive.openBox(_pinnedMatchesBoxName);
+        }
+        final pinnedBox = Hive.box(_pinnedMatchesBoxName);
+        final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toList();
+
+        if (pinnedIds.isNotEmpty) {
+          if (!Hive.isBoxOpen(_pinnedScoresBoxName)) {
+            await Hive.openBox(_pinnedScoresBoxName);
+          }
+          final scoresBox = Hive.box(_pinnedScoresBoxName);
+          final sportsService = SportsService();
+          final events = await sportsService.fetchAllEvents();
+
+          for (var event in events) {
+            if (event is! MatchEvent) continue;
+            if (!pinnedIds.contains(event.id)) continue;
+            if (event.status != EventStatus.live) continue;
+
+            final prevScore = scoresBox.get(event.id, defaultValue: '') as String;
+            final currentScore = event.score;
+
+            if (prevScore.isNotEmpty && prevScore != currentScore) {
+              // Wynik się zmienił → powiadomienie o golu
+              await _showGoalNotification(event, prevScore, currentScore);
+              notifiedCount++;
+            }
+
+            // Zapisz aktualny wynik
+            await scoresBox.put(event.id, currentScore);
+
+            if (notifiedCount >= _maxNotificationsPerRun) break;
+          }
+        }
+      } catch (e) {
+        debugPrint('Sowa Wartownik: Błąd powiadomień pinned: $e');
+      }
+
       debugPrint('Sowa Wartownik: Zakończono. Wysłano $notifiedCount powiadomień');
       return Future.value(true);
     } catch (e) {
@@ -186,6 +228,42 @@ Future<void> _showSportNotification(MatchEvent event) async {
 
   await NotificationHistory().add(NotificationEntry(
     id: 'sport_${event.id}',
+    title: title,
+    body: body,
+    timestamp: DateTime.now(),
+    type: 'sport',
+  ));
+}
+
+Future<void> _showGoalNotification(MatchEvent event, String prevScore, String newScore) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+    'sowa_sport',
+    'Sowa Sport',
+    channelDescription: 'Powiadomienia o meczach Twoich drużyn',
+    importance: Importance.max,
+    priority: Priority.high,
+    showWhen: true,
+  );
+
+  const NotificationDetails platformChannelSpecifics =
+      NotificationDetails(android: androidPlatformChannelSpecifics);
+
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  final title = '⚽ GOL! — ${event.competition}';
+  final body = '${event.homeTeam} $newScore ${event.awayTeam}';
+
+  await flutterLocalNotificationsPlugin.show(
+    event.id.hashCode.abs() + DateTime.now().millisecondsSinceEpoch % 1000,
+    title,
+    body,
+    platformChannelSpecifics,
+  );
+
+  await NotificationHistory().add(NotificationEntry(
+    id: 'sport_goal_${event.id}_${DateTime.now().millisecondsSinceEpoch}',
     title: title,
     body: body,
     timestamp: DateTime.now(),

@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/services/sports_service.dart';
 import 'package:prasowka/utils/text_utils.dart';
+
+const String _pinnedBoxName = 'pinned_matches';
 
 class SportsProvider with ChangeNotifier {
   final SportsService _service = SportsService();
@@ -19,6 +22,27 @@ class SportsProvider with ChangeNotifier {
   List<SportEvent> get events => _events;
   List<String> get debugLogs => _debugLogs;
   bool get isLoading => _isLoading;
+
+  /// Zbiór ID przypiętych meczów
+  Set<String> get pinnedMatchIds {
+    if (!Hive.isBoxOpen(_pinnedBoxName)) return {};
+    return Set<String>.from(Hive.box(_pinnedBoxName).keys.map((k) => k.toString()));
+  }
+
+  bool isMatchPinned(String matchId) => pinnedMatchIds.contains(matchId);
+
+  Future<void> togglePinMatch(String matchId) async {
+    if (!Hive.isBoxOpen(_pinnedBoxName)) {
+      await Hive.openBox(_pinnedBoxName);
+    }
+    final box = Hive.box(_pinnedBoxName);
+    if (box.containsKey(matchId)) {
+      await box.delete(matchId);
+    } else {
+      await box.put(matchId, true);
+    }
+    notifyListeners();
+  }
 
   Future<void> fetchEvents({
     List<String>? favoriteKeywords, 

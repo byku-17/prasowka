@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:share_plus/share_plus.dart';
@@ -11,10 +12,54 @@ import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
 
-class ArticleDetailScreen extends StatelessWidget {
+/// Próg czasu (w sekundach), po którym artykuł jest uznawany za "przeczytany"
+const int _kReadThresholdSeconds = 30;
+
+class ArticleDetailScreen extends StatefulWidget {
   final Article article;
 
   const ArticleDetailScreen({super.key, required this.article});
+
+  @override
+  State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
+}
+
+class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
+  late final Stopwatch _stopwatch;
+  Timer? _tickTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _stopwatch = Stopwatch()..start();
+    // Co 1s odśwież UI (aby ewentualny progress bar się zmieniał)
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tickTimer?.cancel();
+    _stopwatch.stop();
+    final elapsed = _stopwatch.elapsed.inSeconds;
+    _markReadIfEnough(elapsed);
+    super.dispose();
+  }
+
+  void _markReadIfEnough(int seconds) {
+    final article = widget.article;
+    // Zaktualizuj czas czytania
+    if (seconds > article.readTimeSeconds) {
+      article.readTimeSeconds = seconds;
+    }
+    // Oznacz jako przeczytany jeśli wystarczająco długo czytał
+    if (seconds >= _kReadThresholdSeconds && !article.isRead) {
+      context.read<NewsProvider>().markArticleRead(article);
+    }
+  }
+
+  Article get article => widget.article;
 
   @override
   Widget build(BuildContext context) {
@@ -33,26 +78,31 @@ class ArticleDetailScreen extends StatelessWidget {
                   : Container(color: const Color(0xFF1E2126)),
             ),
             actions: [
+              if (article.isRead)
+                const Padding(
+                  padding: EdgeInsets.only(right: 4),
+                  child: Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
+                ),
               Consumer<NewsProvider>(
                 builder: (context, provider, child) {
                   final isPolish = provider.isArticlePolish(article);
                   final needsTranslation = !isPolish && (
-                    article.translatedTitle == null || 
+                    article.translatedTitle == null ||
                     (article.fullContent != null && article.translatedFullContent == null)
                   );
 
                   if (!needsTranslation) return const SizedBox.shrink();
 
                   return IconButton(
-                    icon: provider.isTranslating 
+                    icon: provider.isTranslating
                         ? const SizedBox(
-                            width: 20, 
-                            height: 20, 
+                            width: 20,
+                            height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
                           )
                         : const Icon(Icons.translate, color: Colors.blueAccent),
-                    onPressed: provider.isTranslating 
-                        ? null 
+                    onPressed: provider.isTranslating
+                        ? null
                         : () => provider.translateArticle(article),
                     tooltip: 'Tłumacz na polski',
                   );
@@ -68,7 +118,7 @@ class ArticleDetailScreen extends StatelessWidget {
               ),
             ],
           ),
-          
+
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
@@ -93,7 +143,7 @@ class ArticleDetailScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   Consumer<NewsProvider>(
                     builder: (context, provider, child) {
                       return Text(
@@ -105,10 +155,10 @@ class ArticleDetailScreen extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 24),
-                  
+
                   const Divider(),
                   const SizedBox(height: 16),
-                  
+
                   Consumer<NewsProvider>(
                     builder: (context, provider, child) {
                       final hasFullContent = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
@@ -235,8 +285,8 @@ class ArticleDetailScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  
-                  
+
+
                   const SizedBox(height: 60),
                 ],
               ),
