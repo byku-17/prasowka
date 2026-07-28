@@ -1,31 +1,33 @@
-# Podsumowanie: Ostateczne Czyszczenie Blokad (V4.2)
+# Podsumowanie: Odblokowanie Ekstraklasy i Personalizacja Lokalna (V4.7)
 
-Zrealizowano najbardziej gruntowne "sprzątanie" kodu sportowego, usuwając wszystkie stare mechanizmy, które mogły blokować wyniki. System jest teraz lżejszy, prostszy i w 100% sterowany Twoimi zainteresowaniami.
+Zakończono gruntowną naprawę logiki sportowej oraz wdrożono funkcję dynamicznych wiadomości lokalnych.
 
 ## Zrealizowane zmiany
 
-### 1. Usunięcie Systemu "Włączonych Dyscyplin"
+### 1. Reaktywacja Ekstraklasy (Fix Logiczny)
 > [!IMPORTANT]
-> To była prawdopodobna przyczyna "ciszy" na pasku. Nawet jeśli usunęliśmy przyciski z UI, kod w tle mógł wciąż mieć "wyłączoną" piłkę nożną.
+> Naprawiono błąd `else-if`, który sprawiał, że ligi mające oba źródła (ESPN i TSDB) – jak Ekstraklasa – były zawsze kierowane do pustego ESPN.
 
-- **Całkowity Cleanup**: Usunięto z pamięci aplikacji i kodu wszystkie flagi typu `enabledSports`.
-- **Zasada 100% Personalizacji**: Od teraz Sowa nie pyta o nic innego – jeśli masz coś w zainteresowaniach, ona spróbuje to znaleźć. Jeśli nie masz – pasek zachęci Cię do dodania.
+- **Separacja źródeł**: Piłka nożna jest teraz zawsze pobierana z **TheSportsDB**, a sporty amerykańskie (NBA, NHL) z **ESPN**. To gwarantuje, że wyniki polskiej ligi już nigdy nie zostaną "zgubione".
+- **Stabilny Radar**: Przywrócono pełną logikę "Podróży w czasie" (2026 -> 2024), co pozwala widzieć realne wyniki z obecnego sezonu na Twoim urządzeniu.
 
-### 2. Radar 14-dniowy (TheSportsDB)
-- Rozszerzono okno wyszukiwania dla lig piłkarskich do **+/- 7 dni** od Twojej daty systemowej.
-- **Dlaczego?** Przy Twojej dacie 2026 i przesunięciu na 2024, weekendy wypadają w inne dni. Tak szerokie okno gwarantuje, że mecze Górnika czy Korony zostaną "wyłapane" niezależnie od tego, kiedy grali w 2024 roku.
+### 2. "Moje Miasto" - Koniec z dominacją Warszawy
+> [!TIP]
+> Zakładka "Warszawa" stała się inteligentna i dostosowuje się do Twoich ustawień.
 
-### 3. "Pancerne" Parsowanie i Fuzzy Match
-- **Odporność na błędy**: Poprawiono sposób parowania daty i czasu z serwera. Nawet jeśli serwer prześle błędną godzinę, mecz nie zostanie odrzucony.
-- **Inteligentne Nazwy**: Sowa ignoruje teraz nie tylko "ogonki", ale i popularne przedrostki (np. "FC", "KS", "PKO BP"). Wpisanie "Górnik" bezbłędnie znajdzie "Górnik Zabrze".
+- **Dynamiczne Etykiety**: Jeśli w ustawieniach zmienisz miasto na Kraków, zakładka na górnym pasku zmieni nazwę na **KRAKÓW**.
+- **Dynamiczne Newsy**: Dla miast innych niż Warszawa, Sowa automatycznie pobiera najnowsze wiadomości lokalne z Google News.
 
-### 4. Uproszczenie Ustawień (UI)
-- Ekran **Wygląd i Alerty** został wyczyszczony ze zbędnych elementów sportowych.
-- Zostawiono tylko to, co ważne: włącznik paska oraz przełącznik "Tylko moi faworyci".
+### 3. Discovery Mode (Tryb Odkrywania)
+- Jeśli Twoje ulubione drużyny akurat nie grają, pasek nie będzie już pokazywał przycisku dodawania.
+- Zamiast tego Sowa wyświetli **10 najważniejszych meczów ze świata** (np. hity lig zagranicznych), abyś zawsze miał aktualny obraz sytuacji sportowej.
+
+### 4. Ostateczne Sprzątanie (Cleanup)
+- Usunięto resztki martwego kodu `enabledSports` z Providera, co przyspieszyło inicjalizację aplikacji i wyczyściło bazę danych Hive.
 
 ## Jak zweryfikować?
 1. Wykonaj **Hot Restart**.
-2. Sprawdź **Ustawienia -> Wygląd i Alerty** – powinno być tam teraz bardzo przejrzyście.
-3. Przejdź do zakładki **SPORT**. Przy Twoich zainteresowaniach ("Górnik", "Ekstraklasa") wyniki **muszą** się pojawić dzięki oknu +/- 7 dni.
+2. Wejdź w **SPORT**: Wyniki Ekstraklasy (np. Górnik, Korona) powinny być widoczne dzięki nowej logice źródeł.
+3. Wejdź w **USTAWIENIA -> Wygląd**: Zmień miasto na inne. Wróć na ekran główny i zobacz jak zmieniła się ostatnia zakładka.
 
-System jest teraz w stanie "idealnej czystości" technicznej. Jeśli dane są w TheSportsDB, sowa je pokaże.
+Aplikacja jest teraz w pełni spersonalizowana i technicznie "pancerna".

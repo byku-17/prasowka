@@ -1,12 +1,8 @@
-# Zadania: Ostateczne Czyszczenie Blokad (V4.2)
+# Zadania: Plan Naprawy V4.7 (Odblokowanie i Miasto)
 
-- [ ] Czyszczenie `SettingsProvider`:
-    - [ ] Usunięcie `enabledSports` i `enabledLeagues`
-    - [ ] Usunięcie metod sterujących dyscyplinami
-- [ ] Aktualizacja `SportsProvider`:
-    - [ ] Usunięcie filtrów dyscyplin (liczą się tylko słowa kluczowe)
-    - [ ] Poprawa odporności na błędy parsowania
-- [ ] Rozszerzenie Radaru w `SportsService` do +/- 7 dni
-- [ ] Usunięcie martwych metod w `SportsService`
-- [ ] UI Cleanup w `SettingsScreen`
+- [ ] Poprawa logiki źródeł w `SportsService` (priorytet TSDB dla piłki)
+- [ ] Implementacja "Discovery Mode" w `SportsProvider`
+- [ ] Aktywacja dynamicznych miast w `HomeScreen` (zmiana etykiety tabu)
+- [ ] Implementacja dynamicznego RSS dla miast w `CategoryNewsList`
+- [ ] Wielkie czyszczenie `SettingsProvider` ze starego kodu sportowego
 - [ ] Weryfikacja końcowa
