@@ -12,17 +12,14 @@ class NewsApiService {
   bool get isConfigured => _apiKey != null && _apiKey!.isNotEmpty;
 
   Future<List<Article>> fetchTopHeadlines({String country = 'pl', int pageSize = 30}) async {
-    debugPrint('NewsAPI: isConfigured=$isConfigured, key=${_apiKey != null ? "${_apiKey!.substring(0, 4)}..." : "null"}');
     if (!isConfigured) return [];
     try {
       final yesterday = DateTime.now().subtract(const Duration(days: 2));
       final from = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
       final uri = Uri.parse('$_baseUrl/everything?domains=gazeta.pl,wiadomosci.onet.pl,tvn24.pl,radiozetka.pl,wyborcza.pl,interia.pl,wp.pl,wiadomosci.wp.pl&language=pl&from=$from&sortBy=publishedAt&pageSize=$pageSize&apiKey=$_apiKey');
-      debugPrint('NewsAPI: requesting $uri');
       final response = await http.get(uri).timeout(const Duration(seconds: 15));
-      debugPrint('NewsAPI: status=${response.statusCode}');
       if (response.statusCode != 200) {
-        debugPrint('NewsAPI Error: ${response.statusCode} ${response.body}');
+        debugPrint('NewsAPI Error: ${response.statusCode}');
         return [];
       }
       final data = json.decode(response.body);
@@ -30,7 +27,6 @@ class NewsApiService {
         debugPrint('NewsAPI Error: ${data['message']}');
         return [];
       }
-      debugPrint('NewsAPI: totalResults=${data['totalResults']}');
       return await compute(_parseArticles, response.body);
     } catch (e) {
       debugPrint('NewsAPI Exception: $e');
