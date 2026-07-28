@@ -153,7 +153,16 @@ class NewsProvider with ChangeNotifier {
 
       for (int i = 0; i < sourcesToFetch.length; i += 10) {
         final batch = sourcesToFetch.skip(i).take(10).toList();
-        final results = await Future.wait(batch.map((s) => _rssService.fetchArticles(s)));
+        final results = await Future.wait(
+          batch.map((s) async {
+            try {
+              return await _rssService.fetchArticles(s);
+            } catch (e) {
+              debugPrint('Sowa: Błąd źródła ${s.name}: $e');
+              return <Article>[];
+            }
+          }),
+        );
         
         if (_requestIds[categoryId] != requestId) return;
 

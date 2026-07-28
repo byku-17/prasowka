@@ -27,7 +27,7 @@ class NewsCategory extends HiveObject {
   // Pomocniczy getter do pobierania IconData
   IconData get icon => IconData(iconCode, fontFamily: 'MaterialIcons');
 
-  static List<NewsCategory> get defaultCategories => [
+  static final List<NewsCategory> defaultCategories = [
     NewsCategory(id: 'all', name: 'Wszystkie', iconCode: Icons.auto_awesome.codePoint),
     NewsCategory(id: 'world', name: 'Świat', iconCode: Icons.public.codePoint),
     NewsCategory(id: 'poland', name: 'Polska', iconCode: Icons.flag.codePoint),

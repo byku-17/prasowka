@@ -14,10 +14,12 @@ class UserInterestService {
     final box = Hive.box<double>(interestsBoxName);
     final tags = article.tags;
 
+    final updates = <String, double>{};
     for (var tag in tags) {
       final currentScore = box.get(tag, defaultValue: 0.0) ?? 0.0;
-      await box.put(tag, currentScore + weight);
+      updates[tag] = currentScore + weight;
     }
+    await box.putAll(updates);
     article.cachedScore = null; // Unieważnij cache po zmianie zainteresowań
   }
 

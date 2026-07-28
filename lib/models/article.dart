@@ -90,7 +90,7 @@ class Article extends HiveObject {
 
   /// Oblicza przybliżony czas czytania (zakładając średnio 200 słów na minutę)
   int get estimatedReadingTime {
-    final words = (content.isNotEmpty ? content : description).split(' ').length;
+    final words = (content.isNotEmpty ? content : description).split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
     final minutes = (words / 200).ceil();
     return minutes > 0 ? minutes : 1;
   }

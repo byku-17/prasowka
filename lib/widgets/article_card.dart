@@ -67,10 +67,9 @@ class ArticleCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Selector<NewsProvider, String>(
-                  selector: (_, p) => article.translatedTitle ?? article.title,
-                  builder: (context, title, child) => Text(
-                    title,
+                Consumer<NewsProvider>(
+                  builder: (context, _, child) => Text(
+                    article.translatedTitle ?? article.title,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 19,
@@ -81,10 +80,9 @@ class ArticleCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Selector<NewsProvider, String>(
-                  selector: (_, p) => article.translatedDescription ?? article.description,
-                  builder: (context, desc, child) => Text(
-                    desc,
+                Consumer<NewsProvider>(
+                  builder: (context, _, child) => Text(
+                    article.translatedDescription ?? article.description,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).brightness == Brightness.dark 
                           ? Colors.white70 
