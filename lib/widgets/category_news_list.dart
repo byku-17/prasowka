@@ -29,19 +29,10 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
   @override
   bool get wantKeepAlive => true;
 
-  void _fetchIfNeeded() {
-    final settings = context.read<SettingsProvider>();
-    final cityHash = "${settings.preferredCity}_${settings.cityCoordinates.latitude}_${settings.cityCoordinates.longitude}";
-    if (_lastFetchCityHash == cityHash) return;
-    _lastFetchCityHash = cityHash;
-
-    final newsProvider = context.read<NewsProvider>();
+  List<NewsSource> _getSourcesForCategory(SettingsProvider settings) {
     final city = settings.preferredCity;
-    
-    // Dla kategorii "warsaw" z innym miastem — zamień źródła warszawskie na Google News
-    List<NewsSource> sources;
     if (widget.category.id == 'warsaw' && city.toLowerCase() != 'warszawa') {
-      sources = [
+      return [
         NewsSource(
           id: 'dynamic_city_${city.toLowerCase()}',
           name: 'Google News: $city',
@@ -49,13 +40,19 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
           categoryId: 'warsaw',
         )
       ];
-    } else {
-      sources = settings.allSources;
     }
+    return settings.allSources;
+  }
 
-    newsProvider.fetchNews(
+  void _fetchIfNeeded() {
+    final settings = context.read<SettingsProvider>();
+    final cityHash = "${settings.preferredCity}_${settings.cityCoordinates.latitude}_${settings.cityCoordinates.longitude}";
+    if (_lastFetchCityHash == cityHash) return;
+    _lastFetchCityHash = cityHash;
+
+    context.read<NewsProvider>().fetchNews(
       category: widget.category,
-      allSources: sources,
+      allSources: _getSourcesForCategory(settings),
       enabledSourceIds: settings.enabledSourceIds,
       favoriteTeams: settings.favoriteTeams,
       forceRefresh: true,
@@ -122,7 +119,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
                 color: AppTheme.accentGold,
                 onRefresh: () => provider.fetchNews(
                   category: widget.category,
-                  allSources: settings.allSources,
+                  allSources: _getSourcesForCategory(settings),
                   enabledSourceIds: settings.enabledSourceIds,
                   favoriteTeams: settings.favoriteTeams,
                   forceRefresh: true,
