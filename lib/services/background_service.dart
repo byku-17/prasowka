@@ -229,6 +229,12 @@ class BackgroundService {
       },
     );
 
+    // Android 13+ wymaga runtime permission dla powiadomień
+    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      await androidPlugin.requestNotificationsPermission();
+    }
+
     await Workmanager().initialize(
       callbackDispatcher,
     );
@@ -290,5 +296,13 @@ class BackgroundService {
       'Powiadomienia działają poprawnie. Sowa czuwa!',
       platformChannelSpecifics,
     );
+
+    await NotificationHistory().add(NotificationEntry(
+      id: 'test_999',
+      title: 'Test Wartownika 🦉',
+      body: 'Powiadomienia działają poprawnie. Sowa czuwa!',
+      timestamp: DateTime.now(),
+      type: 'article',
+    ));
   }
 }
