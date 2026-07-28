@@ -148,6 +148,49 @@ void callbackDispatcher() {
         debugPrint('Sowa Wartownik: Błąd powiadomień pinned: $e');
       }
 
+      // --- PRZYPOMNIENIA ME CZOWE (5 min przed startem) ---
+      try {
+        const remindersBoxName = 'match_reminders_notified';
+        if (!Hive.isBoxOpen(remindersBoxName)) {
+          await Hive.openBox(remindersBoxName);
+        }
+        final remindersBox = Hive.box(remindersBoxName);
+
+        if (!Hive.isBoxOpen(_pinnedMatchesBoxName)) {
+          await Hive.openBox(_pinnedMatchesBoxName);
+        }
+        final pinnedBox = Hive.box(_pinnedMatchesBoxName);
+        final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toSet();
+
+        if (pinnedIds.isNotEmpty) {
+          final sportsService = SportsService();
+          final events = await sportsService.fetchAllEvents();
+          final now = DateTime.now();
+
+          for (var event in events) {
+            if (event is! MatchEvent) continue;
+            if (!pinnedIds.contains(event.id)) continue;
+            if (event.status != EventStatus.scheduled) continue;
+
+            final eventTime = event.date;
+            final diffMinutes = eventTime.difference(now).inMinutes;
+
+            // Wyślij przypomnienie 5 minut przed meczem (w oknie 3-7 min)
+            if (diffMinutes >= 3 && diffMinutes <= 7) {
+              final reminderKey = '${event.id}_reminder_${event.date.day}_${event.date.month}';
+              if (remindersBox.get(reminderKey, defaultValue: false) == true) continue;
+
+              await _showMatchReminder(event);
+              await remindersBox.put(reminderKey, true);
+              notifiedCount++;
+              if (notifiedCount >= _maxNotificationsPerRun) break;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Sowa Wartownik: Błąd przypomnień meczowych: $e');
+      }
+
       debugPrint('Sowa Wartownik: Zakończono. Wysłano $notifiedCount powiadomień');
       return Future.value(true);
     } catch (e) {
@@ -269,6 +312,53 @@ Future<void> _showGoalNotification(MatchEvent event, String prevScore, String ne
     timestamp: DateTime.now(),
     type: 'sport',
   ));
+}
+
+Future<void> _showMatchReminder(MatchEvent event) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+    'sowa_sport',
+    'Sowa Sport',
+    channelDescription: 'Powiadomienia o meczach Twoich drużyn',
+    importance: Importance.max,
+    priority: Priority.high,
+    showWhen: true,
+  );
+
+  const NotificationDetails platformChannelSpecifics =
+      NotificationDetails(android: androidPlatformChannelSpecifics);
+
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  final title = '⏰ Za chwilę! — ${event.competition}';
+  final body = '${event.homeTeam} vs ${event.awayTeam} zaczyna się za kilka minut!';
+
+  // Buduj URL Flashscore dla konkretnego meczu (fallback na główną stronę)
+  final flashscoreUrl = _buildFlashscoreMatchUrl(event);
+
+  await flutterLocalNotificationsPlugin.show(
+    event.id.hashCode.abs() + 7777,
+    title,
+    body,
+    platformChannelSpecifics,
+    payload: flashscoreUrl,
+  );
+
+  await NotificationHistory().add(NotificationEntry(
+    id: 'sport_reminder_${event.id}',
+    title: title,
+    body: body,
+    url: flashscoreUrl,
+    timestamp: DateTime.now(),
+    type: 'sport',
+  ));
+}
+
+String _buildFlashscoreMatchUrl(MatchEvent event) {
+  // Flashscore nie ma bezpośrednich URL-i do meczów bez ID,
+  // ale main page zawsze pokazuje nadchodzące mecze
+  return 'https://www.flashscore.com';
 }
 
 class BackgroundService {

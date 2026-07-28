@@ -5,9 +5,9 @@ import 'package:prasowka/models/sport_league.dart';
 import 'package:prasowka/providers/sports_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/screens/sport_settings_screen.dart';
+import 'package:prasowka/screens/article_webview_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class ScoresBar extends StatefulWidget {
   const ScoresBar({super.key});
@@ -196,12 +196,41 @@ class _ScoresBarState extends State<ScoresBar> {
 
 // ─── TILE: MECZ Z API ───
 
-class _MatchScoreTile extends StatelessWidget {
+class _MatchScoreTile extends StatefulWidget {
   final MatchEvent event;
   const _MatchScoreTile({required this.event});
 
   @override
+  State<_MatchScoreTile> createState() => _MatchScoreTileState();
+}
+
+class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProviderStateMixin {
+  AnimationController? _pulseController;
+  Animation<double>? _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.event.status == EventStatus.live) {
+      _pulseController = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 1200),
+      )..repeat(reverse: true);
+      _pulseAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+        CurvedAnimation(parent: _pulseController!, curve: Curves.easeInOut),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final event = widget.event;
     List<String> scoreParts = event.score.split(' - ');
     String homeScore = scoreParts.isNotEmpty ? scoreParts[0] : '';
     String awayScore = scoreParts.length > 1 ? scoreParts[1] : '';
@@ -210,7 +239,14 @@ class _MatchScoreTile extends StatelessWidget {
     return Consumer<SportsProvider>(
       builder: (context, sports, _) {
         final isPinned = sports.isMatchPinned(event.id);
-        return Container(
+        return GestureDetector(
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ArticleWebViewScreen(
+              url: 'https://www.flashscore.com',
+              title: 'Flashscore — ${event.competition}',
+            ),
+          )),
+          child: Container(
           width: 200,
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -236,6 +272,7 @@ class _MatchScoreTile extends StatelessWidget {
                     ),
                   ),
                   GestureDetector(
+                    behavior: HitTestBehavior.deferToChild,
                     onTap: () => sports.togglePinMatch(event.id),
                     child: Icon(
                       isPinned ? Icons.push_pin : Icons.push_pin_outlined,
@@ -245,11 +282,23 @@ class _MatchScoreTile extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   if (event.status == EventStatus.live)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
-                      child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
-                    )
+                    _pulseAnimation != null
+                        ? AnimatedBuilder(
+                            animation: _pulseAnimation!,
+                            builder: (context, child) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: _pulseAnimation!.value),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
+                            ),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                            child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
+                          )
                   else if (event.status == EventStatus.finished)
                     const Text('KONIEC', style: TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
                 ],
@@ -283,6 +332,7 @@ class _MatchScoreTile extends StatelessWidget {
             const Text("WKRÓTCE", style: TextStyle(fontSize: 8, color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
           ],
         ],
+      ),
       ),
     );
       },
@@ -411,13 +461,10 @@ class _FallbackLeagueTile extends StatelessWidget {
     );
   }
 
-  Future<void> _openFlashscore(BuildContext context) async {
+  void _openFlashscore(BuildContext context) {
     final url = league.flashscoreUrl ?? 'https://www.flashscore.com';
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Nie można otworzyć: $url')));
-    }
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => ArticleWebViewScreen(url: url, title: league.name),
+    ));
   }
 }
