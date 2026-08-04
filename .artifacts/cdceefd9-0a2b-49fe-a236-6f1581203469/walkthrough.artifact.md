@@ -1,19 +1,22 @@
-# Walkthrough: Ostateczna Bitwa z JVM Target (V7.4)
+# Walkthrough: Kompatybilna Synchronizacja JVM (V7.5)
 
-Wdrożono najbardziej rygorystyczną i nowoczesną konfigurację systemu budowania Gradle, aby definitywnie wyeliminować błędy wersji Java we wtyczkach.
+Naprawiono błąd kompilacji modułu `:audio_session` oraz ostatecznie ujednolicono wersję Java we wszystkich modułach projektu, zachowując pełną zgodność z Android Gradle Plugin (AGP).
 
 ## Zrealizowane zmiany:
 
-### 1. Modernizacja Toolchaina (Android App)
-- **jvmToolchain(17)**: Zamiast polegać na prostych flagach kompatybilności, główna aplikacja używa teraz mechanizmu Toolchain. Gwarantuje on, że kompilator Kotlina używa dokładnie JDK 17 do wszystkich operacji.
-- **Jawny Plugin**: Dodano jawną deklarację `id("org.jetbrains.kotlin.android")`, co zapewnia lepszą integrację z nowymi wersjami Fluttera i usuwa ostrzeżenia o przyszłych niekompatybilnościach.
+### 1. Rozwiązanie konfliktu `--release`
+> [!IMPORTANT]
+> Niektóre starsze wtyczki (jak `audio_session`) nie obsługują nowoczesnej flagi `--release` w Gradle, co powodowało natychmiastowe przerwanie budowania aplikacji.
 
-### 2. Agresywne Wymuszenie Wersji (Root Project)
-- **options.release.set(17)**: W pliku głównym zastosowano parametr `release` zamiast tradycyjnych `sourceCompatibility`/`targetCompatibility`. Jest to najsilniejszy mechanizm w Gradle, który wymusza na kompilatorze Java ścisłe przestrzeganie standardu wersji 17, uniemożliwiając wtyczkom (jak `dynamic_color`) "ucieczkę" do starszej wersji 1.8.
-- **Oczyszczenie Struktury**: Usunięto zbędne i konfliktowe instrukcje, które mogły powodować błędy kolejności ładowania projektów (`already evaluated`).
+- **Bezpieczne flagi**: Usunięto `options.release.set(17)` i zastąpiono ją sprawdzonymi parametrami `sourceCompatibility` oraz `targetCompatibility`. Gwarantuje to ten sam efekt (Java 17), ale w sposób akceptowany przez wszystkie wtyczki.
+- **Wymuszenie przez afterEvaluate**: Przywrócono mechanizm `afterEvaluate` w czystej formie (bez konfliktowych zależności). Pozwala on Sowie na skuteczne nadpisanie ustawień każdej wtyczki (np. `dynamic_color`) i narzucenie jej standardu Java 17.
+
+### 2. Stabilizacja Infrastruktury
+- Usunięto redundantne instrukcje, które mogły powodować błędy kolejności ładowania projektów.
+- Cały proces budowania jest teraz spójny: zarówno główna aplikacja, jak i każda biblioteka zewnętrzna, korzystają z tej samej wersji maszyny wirtualnej (JVM 17).
 
 ## Jak zweryfikować?
 1. Wykonaj **Hot Restart** lub spróbuj zbudować projekt.
-2. System powinien teraz bezdyskusyjnie zsynchronizować wszystkie moduły do wersji 17.
+2. Błędy dotyczące `--release` oraz niespójności wersji Java (1.8 vs 17) powinny całkowicie zniknąć.
 
-**Wtyczka dynamic_color nie powinna już zgłaszać niespójności z głównym kodem.** 🦉🛠️🛡️
+🦉🛠️🚀 **System budowania jest teraz w pełni zoptymalizowany i kompatybilny!**

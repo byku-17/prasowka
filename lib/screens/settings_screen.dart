@@ -68,7 +68,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const ListTile(
             title: Text('Wersja aplikacji'),
-            trailing: Text('1.5.0 (V7.0 Themes)', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            trailing: Text('1.5.1 (V7.6 Kotlin Sync)', style: TextStyle(color: Colors.grey, fontSize: 12)),
           ),
         ],
       ),

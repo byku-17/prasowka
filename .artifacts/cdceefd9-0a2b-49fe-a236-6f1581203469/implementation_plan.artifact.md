@@ -1,23 +1,32 @@
-# Plan Naprawy V7.5: Kompatybilna Synchronizacja JVM
+# Plan Naprawy V7.6: Migracja na Built-in Kotlin i Fix JDK 17
 
-Ten plan naprawia błąd `Using '--release' option for JavaCompile is not supported` oraz ostatecznie rozwiązuje konflikt wersji Java 1.8 vs 17 w modułach zewnętrznych (np. `dynamic_color`, `audio_session`).
+Ten plan rozwiązuje błąd braku instalacji Java 17 (`jvmToolchain`) oraz migruje aplikację na nowy model zarządzania Kotlinem ("Built-in Kotlin"), co eliminuje ostrzeżenia Fluttera.
 
 ## Proposed Changes
 
-### 1. Naprawa android/build.gradle.kts (Root)
-Uprościmy skrypt, usuwając błędne zależności i zastępując niekompatybilną opcję `--release` standardowymi ustawieniami kompatybilności.
+### 1. Rezygnacja z rygorystycznego jvmToolchain
+Błąd `Cannot find a Java installation` wynika z użycia `jvmToolchain(17)`, który wymaga od Gradle precyzyjnego odnalezienia lub pobrania JDK 17. Zamiast tego zaufamy środowisku Fluttera, które zazwyczaj ma już skonfigurowaną odpowiednią wersję Java.
 
+#### [MODIFY] [android/app/build.gradle.kts](file:///D:/Apps/prasowka/android/app/build.gradle.kts)
+- Usunięcie bloku `kotlin { jvmToolchain(17) }`.
+- Zachowanie `compileOptions` i `kotlinOptions` ustawionych na 17 dla zachowania kompatybilności.
+
+### 2. Migracja na Built-in Kotlin
+Zgodnie z zaleceniami Fluttera 3.24+, usuniemy ręczne nakładanie pluginu Kotlina, aby uniknąć konfliktów w przyszłych wersjach.
+
+#### [MODIFY] [android/app/build.gradle.kts](file:///D:/Apps/prasowka/android/app/build.gradle.kts)
+- Usunięcie `id("org.jetbrains.kotlin.android")` z bloku `plugins`. Flutter załaduje go automatycznie.
+
+#### [MODIFY] [android/settings.gradle.kts](file:///D:/Apps/prasowka/android/settings.gradle.kts)
+- Upewnienie się, że plugin Kotlina jest zdefiniowany poprawnie dla mechanizmu `flutter-plugin-loader`.
+
+### 3. Stabilizacja subprojektów
 #### [MODIFY] [android/build.gradle.kts](file:///D:/Apps/prasowka/android/build.gradle.kts)
-- **Usunięcie `options.release`**: Ta opcja koliduje z procesem budowania Androida (AGP), co powodowało błąd w projekcie `:audio_session`.
-- **Usunięcie `evaluationDependsOn(":app")`**: To wyeliminuje błąd `Project already evaluated`, pozwalając na poprawne użycie bloku `afterEvaluate`.
-- **Wymuszenie Java 17 przez `afterEvaluate`**: Użyjemy bezpiecznego mechanizmu, który nadpisze ustawienia wtyczek (np. `dynamic_color`) po ich załadowaniu, wymuszając wersję 17 dla zadań Java i Kotlin.
-
-### 2. Stabilizacja android/app/build.gradle.kts
-- Upewnienie się, że główna aplikacja pozostaje przy `jvmToolchain(17)`, co jest najstabilniejszą formą dla nowych wersji Fluttera.
+- Uproszczenie bloku `subprojects` — pozostawienie tylko niezbędnych override'ów dla `JavaCompile` i `KotlinCompile`, aby wtyczki (np. `dynamic_color`) przestały zgłaszać błędy niespójności.
 
 ## Verification Plan
 
 ### Manual Verification
 1.  **Wyczyszczenie**: `flutter clean`.
 2.  **Kompilacja**: `flutter build apk` lub Debug.
-3.  **Weryfikacja**: Brak błędu `--release` oraz brak błędu `Inconsistent JVM-target`.
+3.  **Weryfikacja**: Brak błędu o braku Java 17 oraz brak ostrzeżeń o Kotlin Gradle Plugin (KGP).
