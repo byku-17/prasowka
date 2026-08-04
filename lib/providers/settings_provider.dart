@@ -7,7 +7,7 @@ import 'package:prasowka/services/storage_service.dart';
 import 'package:prasowka/services/background_service.dart';
 import 'package:prasowka/services/weather_service.dart';
 
-enum AppThemeVariant { classic, elegantLight, royalPurple, system }
+enum AppThemeVariant { classic, elegantLight, royalPurple, medium, system }
 
 class SettingsProvider with ChangeNotifier {
   static const String settingsBoxName = 'settings';

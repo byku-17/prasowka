@@ -15,6 +15,13 @@ class AppTheme {
   static const Color royalPurple = Color(0xFF905CFF);
   static const Color lightPurple = Color(0xFFE0D4FF);
 
+  // --- KOLORY MEDIUM (SLATE & AMBER) ---
+  static const Color mediumSlate = Color(0xFF2D3138);      // surface - między biały a #1E2126
+  static const Color mediumSlateLight = Color(0xFF3A3F48); // elevated surface
+  static const Color mediumSlateDark = Color(0xFF1E2126);  // deep surface
+  static const Color mediumAmber = Color(0xFFFFB800);      // modern amber accent
+  static const Color mediumBackground = Color(0xFF25292E); // scaffold bg
+
   static ThemeData getTheme(AppThemeVariant variant, bool isDark, {ColorScheme? dynamicScheme}) {
     if (variant == AppThemeVariant.system && dynamicScheme != null) {
       return _buildDynamicTheme(dynamicScheme, isDark);
@@ -25,6 +32,8 @@ class AppTheme {
         return _buildElegantLightTheme();
       case AppThemeVariant.royalPurple:
         return isDark ? _buildRoyalDarkTheme() : _buildRoyalLightTheme();
+      case AppThemeVariant.medium:
+        return _buildMediumTheme();
       case AppThemeVariant.classic:
       default:
         return isDark ? _buildClassicDarkTheme() : _buildClassicLightTheme();
@@ -155,6 +164,115 @@ class AppTheme {
         backgroundColor: midnightPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
+      ),
+    );
+  }
+
+  // --- MEDIUM THEME (SLATE & AMBER) - między jasnym a ciemnym ---
+  static ThemeData _buildMediumTheme() {
+    final base = ThemeData.dark();
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      primaryColor: mediumSlate,
+      textTheme: GoogleFonts.syneTextTheme(base.textTheme).apply(
+        bodyColor: Colors.white,
+        displayColor: Colors.white,
+      ),
+      colorScheme: ColorScheme(
+        brightness: Brightness.dark,
+        primary: mediumAmber,
+        onPrimary: Colors.black,
+        secondary: mediumAmber,
+        onSecondary: Colors.black,
+        tertiary: mediumSlateLight,
+        onTertiary: Colors.white,
+        error: const Color(0xFFCF6679),
+        onError: Colors.black,
+        surface: mediumSlate,
+        onSurface: Colors.white,
+        surfaceContainerHighest: mediumSlateLight,
+        surfaceContainerHigh: mediumSlateLight,
+        surfaceContainer: mediumSlate,
+        surfaceContainerLow: mediumSlateDark,
+        surfaceContainerLowest: mediumBackground,
+        outline: Colors.white24,
+        outlineVariant: Colors.white12,
+        shadow: Colors.black,
+        scrim: Colors.black,
+        inverseSurface: Colors.white,
+        onInverseSurface: Colors.black,
+        inversePrimary: mediumAmber,
+      ),
+      scaffoldBackgroundColor: mediumBackground,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: mediumSlate,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      cardTheme: CardThemeData(
+        color: mediumSlate,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Colors.white12, width: 1),
+        ),
+        surfaceTintColor: Colors.transparent,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: Colors.white12,
+        thickness: 1,
+        space: 1,
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: Colors.white70,
+        textColor: Colors.white,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: mediumSlate,
+        selectedItemColor: mediumAmber,
+        unselectedItemColor: Colors.white38,
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: mediumSlate,
+        indicatorColor: mediumAmber.withValues(alpha: 0.15),
+        labelTextStyle: WidgetStateProperty.all(
+          const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+        ),
+        height: 60,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: mediumSlateLight,
+        selectedColor: mediumAmber.withValues(alpha: 0.2),
+        labelStyle: const TextStyle(color: Colors.white),
+        secondaryLabelStyle: const TextStyle(color: Colors.white),
+        side: const BorderSide(color: Colors.white12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: mediumSlate,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titleTextStyle: GoogleFonts.syne(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+        contentTextStyle: GoogleFonts.syne(
+          color: Colors.white70,
+          fontSize: 14,
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: mediumSlateLight,
+        contentTextStyle: GoogleFonts.syne(color: Colors.white),
+        actionTextColor: mediumAmber,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

@@ -54,6 +54,14 @@ class AppearanceSettingsPage extends StatelessWidget {
                   onTap: () => settings.setThemeVariant(AppThemeVariant.royalPurple),
                 ),
                 _ThemeVariantTile(
+                  variant: AppThemeVariant.medium,
+                  label: 'Medium Slate',
+                  primary: AppTheme.mediumSlate,
+                  accent: AppTheme.mediumAmber,
+                  isSelected: settings.themeVariant == AppThemeVariant.medium,
+                  onTap: () => settings.setThemeVariant(AppThemeVariant.medium),
+                ),
+                _ThemeVariantTile(
                   variant: AppThemeVariant.system,
                   label: 'Automatyczny',
                   primary: Colors.grey,
