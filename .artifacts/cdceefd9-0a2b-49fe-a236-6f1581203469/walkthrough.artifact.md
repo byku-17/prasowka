@@ -1,21 +1,19 @@
-# Walkthrough: Stabilizacja Konfiguracji Gradle (V7.3)
+# Walkthrough: Ostateczna Bitwa z JVM Target (V7.4)
 
-Ostatecznie rozwiązano problem z kompilacją systemu Android poprzez uproszczenie i naprawę struktury skryptów Gradle.
+Wdrożono najbardziej rygorystyczną i nowoczesną konfigurację systemu budowania Gradle, aby definitywnie wyeliminować błędy wersji Java we wtyczkach.
 
 ## Zrealizowane zmiany:
 
-### 1. Naprawa błędu "Already Evaluated"
-> [!IMPORTANT]
-> Mechanizm `afterEvaluate` użyty w poprzedniej wersji kolidował z cyklem życia budowania projektu w niektórych konfiguracjach Fluttera.
+### 1. Modernizacja Toolchaina (Android App)
+- **jvmToolchain(17)**: Zamiast polegać na prostych flagach kompatybilności, główna aplikacja używa teraz mechanizmu Toolchain. Gwarantuje on, że kompilator Kotlina używa dokładnie JDK 17 do wszystkich operacji.
+- **Jawny Plugin**: Dodano jawną deklarację `id("org.jetbrains.kotlin.android")`, co zapewnia lepszą integrację z nowymi wersjami Fluttera i usuwa ostrzeżenia o przyszłych niekompatybilnościach.
 
-- **Uproszczenie**: Usunięto blok `afterEvaluate` oraz instrukcję `evaluationDependsOn(":app")`.
-- **Bezpieczna Konfiguracja**: Wersja **Java 17** oraz **JVM 17** jest teraz wymuszana za pomocą "leniwego" mechanizmu `configureEach`. Dzięki temu ustawienia są aplikowane do każdego zadania kompilacji w odpowiednim momencie, nie wywołując błędów kolejności przetwarzania.
-
-### 2. Pełna Spójność Maszyny Wirtualnej
-- Wszystkie moduły (w tym wtyczki takie jak `dynamic_color`) korzystają teraz ze wspólnego standardu JVM 17.
+### 2. Agresywne Wymuszenie Wersji (Root Project)
+- **options.release.set(17)**: W pliku głównym zastosowano parametr `release` zamiast tradycyjnych `sourceCompatibility`/`targetCompatibility`. Jest to najsilniejszy mechanizm w Gradle, który wymusza na kompilatorze Java ścisłe przestrzeganie standardu wersji 17, uniemożliwiając wtyczkom (jak `dynamic_color`) "ucieczkę" do starszej wersji 1.8.
+- **Oczyszczenie Struktury**: Usunięto zbędne i konfliktowe instrukcje, które mogły powodować błędy kolejności ładowania projektów (`already evaluated`).
 
 ## Jak zweryfikować?
 1. Wykonaj **Hot Restart** lub spróbuj zbudować projekt.
-2. Projekt powinien teraz przejść fazę `assembleDebug` bez błędów skryptu Gradle.
+2. System powinien teraz bezdyskusyjnie zsynchronizować wszystkie moduły do wersji 17.
 
-🦉🛠️🚀 **Aplikacja jest teraz technicznie gotowa do działania!**
+**Wtyczka dynamic_color nie powinna już zgłaszać niespójności z głównym kodem.** 🦉🛠️🛡️
