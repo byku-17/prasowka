@@ -17,22 +17,16 @@ subprojects {
 }
 
 subprojects {
-    project.evaluationDependsOn(":app")
-}
-
-subprojects {
-    afterEvaluate {
-        if (project.hasProperty("android")) {
-            tasks.withType<JavaCompile>().configureEach {
-                sourceCompatibility = "17"
-                targetCompatibility = "17"
-            }
-            
-            tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                compilerOptions {
-                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-                }
-            }
+    // Wymuszenie Java 17 dla wszystkich zadań kompilacji.
+    // Działa leniwie (lazy), więc nie wymaga afterEvaluate.
+    tasks.withType<JavaCompile>().configureEach {
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
+    }
+    
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
 }

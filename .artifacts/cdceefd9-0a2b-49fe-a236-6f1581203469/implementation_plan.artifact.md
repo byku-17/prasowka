@@ -1,34 +1,23 @@
-# Plan Naprawy V7.2: Ostateczna Synchronizacja JVM i KGP
+# Plan Naprawy V7.3: Stabilna Konfiguracja Gradle
 
-Ten plan ma na celu rozwiązanie uporczywego błędu "Inconsistent JVM Target" oraz wyeliminowanie ostrzeżeń dotyczących Kotlin Gradle Plugin (KGP), które mogą blokować przyszłe wersje aplikacji.
+Ten plan rozwiązuje błąd `Cannot run Project.afterEvaluate(Action) when the project is already evaluated` oraz ostatecznie synchronizuje wersję Java dla wszystkich modułów.
 
 ## Proposed Changes
 
-### 1. Agresywna Synchronizacja JVM (android/build.gradle.kts)
-Użyjemy mechanizmu `afterEvaluate`, aby upewnić się, że nasze ustawienia (Java 17) nie zostaną nadpisane przez domyślne konfiguracje wtyczek.
+### 1. Reorganizacja android/build.gradle.kts
+Zmienimy sposób konfiguracji subprojektów na taki, który nie wymaga `afterEvaluate`, co wyeliminuje obecny błąd kompilacji.
 
 #### [MODIFY] [android/build.gradle.kts](file:///D:/Apps/prasowka/android/build.gradle.kts)
-- Zastosowanie `tasks.withType<JavaCompile>` wewnątrz `subprojects` z jawnym przypisaniem wersji `"17"`.
-- Zastosowanie `tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>` z jawnym ustawieniem `jvmTarget = "17"`.
-- Wykorzystanie `afterEvaluate`, aby wymusić te parametry po tym, jak wtyczki skończą swoją własną konfigurację.
+- Usunięcie bloku `afterEvaluate`.
+- Zastosowanie konfiguracji JVM bezpośrednio w `subprojects`.
+- Usunięcie redundantnego bloku `subprojects { project.evaluationDependsOn(":app") }`, który prawdopodobnie powodował przedwczesną ewaluację modułów i wywoływał błąd.
 
-### 2. Rozwiązanie ostrzeżenia o Built-in Kotlin
-Flutter migruje na model, w którym wersja Kotlina jest zarządzana centralnie. Ostrzeżenie sugeruje, że niektóre wtyczki nakładają własny KGP.
-
-#### [MODIFY] [android/settings.gradle.kts](file:///D:/Apps/prasowka/android/settings.gradle.kts)
-- Weryfikacja czy wersje wtyczek w bloku `plugins` są zgodne z zaleceniami dla nowej wersji Fluttera.
-
-### 3. Aktualizacja Wtyczek (pubspec.yaml)
-Podniesiemy wersje krytycznych wtyczek, aby wspierały najnowsze standardy kompilacji.
-
-#### [MODIFY] [pubspec.yaml](file:///D:/Apps/prasowka/pubspec.yaml)
-- `workmanager: ^0.9.0+3` -> `0.9.3`
-- `share_plus: ^9.0.0` -> `10.0.2`
-- `package_info_plus: ^8.0.0` (jeśli istnieje)
+### 2. Wymuszenie Java 17 przez Task Hooks
+Użyjemy mechanizmu `tasks.withType`, który działa "leniwie" i zostanie zaaplikowany do wszystkich zadań, nawet jeśli wtyczki spróbują je zmienić później.
 
 ## Verification Plan
 
 ### Manual Verification
 1.  **Wyczyszczenie**: `flutter clean`.
-2.  **Kompilacja**: `flutter build apk` lub uruchomienie w trybie Debug.
-3.  **Weryfikacja logów**: Sprawdzenie czy ostrzeżenia o KGP zniknęły i czy błąd "Inconsistent JVM Target" przestał występować.
+2.  **Kompilacja**: `flutter build apk` lub Debug.
+3.  Jeśli aplikacja się uruchomi, oznacza to, że konfiguracja Gradle jest wreszcie poprawna i stabilna.
