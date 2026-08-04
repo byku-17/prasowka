@@ -22,9 +22,6 @@ class NewsProvider with ChangeNotifier {
   final Map<String, String?> _errorMap = {};
   final Map<String, bool> _hasEverLoadedMap = {};
   
-  String _lastDebugMessage = 'Czekam na akcję...';
-  String? _lastTechnicalError; 
-  
   List<Article> _recommendedArticles = [];
   final Set<String> _fetchFailedIds = {};
   bool _isFetchingFullContent = false;
@@ -45,8 +42,6 @@ class NewsProvider with ChangeNotifier {
   bool get isFetchingFullContent => _isFetchingFullContent;
   bool get isTranslating => _isTranslating;
   Set<String> get fetchFailedIds => _fetchFailedIds;
-  String get lastDebugMessage => _lastDebugMessage;
-  String? get lastTechnicalError => _lastTechnicalError;
 
   List<Article> getArticlesForCategory(String categoryId) => _articlesMap[categoryId] ?? [];
   bool isCategoryLoading(String categoryId) => _loadingMap[categoryId] ?? false;
@@ -58,7 +53,6 @@ class NewsProvider with ChangeNotifier {
       await _interestService.init();
       notifyListeners();
     } catch (e) {
-      _lastTechnicalError = e.toString();
       notifyListeners();
     }
   }
@@ -185,7 +179,6 @@ class NewsProvider with ChangeNotifier {
         }
         
         if (hasNew) {
-          _lastDebugMessage = 'Pobrano ${accumulated.length} newsów...';
           _hasEverLoadedMap[categoryId] = true;
           if (accumulated.length % 200 == 0) _calculateRecommendations();
           // Progressive loading — aktualizuj UI po każdym batchu
@@ -442,7 +435,6 @@ class NewsProvider with ChangeNotifier {
   }
 
   void _logError(String categoryId, dynamic e) {
-    _lastTechnicalError = e.toString();
     _errorMap[categoryId] = 'Wystąpił problem z pobieraniem danych. Spróbuj ponownie później.';
     debugPrint('Sowa NewsProvider Error [$categoryId]: $e');
   }

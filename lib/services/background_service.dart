@@ -430,7 +430,7 @@ class BackgroundService {
     await Workmanager().registerPeriodicTask(
       "sowa-wartownik-task",
       "checkNewArticlesTask",
-      frequency: const Duration(hours: 3),
+      frequency: const Duration(hours: 1),
       constraints: Constraints(
         networkType: NetworkType.connected,
         requiresBatteryNotLow: true,

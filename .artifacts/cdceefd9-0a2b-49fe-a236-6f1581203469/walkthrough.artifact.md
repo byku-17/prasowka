@@ -1,33 +1,23 @@
-# Podsumowanie: Odblokowanie Ekstraklasy i Personalizacja Lokalna (V4.7)
+# Walkthrough: KROK 1 — Wielka Stabilizacja (V5.1)
 
-Zakończono gruntowną naprawę logiki sportowej oraz wdrożono funkcję dynamicznych wiadomości lokalnych.
+Zakończono pierwszy etap profesjonalizacji kodu. Aplikacja jest teraz lżejsza i bardziej odporna na błędy.
 
-## Zrealizowane zmiany
+## Zrealizowane zmiany:
 
-### 1. Reaktywacja Ekstraklasy (Fix Logiczny)
-> [!IMPORTANT]
-> Naprawiono błąd `else-if`, który sprawiał, że ligi mające oba źródła (ESPN i TSDB) – jak Ekstraklasa – były zawsze kierowane do pustego ESPN.
+### 1. Gruntowne Sprzątanie (NewsProvider)
+- Usunięto pola `_lastDebugMessage` i `_lastTechnicalError` oraz ich gettery.
+- Logi deweloperskie nie są już przechowywane w pamięci Providera, co upraszcza kod i oszczędza RAM.
+- **Dlaczego?** Zgodnie z wcześniejszą poprawką, UI pokazuje teraz czytelne komunikaty błędów dla użytkownika, więc techniczne logi w Providerze były martwym kodem.
 
-- **Separacja źródeł**: Piłka nożna jest teraz zawsze pobierana z **TheSportsDB**, a sporty amerykańskie (NBA, NHL) z **ESPN**. To gwarantuje, że wyniki polskiej ligi już nigdy nie zostaną "zgubione".
-- **Stabilny Radar**: Przywrócono pełną logikę "Podróży w czasie" (2026 -> 2024), co pozwala widzieć realne wyniki z obecnego sezonu na Twoim urządzeniu.
+### 2. Szybszy "Wartownik Sowy" (BackgroundService)
+- Zwiększono częstotliwość sprawdzania nowych artykułów i wyników sportowych w tle z **3 godzin do 1 godziny**.
+- **Zaleta:** Dzięki temu powiadomienia o meczach Twoich drużyn będą przychodzić z mniejszym opóźnieniem.
 
-### 2. "Moje Miasto" - Koniec z dominacją Warszawy
-> [!TIP]
-> Zakładka "Warszawa" stała się inteligentna i dostosowuje się do Twoich ustawień.
+### 3. Aktualizacja Systemowa
+- Zaktualizowano widoczną wersję aplikacji w ustawieniach na `1.3.0 (V5.1 Stabilizacja)`.
+- Wprowadzono dodatkowe zabezpieczenia w `LocalInfoBar`, zapobiegające "zawieszeniu" się paska przy braku odpowiedzi z serwerów pogodowych.
 
-- **Dynamiczne Etykiety**: Jeśli w ustawieniach zmienisz miasto na Kraków, zakładka na górnym pasku zmieni nazwę na **KRAKÓW**.
-- **Dynamiczne Newsy**: Dla miast innych niż Warszawa, Sowa automatycznie pobiera najnowsze wiadomości lokalne z Google News.
+## Co dalej?
+Kolejnym krokiem jest **KROK 2: In-App WebView**. Pozwoli to otwierać artykuły i wyniki Flashscore bez wychodzenia z Twojej aplikacji, co znacznie poprawi komfort użytkowania.
 
-### 3. Discovery Mode (Tryb Odkrywania)
-- Jeśli Twoje ulubione drużyny akurat nie grają, pasek nie będzie już pokazywał przycisku dodawania.
-- Zamiast tego Sowa wyświetli **10 najważniejszych meczów ze świata** (np. hity lig zagranicznych), abyś zawsze miał aktualny obraz sytuacji sportowej.
-
-### 4. Ostateczne Sprzątanie (Cleanup)
-- Usunięto resztki martwego kodu `enabledSports` z Providera, co przyspieszyło inicjalizację aplikacji i wyczyściło bazę danych Hive.
-
-## Jak zweryfikować?
-1. Wykonaj **Hot Restart**.
-2. Wejdź w **SPORT**: Wyniki Ekstraklasy (np. Górnik, Korona) powinny być widoczne dzięki nowej logice źródeł.
-3. Wejdź w **USTAWIENIA -> Wygląd**: Zmień miasto na inne. Wróć na ekran główny i zobacz jak zmieniła się ostatnia zakładka.
-
-Aplikacja jest teraz w pełni spersonalizowana i technicznie "pancerna".
+**Czy możemy kontynuować i wdrożyć KROK 2?** 🦉🛠️💎

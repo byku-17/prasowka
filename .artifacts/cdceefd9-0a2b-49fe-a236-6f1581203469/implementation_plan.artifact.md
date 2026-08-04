@@ -1,31 +1,42 @@
-# Plan Naprawy V4.8: Dynamiczna Pogoda i Linki Lokalne
+# Strategiczny Plan Rozwoju i Szlifowania "Prasówki" (V5.0)
 
-Ten plan rozwiązuje problem "uwiązania" kafelków pogodowych do Warszawy po ich kliknięciu oraz porządkuje nazewnictwo w kodzie.
+Ten plan ma na celu przekształcenie stabilnej bazy V4.7 w produkt o standardzie rynkowym (Premium UX). Zmiany będą wdrażane krok po kroku, a każdy etap wymaga Twojego zatwierdzenia.
 
-## Proposed Changes
+## KROK 1: Wielkie Sprzątanie i Spójność (Stabilizacja)
+Usunięcie ostatnich "duchów" w kodzie i ujednolicenie informacji systemowych.
+- **Zadania:**
+    - Usunięcie martwych stałych `enabledSportsKey` i `enabledLeaguesKey` z `SettingsProvider`.
+    - Usunięcie nieużywanego mechanizmu `_fetchFailedIds` z `NewsProvider`.
+    - Synchronizacja wersji w UI (Ustawienia) z faktycznym stanem projektu (`pubspec.yaml`).
+    - Dodanie globalnego `try-catch` przy ładowaniu `WeatherService`, aby uniknąć "wiecznego kręcenia" przy braku sieci.
 
-### 1. Dynamiczne Linki Pogodowe (LocalInfoBar)
-Obecnie kliknięcie w kafelek otwiera statyczny URL `https://pogoda.interia.pl/`. Zmienimy to na dynamiczne zapytanie.
+## KROK 2: Integracja Premium (In-App WebView)
+Zamiast wyrzucać użytkownika do przeglądarki Chrome/Safari, sowa otworzy treści wewnątrz siebie.
+- **Zadania:**
+    - Dodanie paczki `webview_flutter`.
+    - Stworzenie `ArticleWebViewScreen` dla linków sportowych (Flashscore) i przycisku "Czytaj oryginał".
+    - Pozwala to zachować branding "Prasówki" i ułatwia powrót do listy newsów jednym gestem.
 
-#### [MODIFY] [warsaw_info_bar.dart](file:///D:/Apps/prasowka/lib/widgets/warsaw_info_bar.dart)
-- Zmiana nazwy klasy z `WarsawInfoBar` na `LocalInfoBar` (oraz odpowiednio w pliku).
-- **Update `onTap` w kafelku pogody**: Użycie `https://www.google.com/search?q=pogoda+${settings.preferredCity}`.
-- **Update `onTap` w kafelku powietrza**: Użycie `https://www.google.com/search?q=jakość+powietrza+${settings.preferredCity}`.
-- To zagwarantuje, że przeglądarka od razu pokaże właściwe miasto.
+## KROK 3: Szlifowanie "Mojego Miasta" (UX Pogody i Newsów)
+Naprawa linków lokalnych i rozszerzenie bazy informacji regionalnej.
+- **Zadania:**
+    - Zmiana statycznych linków GIOS w `LocalInfoBar` na dynamiczne zapytania Google (zgodnie z analizą).
+    - Dodanie wizualnego oznaczenia (np. mała ikonka lokalizacji) przy newsach pochodzących z dynamicznego źródła miejskiego.
+    - Ujednolicenie logiki `setPreferredCity`, aby nie dublowała się z `CategoryNewsList`.
 
-### 2. Aktualizacja odniesień w CategoryNewsList
-#### [MODIFY] [category_news_list.dart](file:///D:/Apps/prasowka/lib/widgets/category_news_list.dart)
-- Zmiana wywołania widgetu z `const WarsawInfoBar()` na `const LocalInfoBar()`.
+## KROK 4: Inteligentna Gazeta (Nowe Funkcje)
+Wprowadzenie elementów, które sprawią, że aplikacja będzie "mądrzejsza".
+- **Zadania:**
+    - **Wizualny status "Przeczytane"**: Przyciemnienie kart artykułów, które użytkownik już otworzył.
+    - **Pasek "Dla Ciebie" na start**: Mały horyzontalny podgląd 3 top-rekomendacji na samej górze kategorii "Wszystkie".
+    - **Optymalizacja Wartownika**: Zwiększenie częstotliwości sprawdzania wyników sportowych w tle (jeśli system na to pozwoli).
 
-### 3. Drobne poprawki w SettingsProvider
-#### [MODIFY] [settings_provider.dart](file:///D:/Apps/prasowka/lib/providers/settings_provider.dart)
-- Upewnienie się, że `notifyListeners()` jest wywoływane natychmiast po zmianie miasta, aby kafelki zareagowały bez opóźnień.
+---
 
-## Verification Plan
+## Plan Działania
+1. Każdy punkt realizujemy osobno.
+2. Po zakończeniu punktu proszę Cię o weryfikację.
+3. Wykonuję `commit` zmian.
+4. Pytam o zgodę na przejście do kolejnego punktu.
 
-### Manual Verification
-1.  **Hot Restart** aplikacji.
-2.  Zmiana miasta w ustawieniach na dowolne inne niż Warszawa (np. Poznań).
-3.  Kliknięcie w kafelek pogody w odpowiedniej zakładce.
-4.  Sprawdzenie, czy Google wyświetla prognozę dla Poznania.
-5.  Powtórzenie testu dla kafelka jakości powietrza.
+**Czy akceptujesz ten harmonogram zmian? Jeśli tak, zaczniemy od KROKU 1 (Sprzątanie i Stabilizacja).** 🦉🛠️💎
