@@ -1,7 +1,9 @@
-# Zadania: V7.1 Naprawa Konfliktu JVM
+# Zadania: V7.2 Ostateczna Synchronizacja JVM i KGP
 
 - [x] Aktualizacja `android/build.gradle.kts`:
-    - [x] Zmiana stringa `"17"` na `JavaVersion.VERSION_17` w konfiguracji `JavaCompile`
-- [x] Aktualizacja `android/app/build.gradle.kts`:
-    - [x] Dodanie bloku `kotlinOptions` dla wstecznej kompatybilności wtyczek
+    - [x] Zastosowanie `afterEvaluate` do wymuszenia Java 17 i JVM 17
+- [x] Aktualizacja `pubspec.yaml`:
+    - [x] Upgrade `share_plus` do `^10.0.0`
+    - [x] Upgrade `workmanager` do `^0.9.3`
 - [ ] Weryfikacja kompilacji (`flutter build apk` lub Debug)
+- [x] Commit i Push zmian

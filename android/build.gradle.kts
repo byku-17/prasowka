@@ -21,16 +21,18 @@ subprojects {
 }
 
 subprojects {
-    // Wymuszenie Java 17 dla wszystkich zadań kompilacji w projekcie
-    tasks.withType<JavaCompile>().configureEach {
-        sourceCompatibility = JavaVersion.VERSION_17.toString()
-        targetCompatibility = JavaVersion.VERSION_17.toString()
-    }
-    
-    // Wymuszenie JVM 17 dla Kotlina we wszystkich modułach (w tym wtyczkach)
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    afterEvaluate {
+        if (project.hasProperty("android")) {
+            tasks.withType<JavaCompile>().configureEach {
+                sourceCompatibility = "17"
+                targetCompatibility = "17"
+            }
+            
+            tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+                compilerOptions {
+                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                }
+            }
         }
     }
 }

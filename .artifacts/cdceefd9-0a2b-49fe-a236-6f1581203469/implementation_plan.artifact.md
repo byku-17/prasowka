@@ -1,25 +1,34 @@
-# Plan Naprawy V7.1: Rozwiązanie Konfliktu JVM (Dynamic Color Fix)
+# Plan Naprawy V7.2: Ostateczna Synchronizacja JVM i KGP
 
-Ten plan ma na celu naprawę błędu kompilacji Androida, który pojawił się po dodaniu paczki `dynamic_color`. Błąd wynika z niezgodności wersji docelowej Java (JVM Target) pomiędzy kodem Java (1.8) a kodem Kotlin (17).
+Ten plan ma na celu rozwiązanie uporczywego błędu "Inconsistent JVM Target" oraz wyeliminowanie ostrzeżeń dotyczących Kotlin Gradle Plugin (KGP), które mogą blokować przyszłe wersje aplikacji.
 
 ## Proposed Changes
 
-### 1. Ujednolicenie wersji JVM (build.gradle.kts)
-Wymusimy użycie Java 17 we wszystkich modułach (w tym w zewnętrznych wtyczkach takich jak `dynamic_color`).
-
-#### [MODIFY] [android/app/build.gradle.kts](file:///D:/Apps/prasowka/android/app/build.gradle.kts)
-- Upewnienie się, że `kotlinOptions` (starszy format) również wskazuje na JVM 17 wewnątrz bloku `android`.
-- To najczęstsze rozwiązanie problemów z wtyczkami Fluttera, które nie wspierają jeszcze w pełni nowego bloku `kotlin { compilerOptions }`.
+### 1. Agresywna Synchronizacja JVM (android/build.gradle.kts)
+Użyjemy mechanizmu `afterEvaluate`, aby upewnić się, że nasze ustawienia (Java 17) nie zostaną nadpisane przez domyślne konfiguracje wtyczek.
 
 #### [MODIFY] [android/build.gradle.kts](file:///D:/Apps/prasowka/android/build.gradle.kts)
-- Poprawa sposobu wymuszania wersji w `subprojects`. Zamiast stringa `"17"`, użyjemy stałej `JavaVersion.VERSION_17`, aby zapewnić pełną kompatybilność z Gradle.
+- Zastosowanie `tasks.withType<JavaCompile>` wewnątrz `subprojects` z jawnym przypisaniem wersji `"17"`.
+- Zastosowanie `tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>` z jawnym ustawieniem `jvmTarget = "17"`.
+- Wykorzystanie `afterEvaluate`, aby wymusić te parametry po tym, jak wtyczki skończą swoją własną konfigurację.
 
-### 2. Wyłączenie zbędnego "desugaringu" (opcjonalnie)
-Jeśli Java 17 jest w pełni aktywna, sprawdzimy czy `isCoreLibraryDesugaringEnabled` nie powoduje konfliktów z nowszymi bibliotekami.
+### 2. Rozwiązanie ostrzeżenia o Built-in Kotlin
+Flutter migruje na model, w którym wersja Kotlina jest zarządzana centralnie. Ostrzeżenie sugeruje, że niektóre wtyczki nakładają własny KGP.
+
+#### [MODIFY] [android/settings.gradle.kts](file:///D:/Apps/prasowka/android/settings.gradle.kts)
+- Weryfikacja czy wersje wtyczek w bloku `plugins` są zgodne z zaleceniami dla nowej wersji Fluttera.
+
+### 3. Aktualizacja Wtyczek (pubspec.yaml)
+Podniesiemy wersje krytycznych wtyczek, aby wspierały najnowsze standardy kompilacji.
+
+#### [MODIFY] [pubspec.yaml](file:///D:/Apps/prasowka/pubspec.yaml)
+- `workmanager: ^0.9.0+3` -> `0.9.3`
+- `share_plus: ^9.0.0` -> `10.0.2`
+- `package_info_plus: ^8.0.0` (jeśli istnieje)
 
 ## Verification Plan
 
 ### Manual Verification
-1.  **Wyczyszczenie projektu**: `flutter clean`.
-2.  **Próba kompilacji**: `flutter build apk` lub uruchomienie w trybie Debug.
-3.  Jeśli błąd zniknie, oznacza to, że wszystkie zadania kompilacji (Java i Kotlin) zostały pomyślnie zsynchronizowane do wersji 17.
+1.  **Wyczyszczenie**: `flutter clean`.
+2.  **Kompilacja**: `flutter build apk` lub uruchomienie w trybie Debug.
+3.  **Weryfikacja logów**: Sprawdzenie czy ostrzeżenia o KGP zniknęły i czy błąd "Inconsistent JVM Target" przestał występować.
