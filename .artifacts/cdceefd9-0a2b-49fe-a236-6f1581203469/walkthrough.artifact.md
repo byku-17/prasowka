@@ -1,22 +1,25 @@
-# Walkthrough: Kompatybilna Synchronizacja JVM (V7.5)
+# Walkthrough: Migracja na Built-in Kotlin i Fix JDK 17 (V7.6)
 
-Naprawiono błąd kompilacji modułu `:audio_session` oraz ostatecznie ujednolicono wersję Java we wszystkich modułach projektu, zachowując pełną zgodność z Android Gradle Plugin (AGP).
+Rozwiązano problem z brakującą instalacją Java 17 oraz wyeliminowano ostrzeżenia dotyczące zarządzania Kotlinem w nowym systemie budowania Fluttera.
 
 ## Zrealizowane zmiany:
 
-### 1. Rozwiązanie konfliktu `--release`
+### 1. Usunięcie restrykcyjnego Toolchaina
 > [!IMPORTANT]
-> Niektóre starsze wtyczki (jak `audio_session`) nie obsługują nowoczesnej flagi `--release` w Gradle, co powodowało natychmiastowe przerwanie budowania aplikacji.
+> Mechanizm `jvmToolchain(17)` wymagał od systemu posiadania precyzyjnie skonfigurowanej, niezależnej instalacji JDK, której Gradle nie potrafił automatycznie wykryć.
 
-- **Bezpieczne flagi**: Usunięto `options.release.set(17)` i zastąpiono ją sprawdzonymi parametrami `sourceCompatibility` oraz `targetCompatibility`. Gwarantuje to ten sam efekt (Java 17), ale w sposób akceptowany przez wszystkie wtyczki.
-- **Wymuszenie przez afterEvaluate**: Przywrócono mechanizm `afterEvaluate` w czystej formie (bez konfliktowych zależności). Pozwala on Sowie na skuteczne nadpisanie ustawień każdej wtyczki (np. `dynamic_color`) i narzucenie jej standardu Java 17.
+- **Uproszczenie**: Usunięto blok `jvmToolchain(17)`. System budowania będzie teraz korzystał z domyślnego środowiska Java (zazwyczaj dostarczanego z Android Studio), zachowując jedynie wymóg kompatybilności wersji 17. To eliminuje błąd `Cannot find a Java installation`.
 
-### 2. Stabilizacja Infrastruktury
-- Usunięto redundantne instrukcje, które mogły powodować błędy kolejności ładowania projektów.
-- Cały proces budowania jest teraz spójny: zarówno główna aplikacja, jak i każda biblioteka zewnętrzna, korzystają z tej samej wersji maszyny wirtualnej (JVM 17).
+### 2. Migracja na "Built-in Kotlin"
+- **Zgodność z Flutter 3.24+**: Usunięto ręczne nakładanie pluginu `id("org.jetbrains.kotlin.android")` w pliku `app/build.gradle.kts`.
+- **Zaleta**: Nowy Flutter zarządza wersją Kotlina automatycznie przez `flutter-plugin-loader`. Ta zmiana usuwa długie ostrzeżenia o przyszłych błędach budowania i konfliktach wtyczek.
+
+### 3. Stabilna Konfiguracja Subprojektów
+- Przebudowano plik `android/build.gradle.kts`, stosując "leniwe" wymuszanie wersji Java 17 dla wszystkich wtyczek (w tym `dynamic_color`). Gwarantuje to spójność bez wywoływania błędów kolejności ładowania projektów.
 
 ## Jak zweryfikować?
 1. Wykonaj **Hot Restart** lub spróbuj zbudować projekt.
-2. Błędy dotyczące `--release` oraz niespójności wersji Java (1.8 vs 17) powinny całkowicie zniknąć.
+2. Ostrzeżenia o Kotlin Gradle Plugin (KGP) powinny zniknąć lub zostać zminimalizowane.
+3. Błąd braku Java 17 nie powinien już blokować startu aplikacji.
 
-🦉🛠️🚀 **System budowania jest teraz w pełni zoptymalizowany i kompatybilny!**
+🦉🛠️🤖 **Infrastruktura projektu jest teraz w pełni nowoczesna i zgodna z najnowszymi wytycznymi Google!**

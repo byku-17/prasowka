@@ -1,9 +1,10 @@
-# Zadania: V7.6 Migracja na Built-in Kotlin i Fix JDK 17
+# Zadania: V7.7 Ostateczna Synchronizacja (Clean Build)
 
 - [ ] Aktualizacja `android/app/build.gradle.kts`:
-    - [ ] Usunięcie `id("org.jetbrains.kotlin.android")` (migracja na Built-in Kotlin)
-    - [ ] Usunięcie bloku `kotlin { jvmToolchain(17) }`
-- [ ] Aktualizacja `android/build.gradle.kts`:
-    - [ ] Uproszczenie wymuszania wersji Java 17 w subprojektach (bez `afterEvaluate` jeśli możliwe lub w bezpieczniejszy sposób)
+    - [ ] Przywrócenie `id("org.jetbrains.kotlin.android")` (bez wersji)
+- [ ] Przebudowa `android/build.gradle.kts`:
+    - [ ] Wyczyszczenie pliku do jednego bloku `subprojects`
+    - [ ] Implementacja `afterEvaluate` z wymuszeniem Java 17 i `kotlinOptions`
+- [ ] Procedura Clean Build (`flutter clean`)
 - [ ] Weryfikacja kompilacji
 - [ ] Commit i Push zmian
