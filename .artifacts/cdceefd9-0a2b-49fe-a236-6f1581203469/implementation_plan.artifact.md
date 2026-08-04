@@ -1,27 +1,30 @@
-# Plan Naprawy V5.5: Spójność Powiadomień (In-App WebView)
+# Plan Naprawy V6.1: Ujednolicenie Kategorii Miejskiej
 
-Zgodnie z Twoim życzeniem, wdrażamy pierwszy punkt z planu szlifowania — integrację powiadomień systemowych z naszą wewnętrzną przeglądarką. Od teraz kliknięcie w powiadomienie nie będzie już otwierać zewnętrznej przeglądarki (Chrome/Safari), lecz pokaże artykuł bezpośrednio w aplikacji.
+Zgodnie z punktem 2 planu "Ostatniego Szlifu", zmieniamy systemową nazwę kategorii "Warszawa" na "Lokalne". Pozwoli to na zachowanie logicznej spójności interfejsu dla użytkowników z innych miast (np. Krakowa czy Wrocławia).
 
 ## Proposed Changes
 
-### 1. Reaktywność Powiadomień (BackgroundService)
-Musimy umożliwić aplikacji "usłyszenie" kliknięcia w powiadomienie w czasie rzeczywistym.
+### 1. Zmiana Nazwy w Modelu (NewsCategory)
+Zmieniamy etykietę, która pojawia się w ustawieniach i systemie zarzadzania kategoriami.
 
-#### [MODIFY] [background_service.dart](file:///D:/Apps/prasowka/lib/services/background_service.dart)
-- Dodanie `StreamController<String>`, który będzie emitował URL artykułu po kliknięciu.
-- Usunięcie bezpośredniego wywołania `url_launcher` w metodach `init` i `checkNotificationLaunch`.
-- Przesyłanie payloadu (URL) do strumienia.
+#### [MODIFY] [news_category.dart](file:///D:/Apps/prasowka/lib/models/news_category.dart)
+- Zmiana `name: 'Warszawa'` na `name: 'Lokalne'` dla kategorii o ID `warsaw`.
+- **Dlaczego?** Nazwa "Lokalne" jest uniwersalna. W głównym menu (TabBar) nadal będzie wyświetlać się konkretne miasto (np. KRAKÓW), ale w "Zarządzaniu kategoriami" użytkownik zobaczy spójne "Lokalne".
 
-### 2. Obsługa Nawigacji (MainScreen)
-UI musi reagować na sygnały z usługi tła i otwierać odpowiedni ekran.
+### 2. Aktualizacja Listy Źródeł (NewsSource)
+Upewnienie się, że nazwy domyślnych źródeł miejskich są czytelne.
 
-#### [MODIFY] [main_screen.dart](file:///D:/Apps/prasowka/lib/screens/main_screen.dart)
-- Subskrypcja strumienia z `BackgroundService` w metodzie `initState`.
-- Obsługa "Cold Start": Sprawdzenie przy uruchomieniu, czy w `BackgroundService.pendingPayload` czeka URL z powiadomienia, które otworzyło aplikację.
-- Automatyczne otwieranie `ArticleWebViewScreen` dla otrzymanego adresu URL.
+#### [MODIFY] [news_source.dart](file:///D:/Apps/prasowka/lib/models/news_source.dart)
+- Brak zmian funkcjonalnych, jedynie weryfikacja czy nazwy źródeł nie są sprzeczne z nową etykietą kategorii.
+
+### 3. Weryfikacja UI
+- Sprawdzenie `HomeScreen`: upewnienie się, że TabBar nadal poprawnie podmienia "Lokalne" na nazwę miasta (np. "POZNAŃ").
+- Sprawdzenie `CategorySettingsPage`: weryfikacja czy na liście przełączników widnieje "Lokalne".
 
 ## Verification Plan
 
 ### Manual Verification
-1.  **Warm Start**: Uruchom aplikację, przejdź do ustawień i wyślij **TESTOWY ALERT**. Zminimalizuj aplikację (nie zamykaj). Kliknij w powiadomienie -> powinieneś wrócić do apki i od razu zobaczyć WebView z testową stroną.
-2.  **Cold Start**: Całkowicie zamknij aplikację. Wyślij testowe powiadomienie (np. z konsoli lub jeśli masz taką możliwość w debugu). Kliknij w nie -> aplikacja powinna się uruchomić i od razu pokazać WebView.
+1.  **Hot Restart** aplikacji.
+2.  Wejście w **Ustawienia -> Zarządzanie Kategoriami**.
+3.  Sprawdzenie, czy kategoria o ikonie miasta nazywa się teraz **Lokalne** zamiast **Warszawa**.
+4.  Powrót na ekran główny -> sprawdzenie czy na górnym pasku (TabBar) nadal widnieje nazwa wybranego miasta (np. KRAKÓW).
