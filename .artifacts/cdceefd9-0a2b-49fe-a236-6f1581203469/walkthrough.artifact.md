@@ -1,52 +1,31 @@
-# Walkthrough: KROK 5 — Ostatni Szlif (V5.5)
+# Walkthrough: Plan Rozwoju V7.0 — Personalizacja Kolorystyki
 
-Rozpoczęto etap końcowego dopieszczania aplikacji. Pierwsza zmiana dotyczy pełnej integracji powiadomień z wewnętrznym systemem przeglądania treści.
+Wprowadzono zaawansowany system motywów, pozwalający na dopasowanie wyglądu aplikacji do indywidualnych preferencji użytkownika.
 
-## Zrealizowane zmiany (V5.5):
+## Zrealizowane zmiany:
 
-### 1. Powiadomienia wewnątrz aplikacji
-> [!IMPORTANT]
-> Koniec z przełączaniem się do zewnętrznej przeglądarki po kliknięciu w powiadomienie!
+### 1. Nowe Warianty Kolorystyczne
+Dodano 3 autorskie kompozycje kolorów oraz inteligentny tryb automatyczny:
+- **Sowa Classic**: Oryginalna paleta Navy & Gold.
+- **Elegant Light**: Luksusowy motyw oparty na złamanej bieli (Ecru) i ciemnym złocie. Idealny do czytania w dzień.
+- **Royal Purple**: Nowoczesny i elegancki motyw fioletowy, dostępny zarówno w wersji jasnej, jak i ciemnej.
+- **Automatyczny (Material You)**: Dynamiczne dopasowanie barw aplikacji do tapety telefonu (na Androidzie 12+).
 
-- **Strumień Reaktywny**: Wprowadzono system przesyłania informacji o klikniętym powiadomieniu prosto do głównego ekranu aplikacji.
-- **In-App WebView**: Kliknięcie w alert o nowym artykule (lub testowy alert Sowy) otwiera teraz `ArticleWebViewScreen` bezpośrednio wewnątrz "Prasówki".
-- **Obsługa uruchomienia (Cold Start)**: Jeśli aplikacja była zamknięta i została uruchomiona przez powiadomienie, sowa od razu zaprezentuje odpowiedni artykuł.
+### 2. Interaktywny Picker w Ustawieniach
+W zakładce **Wygląd i Alerty** pojawiła się nowa sekcja z wizualnym wyborem kolorystyki.
+- Każdy motyw jest reprezentowany przez eleganckie, gradientowe kółko podglądu.
+- Zmiana kolorów następuje natychmiastowo w całej aplikacji, bez konieczności restartu.
 
-## Zrealizowane zmiany (V6.1):
+### 3. Integracja z Systemem (Dynamic Color)
+- Dodano wsparcie dla biblioteki `dynamic_color`.
+- Po wybraniu opcji "Automatyczny", Sowa "pożycza" barwy od Twojego systemu operacyjnego, stając się integralną częścią Twojego UI.
 
-### 1. Ujednolicenie Kategorii Miejskiej
-- Zmieniono systemową nazwę kategorii o ID `warsaw` z **"Warszawa"** na uniwersalne **"Lokalne"**.
-- **Dlaczego?** Dzięki temu w ustawieniach i zarządzaniu kategoriami nazwa jest poprawna dla każdego użytkownika, niezależnie od tego czy mieszka w Krakowie, Wrocławiu czy Łodzi.
-- **Bez zmian w widoku głównym**: Na górnym pasku (TabBar) nadal wyświetla się nazwa Twojego konkretnego miasta (np. POZNAŃ), co zapewnia pełną personalizację.
+### 4. Aktualizacja Wersji
+- Wersja aplikacji: `1.5.0 (V7.0 Themes)`.
 
-## Zrealizowane zmiany (V6.2):
+## Jak przetestować?
+1. Przejdź do **Ustawienia -> Wygląd i Alerty**.
+2. Kliknij w kafelki w sekcji **KOLORYSTYKA APLIKACJI**.
+3. Zaobserwuj, jak tło, nagłówki i przyciski zmieniają swój charakter.
 
-### 1. Precyzyjny Wartownik Sportowy
-> [!IMPORTANT]
-> Uszczelniono logikę powiadomień w tle, eliminując ryzyko "fałszywych alarmów".
-
-- **Weryfikacja Daty**: Sowa sprawdza teraz nie tylko godzinę rozpoczęcia meczu, ale również dokładny dzień, miesiąc i rok.
-- **Zaleta**: Zapobiega to sytuacjom, w których użytkownik mógłby otrzymać powiadomienie o jutrzejszym meczu, jeśli godzina rozpoczęcia byłaby identyczna z dzisiejszą.
-- Poprawka dotyczy zarówno standardowych powiadomień o startujących meczach, jak i specjalnych przypomnień ("Match Reminders") na 5 minut przed startem.
-
-## Zrealizowane zmiany (V6.3):
-
-### 1. Stabilny Layout "Dla Ciebie"
-- Sekcja rekomendacji ma teraz zarezerwowane miejsce na górze listy "Wszystkie".
-- **Zaleta**: Lista newsów nie "skacze" już gwałtownie w dół, gdy Sowa skończy obliczać Twoje ulubione tematy.
-- Wprowadzono płynną animację (`AnimatedSwitcher`), dzięki której kafelki "Dla Ciebie" pojawiają się z eleganckim przenikaniem.
-
-### 2. Spójność Wizualna Nagłówków
-- Ujednolicono styl wszystkich sekcji specjalnych. Nagłówki "DLA CIEBIE" oraz "NAJNOWSZE WIADOMOŚCI" mają teraz ten sam profesjonalny charakter (typografia Syne, zwiększony odstęp między literami).
-
-### 3. Wersja Finalna
-- Aplikacja osiągnęła status gotowości do wydania. Aktualna wersja: `1.4.0 (V6.3 Final)`.
-
-## Podsumowanie Projektu
-Zakończyliśmy pełny cykl optymalizacji i rozwoju. Aplikacja jest:
-1. **Stabilna** (naprawione Hive, API sportowe i pogodowe).
-2. **Pancerna** (obsługa błędów, isolate safety).
-3. **Inteligentna** (rekomendacje, śledzenie czytania).
-4. **Spójna** (wewnętrzny WebView, ujednolicone kategorie).
-
-🦉💎🚀 **Prasówka jest gotowa do użytku!**
+🦉🎨✨ **Sowa teraz wygląda dokładnie tak, jak chcesz!**

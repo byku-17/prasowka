@@ -18,9 +18,52 @@ class AppearanceSettingsPage extends StatelessWidget {
           const SectionHeader('MOTYW'),
           ListTile(
             leading: const Icon(Icons.palette_outlined),
-            title: const Text('Tryb wyglądu'),
+            title: const Text('Tryb jasny/ciemny'),
             subtitle: Text(_themeModeName(settings.themeMode)),
             onTap: () => _showThemePicker(context, settings),
+          ),
+          const SectionHeader('KOLORYSTYKA APLIKACJI'),
+          SizedBox(
+            height: 100,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _ThemeVariantTile(
+                  variant: AppThemeVariant.classic,
+                  label: 'Sowa Classic',
+                  primary: AppTheme.primaryNavy,
+                  accent: AppTheme.accentGold,
+                  isSelected: settings.themeVariant == AppThemeVariant.classic,
+                  onTap: () => settings.setThemeVariant(AppThemeVariant.classic),
+                ),
+                _ThemeVariantTile(
+                  variant: AppThemeVariant.elegantLight,
+                  label: 'Elegant Light',
+                  primary: AppTheme.elegantGold,
+                  accent: AppTheme.elegantEcru,
+                  isSelected: settings.themeVariant == AppThemeVariant.elegantLight,
+                  onTap: () => settings.setThemeVariant(AppThemeVariant.elegantLight),
+                ),
+                _ThemeVariantTile(
+                  variant: AppThemeVariant.royalPurple,
+                  label: 'Royal Purple',
+                  primary: AppTheme.royalPurple,
+                  accent: Colors.white,
+                  isSelected: settings.themeVariant == AppThemeVariant.royalPurple,
+                  onTap: () => settings.setThemeVariant(AppThemeVariant.royalPurple),
+                ),
+                _ThemeVariantTile(
+                  variant: AppThemeVariant.system,
+                  label: 'Automatyczny',
+                  primary: Colors.grey,
+                  accent: Colors.blueGrey,
+                  isSystem: true,
+                  isSelected: settings.themeVariant == AppThemeVariant.system,
+                  onTap: () => settings.setThemeVariant(AppThemeVariant.system),
+                ),
+              ],
+            ),
           ),
           const Divider(),
           const SectionHeader('POWIADOMIENIA (WARTOWNIK SOWY)'),
@@ -77,5 +120,68 @@ class AppearanceSettingsPage extends StatelessWidget {
       ListTile(leading: const Icon(Icons.light_mode), title: const Text('Jasny'), onTap: () { settings.setThemeMode(ThemeMode.light); Navigator.pop(context); }),
       ListTile(leading: const Icon(Icons.dark_mode), title: const Text('Ciemny'), onTap: () { settings.setThemeMode(ThemeMode.dark); Navigator.pop(context); }),
       ])));
+  }
+}
+
+class _ThemeVariantTile extends StatelessWidget {
+  final AppThemeVariant variant;
+  final String label;
+  final Color primary;
+  final Color accent;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool isSystem;
+
+  const _ThemeVariantTile({
+    required this.variant,
+    required this.label,
+    required this.primary,
+    required this.accent,
+    required this.isSelected,
+    required this.onTap,
+    this.isSystem = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        margin: const EdgeInsets.only(right: 12),
+        child: Column(
+          children: [
+            Container(
+              height: 60,
+              width: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppTheme.accentGold : Colors.transparent,
+                  width: 3,
+                ),
+                gradient: isSystem ? null : LinearGradient(
+                  colors: [primary, accent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                color: isSystem ? Colors.grey.withValues(alpha: 0.1) : null,
+              ),
+              child: isSystem ? const Icon(Icons.auto_fix_high, size: 24) : (isSelected ? const Icon(Icons.check, color: Colors.white) : null),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? AppTheme.accentGold : Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

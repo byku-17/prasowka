@@ -7,12 +7,15 @@ import 'package:prasowka/services/storage_service.dart';
 import 'package:prasowka/services/background_service.dart';
 import 'package:prasowka/services/weather_service.dart';
 
+enum AppThemeVariant { classic, elegantLight, royalPurple, system }
+
 class SettingsProvider with ChangeNotifier {
   static const String settingsBoxName = 'settings';
   static const String sourcesBoxName = 'news_sources_dynamic';
   static const String categoriesBoxName = 'news_categories_dynamic';
   
   static const String themeKey = 'themeMode';
+  static const String themeVariantKey = 'themeVariant';
   static const String activeCategoriesKey = 'activeCategoryIds';
   static const String sourcesEnabledKey = 'activeSourceIds';
   static const String teamsKey = 'favoriteTeams';
@@ -28,6 +31,7 @@ class SettingsProvider with ChangeNotifier {
   static const String selectedLeaguesKey = 'selectedLeagueIds';
 
   ThemeMode _themeMode = ThemeMode.system;
+  AppThemeVariant _themeVariant = AppThemeVariant.classic;
   List<NewsCategory> _allCategories = [];
   List<String> _activeCategoryIds = [];
   List<String> _enabledSourceIds = [];
@@ -45,6 +49,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> _selectedLeagueIds = [];
 
   ThemeMode get themeMode => _themeMode;
+  AppThemeVariant get themeVariant => _themeVariant;
   List<NewsCategory> get allCategories => _allCategories;
   List<String> get activeCategoryIds => _activeCategoryIds;
   List<String> get enabledSourceIds => _enabledSourceIds;
@@ -99,6 +104,11 @@ class SettingsProvider with ChangeNotifier {
     _themeMode = (themeIndex is int && themeIndex >= 0 && themeIndex < ThemeMode.values.length)
         ? ThemeMode.values[themeIndex]
         : ThemeMode.system;
+
+    final variantIndex = settingsBox.get(themeVariantKey, defaultValue: AppThemeVariant.classic.index);
+    _themeVariant = (variantIndex is int && variantIndex >= 0 && variantIndex < AppThemeVariant.values.length)
+        ? AppThemeVariant.values[variantIndex]
+        : AppThemeVariant.classic;
     _onboardingCompleted = settingsBox.get(onboardingKey, defaultValue: false);
     _showSportsBar = settingsBox.get(sportsBarKey, defaultValue: true);
     _onlyFavoriteTeams = settingsBox.get(onlyFavoriteTeamsKey, defaultValue: true);
@@ -262,6 +272,12 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
     await Hive.box(settingsBoxName).put(themeKey, mode.index);
+    notifyListeners();
+  }
+
+  Future<void> setThemeVariant(AppThemeVariant variant) async {
+    _themeVariant = variant;
+    await Hive.box(settingsBoxName).put(themeVariantKey, variant.index);
     notifyListeners();
   }
 

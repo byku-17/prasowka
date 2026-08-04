@@ -11,6 +11,7 @@ import 'package:prasowka/screens/main_screen.dart';
 import 'package:prasowka/screens/onboarding_screen.dart';
 import 'package:prasowka/services/background_service.dart';
 import 'package:prasowka/services/notification_history.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -65,13 +66,17 @@ class PrasowkaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
 
-    return MaterialApp(
-      title: 'Prasówka',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: settings.themeMode,
-      home: settings.onboardingCompleted ? const MainScreen() : const OnboardingScreen(),
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        return MaterialApp(
+          title: 'Prasówka',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.getTheme(settings.themeVariant, false, dynamicScheme: lightDynamic),
+          darkTheme: AppTheme.getTheme(settings.themeVariant, true, dynamicScheme: darkDynamic),
+          themeMode: settings.themeMode,
+          home: settings.onboardingCompleted ? const MainScreen() : const OnboardingScreen(),
+        );
+      },
     );
   }
 }
