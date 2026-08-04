@@ -232,10 +232,10 @@ Future<void> _showNotification(Article article) async {
       FlutterLocalNotificationsPlugin();
 
   await flutterLocalNotificationsPlugin.show(
-    article.id.hashCode.abs(),
-    'Sowa znalazła coś dla Ciebie! 🦉',
-    article.title,
-    platformChannelSpecifics,
+    id: article.id.hashCode.abs(),
+    title: 'Sowa znalazła coś dla Ciebie! 🦉',
+    body: article.title,
+    notificationDetails: platformChannelSpecifics,
     payload: article.url,
   );
 
@@ -277,10 +277,10 @@ Future<void> _showSportNotification(MatchEvent event) async {
   }
 
   await flutterLocalNotificationsPlugin.show(
-    event.id.hashCode.abs(),
-    title,
-    body,
-    platformChannelSpecifics,
+    id: event.id.hashCode.abs(),
+    title: title,
+    body: body,
+    notificationDetails: platformChannelSpecifics,
   );
 
   await NotificationHistory().add(NotificationEntry(
@@ -313,10 +313,10 @@ Future<void> _showGoalNotification(MatchEvent event, String prevScore, String ne
   final body = '${event.homeTeam} $newScore ${event.awayTeam}';
 
   await flutterLocalNotificationsPlugin.show(
-    event.id.hashCode.abs() + DateTime.now().millisecondsSinceEpoch % 1000,
-    title,
-    body,
-    platformChannelSpecifics,
+    id: event.id.hashCode.abs() + DateTime.now().millisecondsSinceEpoch % 1000,
+    title: title,
+    body: body,
+    notificationDetails: platformChannelSpecifics,
   );
 
   await NotificationHistory().add(NotificationEntry(
@@ -352,10 +352,10 @@ Future<void> _showMatchReminder(MatchEvent event) async {
   final flashscoreUrl = _buildFlashscoreMatchUrl(event);
 
   await flutterLocalNotificationsPlugin.show(
-    event.id.hashCode.abs() + 7777,
-    title,
-    body,
-    platformChannelSpecifics,
+    id: event.id.hashCode.abs() + 7777,
+    title: title,
+    body: body,
+    notificationDetails: platformChannelSpecifics,
     payload: flashscoreUrl,
   );
 
@@ -404,7 +404,7 @@ class BackgroundService {
     );
     
     await _notifications.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         final payload = response.payload;
         if (payload != null && payload.isNotEmpty) {
@@ -467,12 +467,12 @@ class BackgroundService {
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
-    await _notifications.show(
-      999,
-      'Test Wartownika 🦉',
-      'Powiadomienia działają poprawnie. Sowa czuwa!',
-      platformChannelSpecifics,
-    );
+await _notifications.show(
+    id: 999,
+    title: 'Test Wartownika 🦉',
+    body: 'Powiadomienia działają poprawnie. Sowa czuwa!',
+    notificationDetails: platformChannelSpecifics,
+  );
 
     await NotificationHistory().add(NotificationEntry(
       id: 'test_999',
