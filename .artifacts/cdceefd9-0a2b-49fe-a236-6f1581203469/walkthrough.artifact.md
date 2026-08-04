@@ -27,7 +27,20 @@ Zakończono pierwszy etap profesjonalizacji kodu. Aplikacja jest teraz lżejsza 
 ### 2. Aktualizacja Wersji
 - Wersja aplikacji została podniesiona do `1.3.1 (V5.2 WebView)`.
 
-## Co dalej?
-Kolejnym etapem jest **KROK 3: Szlifowanie "Mojego Miasta"**. Naprawimy linki w kafelkach pogodowych (aby nie prowadziły do Warszawy po kliknięciu) oraz dodamy wizualne oznaczenia dla newsów lokalnych.
+## Zrealizowane zmiany (V5.3):
 
-**Czy możemy kontynuować i wdrożyć KROK 3?** 🦉🏙️🌤️
+### 1. Dynamiczna Pogoda (In-App)
+- Kliknięcie w kafelek temperatury lub jakości powietrza otwiera teraz wewnętrzną przeglądarkę z precyzyjnymi wynikami dla **Twojego wybranego miasta**.
+- Koniec z wymuszaniem linków do Warszawy – system teraz w pełni respektuje Twoje ustawienia lokalizacji.
+
+### 2. Oznaczenie Newsów Lokalnych
+- Artykuły pochodzące ze źródeł miejskich (Warszawa lub Twoje miasto z Google News) są teraz oznaczone ikonką 📍 obok nazwy portalu.
+- Pozwala to na pierwszy rzut oka odróżnić wieści z regionu od newsów ogólnopolskich czy światowych.
+
+### 3. Aktualizacja Wersji
+- Wersja aplikacji: `1.3.2 (V5.3 City Polish)`.
+
+## Co dalej?
+Ostatnim zaplanowanym etapem jest **KROK 4: Inteligentna Gazeta**. Dodamy wizualny znacznik przeczytanych artykułów oraz horyzontalną sekcję rekomendacji, aby Sowa jeszcze lepiej podpowiadała Ci, co warto przeczytać.
+
+**Czy możemy kontynuować i wdrożyć KROK 4?** 🦉💎📖

@@ -1,11 +1,12 @@
-# Zadania: KROK 3 — Szlifowanie "Mojego Miasta" (V5.3)
+# Zadania: V4.9 Precyzyjna Pogoda i Bezpośrednie Linki
 
-- [ ] Aktualizacja `LocalInfoBar`:
-    - [ ] Przekierowanie kliknięć kafelków do `ArticleWebViewScreen` (In-App WebView)
-    - [ ] Upewnienie się, że linki Google używają `preferredCity`
-- [ ] Aktualizacja `ArticleCard`:
-    - [ ] Dodanie ikonki 📍 przy nazwie źródła, jeśli jest to news lokalny (z kategorii `warsaw` lub dynamiczny)
-- [ ] Cleanup `SettingsProvider`:
-    - [ ] Usunięcie resztek `enabledSportsKey` i `enabledLeaguesKey`
-- [ ] Aktualizacja wersji w UI na `1.3.2 (V5.3 City Polish)`
+- [ ] Aktualizacja `WeatherService`:
+    - [ ] Poprawa odporności parsowania danych (wymuszenie `toDouble()`)
+    - [ ] Dodanie logowania błędów
+- [ ] Przebudowa `LocalInfoBar`:
+    - [ ] Usunięcie logiki odświeżania z metody `build()`
+    - [ ] Implementacja metody `_getCitySlug` dla linków URL
+    - [ ] Zmiana linków na Onet Pogoda i AQICN
+    - [ ] Integracja z `ArticleWebViewScreen`
+- [ ] Weryfikacja działania dla Warszawy i innych miast
 - [ ] Commit zmian

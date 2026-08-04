@@ -53,15 +53,18 @@ class WeatherService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final current = data['current'];
+        if (current == null) return null;
         return WeatherData(
           temperature: (current['temperature_2m'] ?? 0).toDouble(),
           windSpeed: (current['wind_speed_10m'] ?? 0).toDouble(),
           humidity: (current['relative_humidity_2m'] ?? 0).toInt(),
           condition: _mapWeatherCode(current['weather_code']),
         );
+      } else {
+        debugPrint('Sowa Weather: API Error ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Sowa Weather: Błąd pogody: $e');
+      debugPrint('Sowa Weather: Exception during fetchWeather: $e');
     }
     return null;
   }
@@ -73,6 +76,7 @@ class WeatherService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final current = data['current'];
+        if (current == null) return null;
         final pm25 = (current['pm2_5'] ?? 0).toDouble();
         return AirQualityData(
           pm25: pm25,
@@ -81,9 +85,11 @@ class WeatherService {
           o3: (current['ozone'] ?? 0).toDouble(),
           level: _aqiLevel(pm25),
         );
+      } else {
+        debugPrint('Sowa AirQuality: API Error ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Sowa Weather: Błąd jakości powietrza: $e');
+      debugPrint('Sowa AirQuality: Exception during fetchAirQuality: $e');
     }
     return null;
   }
