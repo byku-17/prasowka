@@ -114,7 +114,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.open_in_browser),
-                onPressed: () => _launchUrl(context, article.url),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ArticleWebViewScreen(
+                        url: article.url,
+                        title: article.title,
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -238,9 +247,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                                   const SizedBox(height: 12),
                                   Center(
                                     child: OutlinedButton.icon(
-                                      onPressed: () => _launchUrl(context, article.url),
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => ArticleWebViewScreen(
+                                              url: article.url,
+                                              title: article.title,
+                                            ),
+                                          ),
+                                        );
+                                      },
                                       icon: const Icon(Icons.open_in_browser, size: 18),
-                                      label: const Text('CZYTAJ W PRZEGLĄDARCE'),
+                                      label: const Text('CZYTAJ W APLIKACJI'),
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppTheme.accentGold,
                                         side: const BorderSide(color: AppTheme.accentGold),
@@ -269,9 +287,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                                 const SizedBox(height: 24),
                                 Center(
                                   child: OutlinedButton.icon(
-                                    onPressed: () => _launchUrl(context, article.url),
+                                    onPressed: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => ArticleWebViewScreen(
+                                            url: article.url,
+                                            title: article.title,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                     icon: const Icon(Icons.open_in_browser, size: 18),
-                                    label: const Text('CZYTAJ W PRZEGLĄDARCE'),
+                                    label: const Text('CZYTAJ W APLIKACJI'),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: AppTheme.accentGold,
                                       side: const BorderSide(color: AppTheme.accentGold),
