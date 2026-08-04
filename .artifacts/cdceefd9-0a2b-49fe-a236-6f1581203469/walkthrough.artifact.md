@@ -19,9 +19,17 @@ Rozpoczęto etap końcowego dopieszczania aplikacji. Pierwsza zmiana dotyczy pe�
 - **Dlaczego?** Dzięki temu w ustawieniach i zarządzaniu kategoriami nazwa jest poprawna dla każdego użytkownika, niezależnie od tego czy mieszka w Krakowie, Wrocławiu czy Łodzi.
 - **Bez zmian w widoku głównym**: Na górnym pasku (TabBar) nadal wyświetla się nazwa Twojego konkretnego miasta (np. POZNAŃ), co zapewnia pełną personalizację.
 
-## Co dalej?
-Pozostały nam dwa punkty z planu "Ostatniego Szlifu":
-1. **3. Poprawa Logiki Wartownika (Sport)**: Dodanie weryfikacji daty przed wysłaniem powiadomienia o meczu.
-2. **4. Finalna kosmetyka "Dla Ciebie"**: Integracja sekcji rekomendacji z listą.
+## Zrealizowane zmiany (V6.2):
 
-**Czy kontynuujemy i wdrożymy punkt 3?** 🦉⚽⏰
+### 1. Precyzyjny Wartownik Sportowy
+> [!IMPORTANT]
+> Uszczelniono logikę powiadomień w tle, eliminując ryzyko "fałszywych alarmów".
+
+- **Weryfikacja Daty**: Sowa sprawdza teraz nie tylko godzinę rozpoczęcia meczu, ale również dokładny dzień, miesiąc i rok.
+- **Zaleta**: Zapobiega to sytuacjom, w których użytkownik mógłby otrzymać powiadomienie o jutrzejszym meczu, jeśli godzina rozpoczęcia byłaby identyczna z dzisiejszą.
+- Poprawka dotyczy zarówno standardowych powiadomień o startujących meczach, jak i specjalnych przypomnień ("Match Reminders") na 5 minut przed startem.
+
+## Co dalej?
+Został nam ostatni punkt z planu "Ostatniego Szlifu": **4. Finalna kosmetyka "Dla Ciebie"**, czyli integracja sekcji rekomendacji z listą, aby wyeliminować przeskoki UI przy ładowaniu.
+
+**Czy wchodzimy w ostatnią prostą?** 🦉🏁💎
