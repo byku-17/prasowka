@@ -10,6 +10,11 @@ class AppearanceSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
+    final currentVariant = settings.themeVariant;
+    final currentMode = settings.themeMode;
+
+    // Określ aktualną opcję na podstawie wariantu + trybu
+    String currentLabel = _getCurrentLabel(currentVariant, currentMode);
 
     return Scaffold(
       appBar: AppBar(title: const Text('WYGLĄD I ALERTY')),
@@ -18,60 +23,9 @@ class AppearanceSettingsPage extends StatelessWidget {
           const SectionHeader('MOTYW'),
           ListTile(
             leading: const Icon(Icons.palette_outlined),
-            title: const Text('Tryb jasny/ciemny'),
-            subtitle: Text(_themeModeName(settings.themeMode)),
-            onTap: () => _showThemePicker(context, settings),
-          ),
-          const SectionHeader('KOLORYSTYKA APLIKACJI'),
-          SizedBox(
-            height: 100,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _ThemeVariantTile(
-                  variant: AppThemeVariant.classic,
-                  label: 'Sowa Classic',
-                  primary: AppTheme.primaryNavy,
-                  accent: AppTheme.accentGold,
-                  isSelected: settings.themeVariant == AppThemeVariant.classic,
-                  onTap: () => settings.setThemeVariant(AppThemeVariant.classic),
-                ),
-                _ThemeVariantTile(
-                  variant: AppThemeVariant.elegantLight,
-                  label: 'Elegant Light',
-                  primary: AppTheme.elegantGold,
-                  accent: AppTheme.elegantEcru,
-                  isSelected: settings.themeVariant == AppThemeVariant.elegantLight,
-                  onTap: () => settings.setThemeVariant(AppThemeVariant.elegantLight),
-                ),
-                _ThemeVariantTile(
-                  variant: AppThemeVariant.royalPurple,
-                  label: 'Royal Purple',
-                  primary: AppTheme.royalPurple,
-                  accent: Colors.white,
-                  isSelected: settings.themeVariant == AppThemeVariant.royalPurple,
-                  onTap: () => settings.setThemeVariant(AppThemeVariant.royalPurple),
-                ),
-                _ThemeVariantTile(
-                  variant: AppThemeVariant.medium,
-                  label: 'Medium Slate',
-                  primary: AppTheme.mediumSlate,
-                  accent: AppTheme.mediumAmber,
-                  isSelected: settings.themeVariant == AppThemeVariant.medium,
-                  onTap: () => settings.setThemeVariant(AppThemeVariant.medium),
-                ),
-                _ThemeVariantTile(
-                  variant: AppThemeVariant.system,
-                  label: 'Automatyczny',
-                  primary: Colors.grey,
-                  accent: Colors.blueGrey,
-                  isSystem: true,
-                  isSelected: settings.themeVariant == AppThemeVariant.system,
-                  onTap: () => settings.setThemeVariant(AppThemeVariant.system),
-                ),
-              ],
-            ),
+            title: const Text('Tryb wyświetlania'),
+            subtitle: Text(currentLabel),
+            onTap: () => _showUnifiedThemePicker(context, settings),
           ),
           const Divider(),
           const SectionHeader('POWIADOMIENIA (WARTOWNIK SOWY)'),
@@ -118,78 +72,95 @@ class AppearanceSettingsPage extends StatelessWidget {
     );
   }
 
-  String _themeModeName(ThemeMode mode) {
-    switch (mode) { case ThemeMode.system: return 'Systemowy'; case ThemeMode.light: return 'Jasny'; case ThemeMode.dark: return 'Ciemny'; }
+  String _getCurrentLabel(AppThemeVariant variant, ThemeMode mode) {
+    if (mode == ThemeMode.system) return 'Systemowy';
+    switch (variant) {
+      case AppThemeVariant.classic:
+        return mode == ThemeMode.dark ? 'Ciemny' : 'Jasny';
+      case AppThemeVariant.medium:
+      case AppThemeVariant.royalPurple:
+        return 'Medium (fioletowy)';
+      case AppThemeVariant.elegantLight:
+        return 'Jasny';
+      default:
+        return 'Systemowy';
+    }
   }
 
-  void _showThemePicker(BuildContext context, SettingsProvider settings) {
-    showModalBottomSheet(context: context, builder: (context) => SafeArea(child: Wrap(children: [
-      ListTile(leading: const Icon(Icons.brightness_auto), title: const Text('Systemowy'), onTap: () { settings.setThemeMode(ThemeMode.system); Navigator.pop(context); }),
-      ListTile(leading: const Icon(Icons.light_mode), title: const Text('Jasny'), onTap: () { settings.setThemeMode(ThemeMode.light); Navigator.pop(context); }),
-      ListTile(leading: const Icon(Icons.dark_mode), title: const Text('Ciemny'), onTap: () { settings.setThemeMode(ThemeMode.dark); Navigator.pop(context); }),
-      ])));
-  }
-}
-
-class _ThemeVariantTile extends StatelessWidget {
-  final AppThemeVariant variant;
-  final String label;
-  final Color primary;
-  final Color accent;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final bool isSystem;
-
-  const _ThemeVariantTile({
-    required this.variant,
-    required this.label,
-    required this.primary,
-    required this.accent,
-    required this.isSelected,
-    required this.onTap,
-    this.isSystem = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 100,
-        margin: const EdgeInsets.only(right: 12),
+  void _showUnifiedThemePicker(BuildContext context, SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              height: 60,
-              width: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? AppTheme.accentGold : Colors.transparent,
-                  width: 3,
-                ),
-                gradient: isSystem ? null : LinearGradient(
-                  colors: [primary, accent],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                color: isSystem ? Colors.grey.withValues(alpha: 0.1) : null,
-              ),
-              child: isSystem ? const Icon(Icons.auto_fix_high, size: 24) : (isSelected ? const Icon(Icons.check, color: Colors.white) : null),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Wybierz motyw', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            _buildOption(
+              context: context,
+              icon: Icons.light_mode,
+              label: 'Jasny',
+              isSelected: settings.themeMode == ThemeMode.light && settings.themeVariant == AppThemeVariant.classic,
+              onTap: () {
+                settings.setThemeVariant(AppThemeVariant.classic);
+                settings.setThemeMode(ThemeMode.light);
+                Navigator.pop(context);
+              },
+            ),
+            _buildOption(
+              context: context,
+              icon: Icons.invert_colors_on,
+              label: 'Medium (fioletowy)',
+              isSelected: settings.themeVariant == AppThemeVariant.medium || settings.themeVariant == AppThemeVariant.royalPurple,
+              onTap: () {
+                settings.setThemeVariant(AppThemeVariant.medium);
+                settings.setThemeMode(ThemeMode.light);
+                Navigator.pop(context);
+              },
+            ),
+            _buildOption(
+              context: context,
+              icon: Icons.dark_mode,
+              label: 'Ciemny',
+              isSelected: settings.themeMode == ThemeMode.dark && settings.themeVariant == AppThemeVariant.classic,
+              onTap: () {
+                settings.setThemeVariant(AppThemeVariant.classic);
+                settings.setThemeMode(ThemeMode.dark);
+                Navigator.pop(context);
+              },
+            ),
+            _buildOption(
+              context: context,
+              icon: Icons.brightness_auto,
+              label: 'Systemowy',
+              isSelected: settings.themeMode == ThemeMode.system,
+              onTap: () {
+                settings.setThemeVariant(AppThemeVariant.system);
+                settings.setThemeMode(ThemeMode.system);
+                Navigator.pop(context);
+              },
             ),
             const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppTheme.accentGold : Colors.grey,
-              ),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildOption({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? AppTheme.accentGold : null),
+      title: Text(label),
+      trailing: isSelected ? const Icon(Icons.check, color: AppTheme.accentGold) : null,
+      onTap: onTap,
     );
   }
 }
