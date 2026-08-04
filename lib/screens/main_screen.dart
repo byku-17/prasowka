@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -5,8 +6,10 @@ import 'package:prasowka/screens/home_screen.dart';
 import 'package:prasowka/screens/search_screen.dart';
 import 'package:prasowka/screens/saved_screen.dart';
 import 'package:prasowka/screens/settings_screen.dart';
+import 'package:prasowka/screens/article_webview_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/services/background_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,6 +22,7 @@ class _MainScreenState extends State<MainScreen> {
   late int _currentIndex;
   late final PageController _pageController;
   DateTime? _lastBackPressTime;
+  StreamSubscription? _notificationSubscription;
 
   final _searchScreenKey = GlobalKey<SearchScreenState>();
 
@@ -35,10 +39,37 @@ class _MainScreenState extends State<MainScreen> {
       const SavedScreen(),
       const SettingsScreen(),
     ];
+
+    // Nasłuchiwanie powiadomień
+    _notificationSubscription = BackgroundService().notificationStream.listen((url) {
+      if (url != null) _handleNotificationUrl(url);
+    });
+
+    // Obsługa Cold Startu
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pending = BackgroundService().pendingPayload;
+      if (pending != null) {
+        BackgroundService().pendingPayload = null;
+        _handleNotificationUrl(pending);
+      }
+    });
+  }
+
+  void _handleNotificationUrl(String url) {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ArticleWebViewScreen(
+          url: url,
+          title: 'Sowa poleca...',
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _notificationSubscription?.cancel();
     _pageController.dispose();
     super.dispose();
   }

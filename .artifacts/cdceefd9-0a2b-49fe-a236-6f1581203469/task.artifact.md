@@ -1,13 +1,13 @@
-# Zadania: KROK 4 — Inteligentna Gazeta (V5.4)
+# Zadania: V5.5 Spójność Powiadomień (WebView)
 
-- [ ] Aktualizacja `ArticleCard`:
-    - [ ] Przyciemnienie obrazka dla przeczytanych (opacity/colorfilter)
-    - [ ] Wygaszenie (niższe opacity) opisu i źródła dla przeczytanych
-- [ ] Optymalizacja `CategoryNewsList`:
-    - [ ] Ograniczenie rekomendacji "Dla Ciebie" do Top 3
-    - [ ] Poprawa wizualna sekcji rekomendacji (tło/marginesy)
-- [ ] Ulepszenie `ArticleDetailScreen`:
-    - [ ] Zmiana progu czasu z 30s na 20s
-    - [ ] Implementacja `ScrollController` i oznaczanie jako przeczytane po dojściu do dołu strony
+- [ ] Aktualizacja `BackgroundService`:
+    - [ ] Dodanie `StreamController<String?> notificationStream`
+    - [ ] Przesyłanie payloadu do strumienia w `onDidReceiveNotificationResponse`
+    - [ ] Przesyłanie payloadu do strumienia w `checkNotificationLaunch`
+    - [ ] Usunięcie metody `_openUrl`
+- [ ] Aktualizacja `MainScreen`:
+    - [ ] Dodanie `StreamSubscription` w `initState`
+    - [ ] Implementacja metody `_handleNotificationUrl(url)`
+    - [ ] Sprawdzenie `pendingPayload` przy starcie (Cold Start)
+- [ ] Weryfikacja (Testowy alert Sowy)
 - [ ] Commit zmian
-- [ ] Finalny Walkthrough

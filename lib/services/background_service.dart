@@ -368,6 +368,13 @@ class BackgroundService {
 
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   
+  /// Strumień do przesyłania payloadu (URL) z powiadomień do UI
+  final _notificationStreamController = StreamController<String?>.broadcast();
+  Stream<String?> get notificationStream => _notificationStreamController.stream;
+
+  /// URL z powiadomienia, z którego użytkownik uruchomił aplikację (cold start)
+  String? pendingPayload;
+
   Future<void> init() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/launcher_icon');
@@ -388,7 +395,7 @@ class BackgroundService {
         final payload = response.payload;
         if (payload != null && payload.isNotEmpty) {
           debugPrint('Sowa Notyfikacje: Kliknięto powiadomienie, payload: $payload');
-          _openUrl(payload);
+          _notificationStreamController.add(payload);
         }
       },
     );
@@ -411,18 +418,9 @@ class BackgroundService {
       final payload = details.notificationResponse?.payload;
       if (payload != null && payload.isNotEmpty) {
         debugPrint('Sowa Notyfikacje: Cold start z powiadomienia, payload: $payload');
-        _openUrl(payload);
+        pendingPayload = payload;
+        _notificationStreamController.add(payload);
       }
-    }
-  }
-
-  /// Otwiera URL w przeglądarce
-  Future<void> _openUrl(String url) async {
-    try {
-      final uri = Uri.parse(url);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      debugPrint('Sowa: Nie udało się otworzyć URL: $e');
     }
   }
 

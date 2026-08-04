@@ -1,41 +1,27 @@
-# Plan Rozwoju V5.4: Inteligentna Gazeta
+# Plan Naprawy V5.5: Spójność Powiadomień (In-App WebView)
 
-Ten etap ma na celu poprawę czytelności listy newsów oraz lepszą ekspozycję treści dopasowanych do zainteresowań użytkownika.
-
-## User Review Required
-
-> [!NOTE]
-> Zmiana wizualna: Artykuły oznaczone jako "przeczytane" będą teraz znacznie mocniej odróżniać się od nowych treści (przyciemnienie całego kafelka).
+Zgodnie z Twoim życzeniem, wdrażamy pierwszy punkt z planu szlifowania — integrację powiadomień systemowych z naszą wewnętrzną przeglądarką. Od teraz kliknięcie w powiadomienie nie będzie już otwierać zewnętrznej przeglądarki (Chrome/Safari), lecz pokaże artykuł bezpośrednio w aplikacji.
 
 ## Proposed Changes
 
-### 1. Wizualny Status "Przeczytane" (ArticleCard)
-Poprawimy widoczność artykułów, które użytkownik już odwiedził, aby ułatwić skanowanie listy w poszukiwaniu nowości.
+### 1. Reaktywność Powiadomień (BackgroundService)
+Musimy umożliwić aplikacji "usłyszenie" kliknięcia w powiadomienie w czasie rzeczywistym.
 
-#### [MODIFY] [article_card.dart](file:///D:/Apps/prasowka/lib/widgets/article_card.dart)
-- **Przyciemnienie obrazka**: Dodanie `ColorFiltered` lub nakładki półprzezroczystej na zdjęcie, gdy `isRead == true`.
-- **Wygaszenie opisu**: Zmniejszenie opacity dla opisu (`description`) i nazwy źródła w przeczytanych artykułach.
-- **Efekt wizualny**: Cały kafelek będzie sprawiał wrażenie "nieaktywnego" lub "zużytego", kierując wzrok na nowe, jaskrawe treści.
+#### [MODIFY] [background_service.dart](file:///D:/Apps/prasowka/lib/services/background_service.dart)
+- Dodanie `StreamController<String>`, który będzie emitował URL artykułu po kliknięciu.
+- Usunięcie bezpośredniego wywołania `url_launcher` w metodach `init` i `checkNotificationLaunch`.
+- Przesyłanie payloadu (URL) do strumienia.
 
-### 2. Optymalizacja Sekcji "Dla Ciebie" (CategoryNewsList)
-Udoskonalimy horyzontalny pasek rekomendacji na szczycie kategorii "Wszystkie".
+### 2. Obsługa Nawigacji (MainScreen)
+UI musi reagować na sygnały z usługi tła i otwierać odpowiedni ekran.
 
-#### [MODIFY] [category_news_list.dart](file:///D:/Apps/prasowka/lib/widgets/category_news_list.dart)
-- **Ograniczenie do Top 3**: Zgodnie z planem, skupimy się na 3 najmocniejszych rekomendacjach, aby nie przytłaczać użytkownika.
-- **Stylizacja paska**: Poprawa marginesów i dodanie delikatnego cienia/tła pod sekcją "DLA CIEBIE", aby wizualnie oddzielić ją od reszty listy.
-
-### 3. Precyzyjne Śledzenie Czytania (ArticleDetailScreen)
-Upewnimy się, że Sowa poprawnie zapamiętuje postęp lektury.
-
-#### [MODIFY] [article_detail_screen.dart](file:///D:/Apps/prasowka/lib/screens/article_detail_screen.dart)
-- Skrócenie progu "przeczytania" z 30s na 20s (bardziej realistyczne dla krótkich newsów mobilnych).
-- Automatyczne oznaczanie jako przeczytane natychmiast po dotarciu do dołu artykułu (Scroll Listener).
+#### [MODIFY] [main_screen.dart](file:///D:/Apps/prasowka/lib/screens/main_screen.dart)
+- Subskrypcja strumienia z `BackgroundService` w metodzie `initState`.
+- Obsługa "Cold Start": Sprawdzenie przy uruchomieniu, czy w `BackgroundService.pendingPayload` czeka URL z powiadomienia, które otworzyło aplikację.
+- Automatyczne otwieranie `ArticleWebViewScreen` dla otrzymanego adresu URL.
 
 ## Verification Plan
 
 ### Manual Verification
-1.  **Hot Restart** aplikacji.
-2.  Wejście w dowolny artykuł i spędzenie w nim 20 sekund.
-3.  Powrót do listy -> sprawdzenie czy artykuł jest wyraźnie przyciemniony.
-4.  Przewinięcie do dołu długiego artykułu -> sprawdzenie czy od razu po powrocie jest oznaczony jako przeczytany.
-5.  Sprawdzenie sekcji "Dla Ciebie" w zakładce "Wszystkie" (czy zawiera dokładnie 3 pozycje).
+1.  **Warm Start**: Uruchom aplikację, przejdź do ustawień i wyślij **TESTOWY ALERT**. Zminimalizuj aplikację (nie zamykaj). Kliknij w powiadomienie -> powinieneś wrócić do apki i od razu zobaczyć WebView z testową stroną.
+2.  **Cold Start**: Całkowicie zamknij aplikację. Wyślij testowe powiadomienie (np. z konsoli lub jeśli masz taką możliwość w debugu). Kliknij w nie -> aplikacja powinna się uruchomić i od razu pokazać WebView.
