@@ -116,15 +116,26 @@ class ArticleCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        article.sourceName.toUpperCase(),
-                        style: const TextStyle(
-                          color: AppTheme.accentGold, 
-                          fontWeight: FontWeight.bold, 
-                          fontSize: 11,
-                          letterSpacing: 0.5,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          if (article.sourceName.contains('Warszawa') || article.sourceName.startsWith('Wiadomości:'))
+                            const Padding(
+                              padding: EdgeInsets.only(right: 4),
+                              child: Icon(Icons.location_on, color: AppTheme.accentGold, size: 12),
+                            ),
+                          Flexible(
+                            child: Text(
+                              article.sourceName.toUpperCase(),
+                              style: const TextStyle(
+                                color: AppTheme.accentGold, 
+                                fontWeight: FontWeight.bold, 
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),

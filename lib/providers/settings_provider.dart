@@ -60,7 +60,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> get selectedLeagueIds => List.unmodifiable(_selectedLeagueIds);
 
   Future<void> init() async {
-    debugPrint('Sowa Settings: Inicjalizacja V4.5...');
+    debugPrint('Sowa Settings: Inicjalizacja V5.3...');
     
     await StorageService().init();
     final settingsBox = await Hive.openBox(settingsBoxName);
@@ -299,6 +299,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> reorderCategories(int old, int neu) async {
+    if (neu > old) neu -= 1;
     final item = _categoryOrder.removeAt(old);
     _categoryOrder.insert(neu, item);
     await Hive.box(settingsBoxName).put(categoryOrderKey, _categoryOrder);

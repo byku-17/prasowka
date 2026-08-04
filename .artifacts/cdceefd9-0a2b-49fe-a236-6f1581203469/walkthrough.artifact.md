@@ -17,7 +17,17 @@ Zakończono pierwszy etap profesjonalizacji kodu. Aplikacja jest teraz lżejsza 
 - Zaktualizowano widoczną wersję aplikacji w ustawieniach na `1.3.0 (V5.1 Stabilizacja)`.
 - Wprowadzono dodatkowe zabezpieczenia w `LocalInfoBar`, zapobiegające "zawieszeniu" się paska przy braku odpowiedzi z serwerów pogodowych.
 
-## Co dalej?
-Kolejnym krokiem jest **KROK 2: In-App WebView**. Pozwoli to otwierać artykuły i wyniki Flashscore bez wychodzenia z Twojej aplikacji, co znacznie poprawi komfort użytkowania.
+## Zrealizowane zmiany (V5.2):
 
-**Czy możemy kontynuować i wdrożyć KROK 2?** 🦉🛠️💎
+### 1. In-App WebView (Premium UX)
+- Wszystkie przyciski typu **"Czytaj w przeglądarce"** oraz linki do **Flashscore** otwierają się teraz bezpośrednio w aplikacji.
+- **Zaleta:** Użytkownik nie musi opuszczać "Prasówki", co zwiększa wygodę i pozwala na błyskawiczny powrót do listy newsów jednym przyciskiem "Wstecz".
+- Przeglądarka posiada wbudowany tryb czytania (wstrzykiwanie CSS), który ukrywa zbędne reklamy i banery RODO na większości portali.
+
+### 2. Aktualizacja Wersji
+- Wersja aplikacji została podniesiona do `1.3.1 (V5.2 WebView)`.
+
+## Co dalej?
+Kolejnym etapem jest **KROK 3: Szlifowanie "Mojego Miasta"**. Naprawimy linki w kafelkach pogodowych (aby nie prowadziły do Warszawy po kliknięciu) oraz dodamy wizualne oznaczenia dla newsów lokalnych.
+
+**Czy możemy kontynuować i wdrożyć KROK 3?** 🦉🏙️🌤️

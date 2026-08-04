@@ -68,7 +68,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const ListTile(
             title: Text('Wersja aplikacji'),
-            trailing: Text('1.3.1 (V5.2 WebView)', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            trailing: Text('1.3.2 (V5.3 City Polish)', style: TextStyle(color: Colors.grey, fontSize: 12)),
           ),
         ],
       ),

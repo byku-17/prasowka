@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:prasowka/services/weather_service.dart';
 import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/screens/article_webview_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
 /// Mapowanie miast → wyszukiwanie jakości powietrza (GIOS stacje zwracają 500)
@@ -131,7 +132,16 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
     final data = _weatherData;
     final city = context.read<SettingsProvider>().preferredCity;
     return GestureDetector(
-      onTap: () => _launchUrl(context, 'https://www.google.com/search?q=pogoda+$city'),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ArticleWebViewScreen(
+              url: 'https://www.google.com/search?q=pogoda+$city',
+              title: 'Pogoda: $city',
+            ),
+          ),
+        );
+      },
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -191,7 +201,16 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
         ?? 'https://www.google.com/search?q=jakość+powietrza+$city';
 
     return GestureDetector(
-      onTap: () => _launchUrl(context, airUrl),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ArticleWebViewScreen(
+              url: airUrl,
+              title: 'Jakość powietrza: $city',
+            ),
+          ),
+        );
+      },
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
