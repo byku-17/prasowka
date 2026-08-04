@@ -122,7 +122,6 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
         // 1. Jeśli mamy artykuły -> Pokaż listę
         if (articles.isNotEmpty) {
           final bool isAll = widget.category.id == 'all';
-          final bool showRecs = isAll && provider.recommendedArticles.isNotEmpty;
 
           content = Stack(
             children: [
@@ -140,16 +139,24 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
                   padding: EdgeInsets.zero,
                   addRepaintBoundaries: true,
                   scrollCacheExtent: const ScrollCacheExtent.pixels(1000.0),
-                  itemCount: articles.length + (showRecs ? 1 : 0),
+                  itemCount: articles.length + (isAll ? 1 : 0),
                   itemBuilder: (context, index) {
-                    // Sekcja Wszystkie: Rekomendacje na górze
-                    if (showRecs) {
-                      if (index == 0) return RepaintBoundary(child: _buildRecommendationsSection(context, provider.recommendedArticles));
+                    // Sekcja Wszystkie: Nagłówek i Rekomendacje (zawsze na pozycji 0)
+                    if (isAll) {
+                      if (index == 0) {
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 500),
+                          child: _buildRecommendationsSection(
+                            context, 
+                            provider.recommendedArticles,
+                          ),
+                        );
+                      }
                       final article = articles[index - 1];
                       return ArticleCard(article: article, onTap: () => _openArticle(context, article));
                     }
 
-                    // Reszta
+                    // Pozostałe kategorie
                     final article = articles[index];
                     return ArticleCard(article: article, onTap: () => _openArticle(context, article));
                   },
@@ -245,52 +252,62 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
   }
 
   Widget _buildRecommendationsSection(BuildContext context, List<Article> recommended) {
+    final hasRecs = recommended.isNotEmpty;
+    
     return Container(
-      color: Colors.white.withValues(alpha: 0.03), // Delikatne wyróżnienie tła
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      key: ValueKey('recs_${hasRecs}_${recommended.length}'),
+      color: Colors.white.withValues(alpha: 0.02),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Icon(Icons.auto_awesome, color: AppTheme.accentGold, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'DLA CIEBIE',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold, 
-                    letterSpacing: 1.2, 
-                    color: AppTheme.accentGold,
-                    fontSize: 12,
+          if (hasRecs) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: AppTheme.accentGold, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'DLA CIEBIE',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      letterSpacing: 1.2, 
+                      color: AppTheme.accentGold,
+                      fontSize: 11,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          SizedBox(
-            height: 240,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: recommended.length,
-              itemBuilder: (context, index) {
-                final a = recommended[index];
-                return RepaintBoundary(
-                  child: ArticleCard(article: a, isSmall: true, onTap: () => _openArticle(context, a)),
-                );
-              },
+            SizedBox(
+              height: 240,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: recommended.length,
+                itemBuilder: (context, index) {
+                  final a = recommended[index];
+                  return RepaintBoundary(
+                    child: ArticleCard(article: a, isSmall: true, onTap: () => _openArticle(context, a)),
+                  );
+                },
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 16),
+          ],
           const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 10),
             child: Text(
               'NAJNOWSZE WIADOMOŚCI',
-              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 10, color: Colors.grey),
+              style: TextStyle(
+                fontWeight: FontWeight.bold, 
+                letterSpacing: 1.5, 
+                fontSize: 10, 
+                color: Colors.grey,
+              ),
             ),
           ),
+          const Divider(height: 1, thickness: 0.5, color: Colors.white10),
         ],
       ),
     );
