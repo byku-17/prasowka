@@ -1,10 +1,8 @@
-# Zadania: V7.7 Ostateczna Synchronizacja (Clean Build)
+# Zadania: V7.8 Modernizacja DSL Kotlina
 
-- [ ] Aktualizacja `android/app/build.gradle.kts`:
-    - [ ] Przywrócenie `id("org.jetbrains.kotlin.android")` (bez wersji)
-- [ ] Przebudowa `android/build.gradle.kts`:
-    - [ ] Wyczyszczenie pliku do jednego bloku `subprojects`
-    - [ ] Implementacja `afterEvaluate` z wymuszeniem Java 17 i `kotlinOptions`
-- [ ] Procedura Clean Build (`flutter clean`)
+- [x] Aktualizacja `android/build.gradle.kts`:
+    - [x] Zamiana `kotlinOptions` na `compilerOptions` w bloku `subprojects`
+- [x] Aktualizacja `android/app/build.gradle.kts`:
+    - [x] Usunięcie przestarzałego bloku `kotlinOptions`
 - [ ] Weryfikacja kompilacji
-- [ ] Commit i Push zmian
+- [x] Commit i Push zmian
