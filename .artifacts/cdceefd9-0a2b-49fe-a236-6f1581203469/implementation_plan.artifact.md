@@ -1,28 +1,65 @@
-# Plan Naprawy V7.10: Ostateczne Rozwiązanie JVM Target
+# Implementation Plan V7.11: Upgrade pluginów + Motywy
 
-Ten plan ma na celu definitywne usunięcie błędu `Inconsistent JVM Target` oraz wyczyszczenie drobnych ostrzeżeń z analizatora kodu.
+## Status: ZAKOŃCZONE ✅
 
-## Proposed Changes
+## Zmiany w V7.11
 
-### 1. Cleanup kodu (BackgroundService)
-Usunięcie nieużywanego importu, który zgłasza ostrzeżenie w `flutter analyze`.
+### 1. Upgrade pluginów do Built-in Kotlin
+Zaktualizowano 13 pluginów do wersji wspierających Built-in Kotlin (Flutter 3.22+):
 
-#### [MODIFY] [background_service.dart](file:///D:/Apps/prasowka/lib/services/background_service.dart)
-- Usunięcie linii `import 'package:url_launcher/url_launcher.dart';`.
+| Plugin | Przed | Po |
+|---|---|---|
+| flutter_local_notifications | ^17.2.4 | ^22.2.0 |
+| workmanager | ^0.9.3 | ^0.10.7 |
+| share_plus | ^10.0.2 | ^13.3.0 |
+| google_fonts | ^6.2.1 | ^6.3.3 |
+| cached_network_image | ^3.3.1 | ^3.4.1 |
+| flutter_widget_from_html | ^0.15.1 | ^0.15.3 |
+| package_info_plus | 9.0.1 | ^10.2.1 |
+| wakelock_plus | 1.5.2 | ^1.7.0 |
+| flutter_launcher_icons | ^0.13.1 | ^0.14.4 |
+| build_runner | ^2.4.9 | ^2.4.13 |
+| flutter_lints | ^3.0.0 | ^3.0.2 |
+| flutter_dotenv | ^5.1.0 | ^5.2.1 |
+| desugar_jdk_libs | 2.0.3 | 2.1.4 |
 
-### 2. Agresywne wymuszenie JVM 17 (android/build.gradle.kts)
-Użyjemy najbardziej rygorystycznego sposobu konfiguracji zadań, aby nadpisać hardkodowane ustawienia we wtyczkach.
+#### [MODIFY] [pubspec.yaml](file:///D:/Apps/prasowka/pubspec.yaml)
+- Aktualizacja wersji wszystkich powyższych pluginów.
+
+#### [MODIFY] [android/app/build.gradle.kts](file:///D:/Apps/prasowka/android/app/build.gradle.kts)
+- Java 17 → Java 21 (domyślny JVM target Built-in Kotlin)
+- desugar_jdk_libs 2.0.3 → 2.1.4
 
 #### [MODIFY] [android/build.gradle.kts](file:///D:/Apps/prasowka/android/build.gradle.kts)
-- Ujednolicenie wszystkich bloków `subprojects`.
-- Zastosowanie `tasks.withType<JavaCompile>().configureEach` z jawnym ustawieniem `sourceCompatibility = "17"` oraz `targetCompatibility = "17"`.
-- Zastosowanie `tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach` z jawnym ustawieniem `jvmTarget = "17"` przez `compilerOptions`.
+- Usunięcie agresywnego bloku subprojects wymuszającego JVM 17 na wszystkich modułach.
 
-### 3. Aktualizacja Wersji UI
-#### [MODIFY] [settings_screen.dart](file:///D:/Apps/prasowka/lib/screens/settings_screen.dart)
-- Zmiana wersji na `1.5.2 (V7.10 Final Build)`.
+### 2. Fix breaking API flutter_local_notifications 22.x
+#### [MODIFY] [background_service.dart](file:///D:/Apps/prasowka/lib/services/background_service.dart)
+- 5 wywołań `show()`: positional → named parameters (id, title, body, notificationDetails, payload)
+- `initialize()`: named parameter `settings:` zamiast positional
 
-## Verification Plan
-1. Wykonanie **`flutter clean`**.
-2. Uruchomienie budowania w trybie Debug.
-3. Sprawdzenie czy błąd `Inconsistent JVM Target` oraz ostrzeżenie o `url_launcher` zniknęły.
+### 3. Rozjaśnienie Royal Purple
+#### [MODIFY] [app_theme.dart](file:///D:/Apps/prasowka/lib/theme/app_theme.dart)
+- royalPurple: #905CFF → #B47AFF
+- Nowe: royalPurpleDark #8B5CF6, lightPurple #E8DAFF
+- Royal Dark: midnightPurple #130E26 → #1A1528, royalDarkSurface #241D36
+- Royal Light: scaffold #FBFBFF → #F8F5FF, cardTheme z fioletowym borderem
+
+### 4. Ujednolicenie ustawień motywu
+#### [MODIFY] [appearance_settings_page.dart](file:///D:/Apps/prasowka/lib/screens/appearance_settings_page.dart)
+- Usunięto duplikaty: "Tryb jasny/ciemny" + "Kolorystyka aplikacji"
+- Jedno menu z 4 opcjami: Jasny / Medium (fioletowy) / Ciemny / Systemowy
+- Usunięto _ThemeVariantTile (pozioma lista kolorów)
+- Nowy _buildUnifiedThemePicker z bottom sheet
+
+#### [MODIFY] [settings_provider.dart](file:///D:/Apps/prasowka/lib/providers/settings_provider.dart)
+- AppThemeVariant.medium → _buildRoyalLightTheme() (medium = jasny fiolet)
+
+## Verification
+1. `flutter pub get` — OK
+2. `flutter analyze` — 0 errors (6 info warnings — pre-existing)
+3. `flutter build apk --debug` — OK
+4. Wszystkie motywy działają: Jasny, Medium (fioletowy), Ciemny, Systemowy
+
+## Przyszły plan: V7.12 "Mniej klików, więcej treści"
+Zobacz task.artifact.md — Faza 1-4 (Dashboard, Swipe, Presety, Polish)
