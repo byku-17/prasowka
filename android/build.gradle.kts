@@ -17,12 +17,14 @@ subprojects {
 }
 
 subprojects {
-    tasks.withType<JavaCompile> {
+    // Agresywne wymuszenie Java 17 we wszystkich modułach (w tym wtyczkach)
+    tasks.withType<JavaCompile>().configureEach {
         sourceCompatibility = "17"
         targetCompatibility = "17"
     }
-    
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+
+    // Agresywne wymuszenie JVM 17 dla Kotlina
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }

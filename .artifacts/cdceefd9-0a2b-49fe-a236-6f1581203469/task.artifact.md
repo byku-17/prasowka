@@ -1,12 +1,14 @@
-# Zadania: V7.9 Definitywna Synchronizacja
+# Zadania: Rozwój V5.0 & V6.0
 
-- [x] Aktualizacja `android/app/build.gradle.kts`:
-    - [x] Usunięcie `id("org.jetbrains.kotlin.android")`
-    - [x] Usunięcie `kotlinOptions`
-- [x] Gruntowna przebudowa `android/build.gradle.kts`:
-    - [x] Usunięcie `evaluationDependsOn`
-    - [x] Usunięcie `afterEvaluate`
-    - [x] Implementacja bezpośredniego wymuszenia wersji 17
-- [ ] Procedura Clean Build (`flutter clean`)
-- [ ] Weryfikacja kompilacji
-- [x] Commit i Push zmian
+- [x] **KROK 1: Stabilizacja i Cleanup** (ZREALIZOWANO V5.1)
+- [x] **KROK 2: In-App WebView (Premium UX)** (ZREALIZOWANO V5.2)
+- [x] **KROK 3: Szlifowanie "Mojego Miasta" (V5.3.1)** (ZREALIZOWANO)
+- [x] **KROK 4: Inteligentna Gazeta (V5.4)** (ZREALIZOWANO)
+- [x] **5.1 Integracja Powiadomień z WebView** (ZREALIZOWANO V5.5)
+- [x] **5.2 Ujednolicenie Kategorii Miejskiej** (ZREALIZOWANO V6.1)
+- [x] **5.3 Poprawa Logiki Wartownika (Sport)** (ZREALIZOWANO V6.2)
+- [x] **V7.10 Ostateczne Rozwiązanie JVM Target**
+    - [x] Usunięcie nieużywanego importu w `lib/services/background_service.dart`
+    - [x] Przebudowa `android/build.gradle.kts`
+    - [x] Aktualizacja wersji w `SettingsScreen`
+    - [x] Commit i Push zmian

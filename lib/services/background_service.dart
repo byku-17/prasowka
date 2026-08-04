@@ -12,7 +12,6 @@ import 'package:prasowka/services/user_interest_service.dart';
 import 'package:prasowka/services/notification_history.dart';
 import 'package:prasowka/utils/text_utils.dart';
 import 'package:flutter/foundation.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 const int _maxNotificationsPerRun = 5;
 const String _sportsNotifiedBoxName = 'sports_notified_ids';
