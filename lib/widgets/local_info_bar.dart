@@ -133,11 +133,11 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
     final city = settings.preferredCity;
     final coords = settings.cityCoordinates;
     
-    // Windy.com obsługuje linki oparte na współrzędnych
-    final url = 'https://www.windy.com/${coords.latitude}/${coords.longitude}';
+    // Windy.com — format ?lat,lon,zoom wymusza centrowanie
+    final url = 'https://www.windy.com/?${coords.latitude.toStringAsFixed(4)},${coords.longitude.toStringAsFixed(4)},11';
 
     return GestureDetector(
-      onTap: () => _openInternalBrowser(url, 'Pogoda: $city (Windy)'),
+      onTap: () => _openInternalBrowser(url, 'Pogoda: $city (Windy)', useReaderMode: false),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -188,8 +188,8 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
     final city = settings.preferredCity;
     final coords = settings.cityCoordinates;
     
-    // Airly.org obsługuje linki z kotwicą współrzędnych
-    final url = 'https://airly.org/map/pl/#${coords.latitude},${coords.longitude}';
+    // Airly.org — parametry lat i lng w hash wymuszają lokalizację
+    final url = 'https://airly.org/pl/map#lat=${coords.latitude.toStringAsFixed(4)}&lng=${coords.longitude.toStringAsFixed(4)}';
 
     final color = data == null
         ? Colors.grey
@@ -200,7 +200,7 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
                 : Colors.red;
 
     return GestureDetector(
-      onTap: () => _openInternalBrowser(url, 'Jakość powietrza: $city (Airly)'),
+      onTap: () => _openInternalBrowser(url, 'Jakość powietrza: $city (Airly)', useReaderMode: false),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -243,10 +243,14 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
     );
   }
 
-  void _openInternalBrowser(String url, String title) {
+  void _openInternalBrowser(String url, String title, {bool useReaderMode = true}) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ArticleWebViewScreen(url: url, title: title),
+        builder: (_) => ArticleWebViewScreen(
+          url: url,
+          title: title,
+          useReaderMode: useReaderMode,
+        ),
       ),
     );
   }

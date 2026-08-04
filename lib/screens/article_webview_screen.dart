@@ -7,11 +7,13 @@ import 'package:prasowka/theme/app_theme.dart';
 class ArticleWebViewScreen extends StatefulWidget {
   final String url;
   final String title;
+  final bool useReaderMode;
 
   const ArticleWebViewScreen({
     super.key,
     required this.url,
     required this.title,
+    this.useReaderMode = true,
   });
 
   @override
@@ -145,7 +147,9 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
           if (mounted) setState(() => _isLoading = true);
         },
         onPageFinished: (_) {
-          _injectReaderCss();
+          if (widget.useReaderMode) {
+            _injectReaderCss();
+          }
           if (mounted) setState(() => _isLoading = false);
         },
         onUrlChange: (change) {

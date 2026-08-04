@@ -35,25 +35,30 @@ class ArticleCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  CachedNetworkImage(
-                    imageUrl: article.imageUrl!,
-                    fit: BoxFit.cover, // Wypełnia przestrzeń wycinając nadmiar, nie rozciąga
-                    alignment: Alignment.center,
-                    // Ustawiamy tylko szerokość cache, wysokość dostosuje się z zachowaniem proporcji
-                    memCacheWidth: 1080, 
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey.withValues(alpha: 0.1),
-                      child: const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                  ColorFiltered(
+                    colorFilter: ColorFilter.mode(
+                      article.isRead ? Colors.black.withValues(alpha: 0.4) : Colors.transparent,
+                      BlendMode.darken,
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: article.imageUrl!,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      memCacheWidth: 1080,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey.withValues(alpha: 0.1),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
                       ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey.withValues(alpha: 0.05),
-                      child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey.withValues(alpha: 0.05),
+                        child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                      ),
                     ),
                   ),
                   _buildTranslationWatermark(),
@@ -99,53 +104,59 @@ class ArticleCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Consumer<NewsProvider>(
-                  builder: (context, _, child) => Text(
-                    article.translatedDescription ?? article.description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.white70 
-                          : Colors.black87,
-                      fontSize: 14,
-                      height: 1.5,
+                  builder: (context, _, child) => Opacity(
+                    opacity: article.isRead ? 0.6 : 1.0,
+                    child: Text(
+                      article.translatedDescription ?? article.description,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.white70 
+                            : Colors.black87,
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          if (article.sourceName.contains('Warszawa') || article.sourceName.startsWith('Wiadomości:'))
-                            const Padding(
-                              padding: EdgeInsets.only(right: 4),
-                              child: Icon(Icons.location_on, color: AppTheme.accentGold, size: 12),
-                            ),
-                          Flexible(
-                            child: Text(
-                              article.sourceName.toUpperCase(),
-                              style: const TextStyle(
-                                color: AppTheme.accentGold, 
-                                fontWeight: FontWeight.bold, 
-                                fontSize: 11,
-                                letterSpacing: 0.5,
+                Opacity(
+                  opacity: article.isRead ? 0.5 : 1.0,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            if (article.sourceName.contains('Warszawa') || article.sourceName.startsWith('Wiadomości:'))
+                              const Padding(
+                                padding: EdgeInsets.only(right: 4),
+                                child: Icon(Icons.location_on, color: AppTheme.accentGold, size: 12),
                               ),
-                              overflow: TextOverflow.ellipsis,
+                            Flexible(
+                              child: Text(
+                                article.sourceName.toUpperCase(),
+                                style: const TextStyle(
+                                  color: AppTheme.accentGold, 
+                                  fontWeight: FontWeight.bold, 
+                                  fontSize: 11,
+                                  letterSpacing: 0.5,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _formatTimeAgo(article.publishedAt),
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
-                    ),
-                    const SizedBox(width: 16),
-                    _buildActions(context),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatTimeAgo(article.publishedAt),
+                        style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      ),
+                      const SizedBox(width: 16),
+                      _buildActions(context),
+                    ],
+                  ),
                 ),
               ],
             ),

@@ -1,9 +1,13 @@
-# Zadania: V4.9.1 Profesjonalne Linki Pogodowe (Windy & Airly)
+# Zadania: KROK 4 — Inteligentna Gazeta (V5.4)
 
-- [ ] Aktualizacja `LocalInfoBar`:
-    - [ ] Zmiana linku pogody na **Windy.com** z użyciem GPS
-    - [ ] Zmiana linku jakości powietrza na **Airly.org** z użyciem GPS
-    - [ ] Usunięcie metody `_getCitySlug`
-    - [ ] Naprawa logiki `_checkAndFetch` dla Warszawy
-- [ ] Weryfikacja działania (In-App WebView)
+- [ ] Aktualizacja `ArticleCard`:
+    - [ ] Przyciemnienie obrazka dla przeczytanych (opacity/colorfilter)
+    - [ ] Wygaszenie (niższe opacity) opisu i źródła dla przeczytanych
+- [ ] Optymalizacja `CategoryNewsList`:
+    - [ ] Ograniczenie rekomendacji "Dla Ciebie" do Top 3
+    - [ ] Poprawa wizualna sekcji rekomendacji (tło/marginesy)
+- [ ] Ulepszenie `ArticleDetailScreen`:
+    - [ ] Zmiana progu czasu z 30s na 20s
+    - [ ] Implementacja `ScrollController` i oznaczanie jako przeczytane po dojściu do dołu strony
 - [ ] Commit zmian
+- [ ] Finalny Walkthrough

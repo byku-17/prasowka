@@ -13,7 +13,7 @@ import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
 
 /// Próg czasu (w sekundach), po którym artykuł jest uznawany za "przeczytany"
-const int _kReadThresholdSeconds = 30;
+const int _kReadThresholdSeconds = 20;
 
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
@@ -27,19 +27,33 @@ class ArticleDetailScreen extends StatefulWidget {
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   late final Stopwatch _stopwatch;
   Timer? _tickTimer;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _stopwatch = Stopwatch()..start();
-    // Co 1s odśwież UI (aby ewentualny progress bar się zmieniał)
+    
+    _scrollController.addListener(_scrollListener);
+
+    // Co 1s odśwież UI
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
   }
 
+  void _scrollListener() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+      if (!widget.article.isRead) {
+        context.read<NewsProvider>().markArticleRead(widget.article);
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
     _tickTimer?.cancel();
     _stopwatch.stop();
     final elapsed = _stopwatch.elapsed.inSeconds;
@@ -65,6 +79,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverAppBar(
             expandedHeight: 250,

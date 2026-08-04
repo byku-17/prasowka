@@ -1,23 +1,19 @@
-# Walkthrough: KROK 3 — Precyzyjne Miasto (V5.3)
+# Walkthrough: KROK 3 — Precyzyjne Miasto (V5.3.2)
 
 Zakończono optymalizację funkcji lokalnych. Sowa jest teraz znacznie bardziej precyzyjna i wygodna w obsłudze.
 
 ## Zrealizowane zmiany:
 
-### 1. Naprawa "Zamrożonej" Pogody
-- Przebudowano logikę odświeżania danych pogodowych w `LocalInfoBar`. Pobieranie danych zostało usunięte z metody `build`, co rozwiązało problem braku temperatury dla Warszawy i innych miast przy pierwszym uruchomieniu lub odświeżeniu.
-- Dodano obsługę błędów sieciowych — jeśli pogoda nie może zostać pobrana, użytkownik widzi czytelny komunikat z przyciskiem "Ponów".
+### 1. Profesjonalne Mapy Pogodowe (Windy & Airly)
+- Kliknięcie w kafelki otwiera teraz **Windy.com** (pogoda) i **Airly.org** (powietrze) wewnątrz aplikacji.
+- **Precyzja GPS**: Wykorzystujemy dokładne współrzędne (Latitude/Longitude), co gwarantuje 100% trafności i brak błędów 404.
+- **Poprawa centrowania**: Nowy format linków wymusza na Windy i Airly natychmiastowe pokazanie Twojego miasta, zamiast domyślnego widoku Warszawy.
 
-### 2. Bezpośrednie Linki (Onet & AQICN)
-> [!TIP]
-> Zapomnij o wynikach wyszukiwania w Google. Kliknięcie w kafelki przenosi Cię teraz bezpośrednio do profesjonalnych serwisów.
+### 2. Wyłączenie Reader Mode dla Map
+- Wprowadzono inteligentne rozpoznawanie treści w przeglądarce. Mapy Windy i Airly otwierają się teraz w "pełnej wersji", bez skryptów czyszczących, które mogłyby blokować ich działanie.
 
-- **Temperatura**: Otwiera szczegółową prognozę na **pogoda.onet.pl** dla Twojego miasta.
-- **Jakość powietrza**: Otwiera precyzyjne mapy czujników na **aqicn.org**.
-- Wszystko otwiera się wewnątrz aplikacji (**In-App WebView**), bez konieczności wychodzenia do zewnętrznej przeglądarki.
-
-### 3. Inteligentne Mapowanie Miast
-- System automatycznie tłumaczy nazwy polskich miast na formaty zrozumiałe dla międzynarodowych serwerów (np. "Łódź" -> "lodz", "Warszawa" -> "warsaw"). Gwarantuje to, że linki zawsze prowadzą do właściwego miejsca.
+### 3. Naprawa "Zamrożonej" Pogody (Warszawa)
+- Wyeliminowano błąd, który sprawiał, że przy starcie aplikacji temperatura dla domyślnego miasta (Warszawa) mogła się nie wyświetlać. Dane są teraz pobierane natychmiast po zainicjowaniu widoku.
 
 ### 4. Oznaczenie Newsów Lokalnych (📍)
 - Każdy artykuł z Twojego miasta jest teraz wyróżniony ikonką lokalizacji obok nazwy źródła.

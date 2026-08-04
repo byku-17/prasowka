@@ -1,33 +1,41 @@
-# Plan Naprawy V4.9.1: Profesjonalne Linki Pogodowe (Windy & Airly)
+# Plan Rozwoju V5.4: Inteligentna Gazeta
 
-Ten plan rozwiązuje problemy z niedziałającymi linkami (404) oraz błędnymi przekierowaniami (Indie) poprzez zmianę źródeł na takie, które obsługują współrzędne geograficzne.
+Ten etap ma na celu poprawę czytelności listy newsów oraz lepszą ekspozycję treści dopasowanych do zainteresowań użytkownika.
+
+## User Review Required
+
+> [!NOTE]
+> Zmiana wizualna: Artykuły oznaczone jako "przeczytane" będą teraz znacznie mocniej odróżniać się od nowych treści (przyciemnienie całego kafelka).
 
 ## Proposed Changes
 
-### 1. Zmiana źródeł linków (LocalInfoBar)
-Rezygnujemy z Onetu i AQICN na rzecz bardziej precyzyjnych i stabilnych serwisów.
+### 1. Wizualny Status "Przeczytane" (ArticleCard)
+Poprawimy widoczność artykułów, które użytkownik już odwiedził, aby ułatwić skanowanie listy w poszukiwaniu nowości.
 
-#### [MODIFY] [local_info_bar.dart](file:///D:/Apps/prasowka/lib/widgets/local_info_bar.dart)
-- **Pogoda**: Zmiana na **Windy.com**.
-    - URL: `https://www.windy.com/${city.latitude}/${city.longitude}`.
-    - Windy automatycznie centruje mapę i prognozę na podanych współrzędnych.
-- **Jakość Powietrza**: Zmiana na **Airly.org**.
-    - URL: `https://airly.org/map/pl/#${city.latitude},${city.longitude}`.
-    - Airly to lider polskiego monitoringu smogu, link z GPS jest niezawodny.
+#### [MODIFY] [article_card.dart](file:///D:/Apps/prasowka/lib/widgets/article_card.dart)
+- **Przyciemnienie obrazka**: Dodanie `ColorFiltered` lub nakładki półprzezroczystej na zdjęcie, gdy `isRead == true`.
+- **Wygaszenie opisu**: Zmniejszenie opacity dla opisu (`description`) i nazwy źródła w przeczytanych artykułach.
+- **Efekt wizualny**: Cały kafelek będzie sprawiał wrażenie "nieaktywnego" lub "zużytego", kierując wzrok na nowe, jaskrawe treści.
 
-### 2. Naprawa inicjalizacji (Warszawa)
-#### [MODIFY] [local_info_bar.dart](file:///D:/Apps/prasowka/lib/widgets/local_info_bar.dart)
-- Upewnienie się, że `_lastCityHash` nie blokuje pierwszego pobrania danych dla domyślnego miasta (Warszawa).
-- Dodanie logu: `Sowa Weather: Pobieram dane dla ${city.name}` do konsoli dla łatwiejszego debugowania.
+### 2. Optymalizacja Sekcji "Dla Ciebie" (CategoryNewsList)
+Udoskonalimy horyzontalny pasek rekomendacji na szczycie kategorii "Wszystkie".
 
-### 3. Usunięcie niepotrzebnego mapowania "Slug"
-- Metoda `_getCitySlug` zostanie usunięta, ponieważ Windy i Airly nie potrzebują już transliteracji nazw (korzystają z GPS).
+#### [MODIFY] [category_news_list.dart](file:///D:/Apps/prasowka/lib/widgets/category_news_list.dart)
+- **Ograniczenie do Top 3**: Zgodnie z planem, skupimy się na 3 najmocniejszych rekomendacjach, aby nie przytłaczać użytkownika.
+- **Stylizacja paska**: Poprawa marginesów i dodanie delikatnego cienia/tła pod sekcją "DLA CIEBIE", aby wizualnie oddzielić ją od reszty listy.
+
+### 3. Precyzyjne Śledzenie Czytania (ArticleDetailScreen)
+Upewnimy się, że Sowa poprawnie zapamiętuje postęp lektury.
+
+#### [MODIFY] [article_detail_screen.dart](file:///D:/Apps/prasowka/lib/screens/article_detail_screen.dart)
+- Skrócenie progu "przeczytania" z 30s na 20s (bardziej realistyczne dla krótkich newsów mobilnych).
+- Automatyczne oznaczanie jako przeczytane natychmiast po dotarciu do dołu artykułu (Scroll Listener).
 
 ## Verification Plan
 
 ### Manual Verification
 1.  **Hot Restart** aplikacji.
-2.  Sprawdzenie, czy dla Warszawy wyświetla się temperatura.
-3.  Kliknięcie w kafelek temperatury -> weryfikacja czy otwiera się **Windy.com**.
-4.  Kliknięcie w kafelek powietrza -> weryfikacja czy otwiera się mapa **Airly**.
-5.  Zmiana miasta na **Łódź** lub **Kraków** i weryfikacja czy linki Windy/Airly poprawnie przekazują nowe współrzędne.
+2.  Wejście w dowolny artykuł i spędzenie w nim 20 sekund.
+3.  Powrót do listy -> sprawdzenie czy artykuł jest wyraźnie przyciemniony.
+4.  Przewinięcie do dołu długiego artykułu -> sprawdzenie czy od razu po powrocie jest oznaczony jako przeczytany.
+5.  Sprawdzenie sekcji "Dla Ciebie" w zakładce "Wszystkie" (czy zawiera dokładnie 3 pozycje).

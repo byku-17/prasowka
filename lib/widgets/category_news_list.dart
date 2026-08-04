@@ -245,45 +245,54 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
   }
 
   Widget _buildRecommendationsSection(BuildContext context, List<Article> recommended) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            children: [
-              Icon(Icons.auto_awesome, color: AppTheme.accentGold, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'DLA CIEBIE',
-                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2, color: AppTheme.accentGold),
-              ),
-            ],
+    return Container(
+      color: Colors.white.withValues(alpha: 0.03), // Delikatne wyróżnienie tła
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome, color: AppTheme.accentGold, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'DLA CIEBIE',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    letterSpacing: 1.2, 
+                    color: AppTheme.accentGold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        SizedBox(
-          height: 240,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: recommended.length,
-            itemBuilder: (context, index) {
-              final a = recommended[index];
-              return RepaintBoundary(
-                child: ArticleCard(article: a, isSmall: true, onTap: () => _openArticle(context, a)),
-              );
-            },
+          SizedBox(
+            height: 240,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: recommended.length,
+              itemBuilder: (context, index) {
+                final a = recommended[index];
+                return RepaintBoundary(
+                  child: ArticleCard(article: a, isSmall: true, onTap: () => _openArticle(context, a)),
+                );
+              },
+            ),
           ),
-        ),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Divider(color: Colors.white10)),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            'NAJNOWSZE',
-            style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 12, color: Colors.grey),
+          const SizedBox(height: 12),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'NAJNOWSZE WIADOMOŚCI',
+              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 10, color: Colors.grey),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
