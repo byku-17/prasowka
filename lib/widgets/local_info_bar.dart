@@ -38,6 +38,7 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
     final cityHash = "${settings.preferredCity}_${settings.cityCoordinates.latitude}_${settings.cityCoordinates.longitude}";
     
     if (_lastCityHash != cityHash) {
+      debugPrint('Sowa Weather: Zmiana miasta ($cityHash). Pobieram dane...');
       _lastCityHash = cityHash;
       _fetchData(settings.cityCoordinates);
     }
@@ -65,7 +66,7 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
         });
       }
     } catch (e) {
-      debugPrint('Sowa LocalInfoBar Error: $e');
+      debugPrint('Sowa Weather Error: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -77,7 +78,7 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
 
   @override
   Widget build(BuildContext context) {
-    // Słuchamy zmian w SettingsProvider, aby wyzwalać didChangeDependencies
+    // Słuchamy zmian w SettingsProvider, aby reagować na zmianę miasta
     context.watch<SettingsProvider>();
 
     if (_isLoading) {
@@ -122,18 +123,21 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
   }
 
   void _retryFetch() {
-    _lastCityHash = null;
+    _lastCityHash = null; // Wymuszenie odświeżenia
     _checkAndFetch();
   }
 
   Widget _buildWeatherTile() {
     final data = _weatherData;
-    final city = context.read<SettingsProvider>().preferredCity;
-    final slug = _getCitySlug(city, isWeather: true);
-    final url = 'https://pogoda.onet.pl/prognoza-pogody/$slug';
+    final settings = context.read<SettingsProvider>();
+    final city = settings.preferredCity;
+    final coords = settings.cityCoordinates;
+    
+    // Windy.com obsługuje linki oparte na współrzędnych
+    final url = 'https://www.windy.com/${coords.latitude}/${coords.longitude}';
 
     return GestureDetector(
-      onTap: () => _openInternalBrowser(url, 'Pogoda: $city'),
+      onTap: () => _openInternalBrowser(url, 'Pogoda: $city (Windy)'),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -180,9 +184,12 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
 
   Widget _buildAirTile() {
     final data = _airData;
-    final city = context.read<SettingsProvider>().preferredCity;
-    final slug = _getCitySlug(city, isWeather: false);
-    final url = 'https://aqicn.org/city/poland/$slug';
+    final settings = context.read<SettingsProvider>();
+    final city = settings.preferredCity;
+    final coords = settings.cityCoordinates;
+    
+    // Airly.org obsługuje linki z kotwicą współrzędnych
+    final url = 'https://airly.org/map/pl/#${coords.latitude},${coords.longitude}';
 
     final color = data == null
         ? Colors.grey
@@ -193,7 +200,7 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
                 : Colors.red;
 
     return GestureDetector(
-      onTap: () => _openInternalBrowser(url, 'Jakość powietrza: $city'),
+      onTap: () => _openInternalBrowser(url, 'Jakość powietrza: $city (Airly)'),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -242,29 +249,5 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
         builder: (_) => ArticleWebViewScreen(url: url, title: title),
       ),
     );
-  }
-
-  String _getCitySlug(String city, {required bool isWeather}) {
-    final lower = city.toLowerCase();
-    
-    // Specyficzne mapowania dla AQICN (często nazwy angielskie)
-    if (!isWeather) {
-      if (lower == 'warszawa') return 'warsaw';
-      if (lower == 'kraków') return 'krakow';
-      if (lower == 'wrocław') return 'wroclaw';
-      if (lower == 'gdańsk') return 'gdansk';
-      if (lower == 'poznań') return 'poznan';
-      if (lower == 'łódź') return 'lodz';
-      if (lower == 'katowice') return 'katowice';
-    }
-
-    // Standardowe usuwanie ogonków dla Onet Pogoda
-    var slug = lower;
-    const polish = 'ąćęłńóśźż';
-    const latin = 'acelnoszz';
-    for (int i = 0; i < polish.length; i++) {
-      slug = slug.replaceAll(polish[i], latin[i]);
-    }
-    return slug;
   }
 }

@@ -1,34 +1,33 @@
-# Plan Naprawy V4.9: Precyzyjna Pogoda i Bezpośrednie Linki
+# Plan Naprawy V4.9.1: Profesjonalne Linki Pogodowe (Windy & Airly)
 
-Ten plan rozwiązuje dwa problemy: błąd braku temperatury dla Warszawy oraz potrzebę przechodzenia do konkretnych stron z danymi pogodowymi zamiast ogólnego wyszukiwania w Google.
+Ten plan rozwiązuje problemy z niedziałającymi linkami (404) oraz błędnymi przekierowaniami (Indie) poprzez zmianę źródeł na takie, które obsługują współrzędne geograficzne.
 
 ## Proposed Changes
 
-### 1. Naprawa logiki odświeżania (LocalInfoBar)
-Obecna logika wywołuje odświeżanie danych wewnątrz metody `build()`, co jest błędem w architekturze Fluttera i może prowadzić do przerywania zapytań sieciowych lub błędnego stanu (stąd brak temperatury dla Warszawy).
+### 1. Zmiana źródeł linków (LocalInfoBar)
+Rezygnujemy z Onetu i AQICN na rzecz bardziej precyzyjnych i stabilnych serwisów.
 
 #### [MODIFY] [local_info_bar.dart](file:///D:/Apps/prasowka/lib/widgets/local_info_bar.dart)
-- **Usunięcie `_checkAndFetch` z `build()`**: Przeniesienie logiki sprawdzania zmiany miasta do `didChangeDependencies()` oraz bezpieczne wywoływanie fetchowania przez `Future.microtask` lub `addPostFrameCallback`.
-- **Stabilizacja stanu**: Upewnienie się, że `_isLoading` i `_hasError` są poprawnie resetowane przy każdej zmianie miasta.
+- **Pogoda**: Zmiana na **Windy.com**.
+    - URL: `https://www.windy.com/${city.latitude}/${city.longitude}`.
+    - Windy automatycznie centruje mapę i prognozę na podanych współrzędnych.
+- **Jakość Powietrza**: Zmiana na **Airly.org**.
+    - URL: `https://airly.org/map/pl/#${city.latitude},${city.longitude}`.
+    - Airly to lider polskiego monitoringu smogu, link z GPS jest niezawodny.
 
-### 2. Bezpośrednie linki do danych (Onet i AQICN)
-Zastąpimy wyszukiwarkę Google linkami prowadzącymi bezpośrednio do szczegółowych prognoz.
-
+### 2. Naprawa inicjalizacji (Warszawa)
 #### [MODIFY] [local_info_bar.dart](file:///D:/Apps/prasowka/lib/widgets/local_info_bar.dart)
-- **Pogoda**: Użycie `https://pogoda.onet.pl/[miasto]` (np. `https://pogoda.onet.pl/warszawa`).
-- **Jakość powietrza**: Użycie `https://aqicn.org/city/poland/[miasto]` (np. `https://aqicn.org/city/poland/warsaw`).
-- **Mapowanie nazw**: Dodanie pomocniczej metody mapującej polskie nazwy na bezpieczne "URL-friendly" odpowiedniki (np. Łódź -> lodz, Warszawa -> warsaw dla AQICN).
+- Upewnienie się, że `_lastCityHash` nie blokuje pierwszego pobrania danych dla domyślnego miasta (Warszawa).
+- Dodanie logu: `Sowa Weather: Pobieram dane dla ${city.name}` do konsoli dla łatwiejszego debugowania.
 
-### 3. Poprawa odporności WeatherService
-#### [MODIFY] [weather_service.dart](file:///D:/Apps/prasowka/lib/services/weather_service.dart)
-- **Parsowanie**: Ulepszenie konwersji typów (double/int), aby uniknąć błędów, gdy API zwróci np. `15` zamiast `15.0`.
-- **Logging**: Dodanie szczegółowych logów przy błędach sieciowych, aby ułatwić diagnostykę.
+### 3. Usunięcie niepotrzebnego mapowania "Slug"
+- Metoda `_getCitySlug` zostanie usunięta, ponieważ Windy i Airly nie potrzebują już transliteracji nazw (korzystają z GPS).
 
 ## Verification Plan
 
 ### Manual Verification
 1.  **Hot Restart** aplikacji.
 2.  Sprawdzenie, czy dla Warszawy wyświetla się temperatura.
-3.  Kliknięcie w kafelek temperatury -> weryfikacja czy otwiera się strona Onet Pogoda dla Warszawy wewnątrz aplikacji.
-4.  Kliknięcie w kafelek powietrza -> weryfikacja czy otwiera się AQICN dla Warszawy.
-5.  Zmiana miasta na **Łódź** i powtórzenie testów (weryfikacja czy linki i dane reagują na zmianę).
+3.  Kliknięcie w kafelek temperatury -> weryfikacja czy otwiera się **Windy.com**.
+4.  Kliknięcie w kafelek powietrza -> weryfikacja czy otwiera się mapa **Airly**.
+5.  Zmiana miasta na **Łódź** lub **Kraków** i weryfikacja czy linki Windy/Airly poprawnie przekazują nowe współrzędne.

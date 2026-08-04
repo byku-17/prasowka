@@ -1,12 +1,9 @@
-# Zadania: V4.9 Precyzyjna Pogoda i Bezpośrednie Linki
+# Zadania: V4.9.1 Profesjonalne Linki Pogodowe (Windy & Airly)
 
-- [ ] Aktualizacja `WeatherService`:
-    - [ ] Poprawa odporności parsowania danych (wymuszenie `toDouble()`)
-    - [ ] Dodanie logowania błędów
-- [ ] Przebudowa `LocalInfoBar`:
-    - [ ] Usunięcie logiki odświeżania z metody `build()`
-    - [ ] Implementacja metody `_getCitySlug` dla linków URL
-    - [ ] Zmiana linków na Onet Pogoda i AQICN
-    - [ ] Integracja z `ArticleWebViewScreen`
-- [ ] Weryfikacja działania dla Warszawy i innych miast
+- [ ] Aktualizacja `LocalInfoBar`:
+    - [ ] Zmiana linku pogody na **Windy.com** z użyciem GPS
+    - [ ] Zmiana linku jakości powietrza na **Airly.org** z użyciem GPS
+    - [ ] Usunięcie metody `_getCitySlug`
+    - [ ] Naprawa logiki `_checkAndFetch` dla Warszawy
+- [ ] Weryfikacja działania (In-App WebView)
 - [ ] Commit zmian
