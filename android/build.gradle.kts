@@ -17,11 +17,8 @@ subprojects {
 }
 
 subprojects {
-    // Wymuszenie Java 17 dla wszystkich zadań kompilacji.
-    // Działa leniwie (lazy), więc nie wymaga afterEvaluate.
     tasks.withType<JavaCompile>().configureEach {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
+        options.release.set(17)
     }
     
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {

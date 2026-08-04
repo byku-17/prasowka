@@ -1,8 +1,9 @@
-# Zadania: V7.3 Stabilizacja Gradle
+# Zadania: V7.4 Ostateczna Bitwa z JVM Target
 
-- [x] Aktualizacja `android/build.gradle.kts`:
-    - [x] Usunięcie problematycznego bloku `afterEvaluate`
-    - [x] Usunięcie `evaluationDependsOn(":app")` powodującego przedwczesną ocenę
-    - [x] Zastosowanie bezpiecznej konfiguracji `configureEach`
-- [ ] Weryfikacja kompilacji (`flutter build apk` lub Debug)
-- [ ] Commit i Push zmian
+- [ ] Aktualizacja `android/app/build.gradle.kts`:
+    - [ ] Dodanie `id("org.jetbrains.kotlin.android")`
+    - [ ] Dodanie `jvmToolchain(17)`
+- [ ] Gruntowna przebudowa `android/build.gradle.kts`:
+    - [ ] Usunięcie `evaluationDependsOn`
+    - [ ] Implementacja `options.release.set(17)` dla zadań Java
+- [ ] Weryfikacja kompilacji
