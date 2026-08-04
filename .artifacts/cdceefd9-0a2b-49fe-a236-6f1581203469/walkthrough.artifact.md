@@ -12,7 +12,16 @@ Rozpoczęto etap końcowego dopieszczania aplikacji. Pierwsza zmiana dotyczy pe�
 - **In-App WebView**: Kliknięcie w alert o nowym artykule (lub testowy alert Sowy) otwiera teraz `ArticleWebViewScreen` bezpośrednio wewnątrz "Prasówki".
 - **Obsługa uruchomienia (Cold Start)**: Jeśli aplikacja była zamknięta i została uruchomiona przez powiadomienie, sowa od razu zaprezentuje odpowiedni artykuł.
 
-## Co dalej?
-Następnym punktem planu V6.0 jest **2. Ujednolicenie Kategorii Miejskiej**, czyli zmiana systemowej nazwy "Warszawa" na bardziej uniwersalne "Lokalne", przy jednoczesnym zachowaniu konkretnej nazwy miasta w widoku zakładek.
+## Zrealizowane zmiany (V6.1):
 
-**Czy kontynuujemy?** 🦉💎🛠️
+### 1. Ujednolicenie Kategorii Miejskiej
+- Zmieniono systemową nazwę kategorii o ID `warsaw` z **"Warszawa"** na uniwersalne **"Lokalne"**.
+- **Dlaczego?** Dzięki temu w ustawieniach i zarządzaniu kategoriami nazwa jest poprawna dla każdego użytkownika, niezależnie od tego czy mieszka w Krakowie, Wrocławiu czy Łodzi.
+- **Bez zmian w widoku głównym**: Na górnym pasku (TabBar) nadal wyświetla się nazwa Twojego konkretnego miasta (np. POZNAŃ), co zapewnia pełną personalizację.
+
+## Co dalej?
+Pozostały nam dwa punkty z planu "Ostatniego Szlifu":
+1. **3. Poprawa Logiki Wartownika (Sport)**: Dodanie weryfikacji daty przed wysłaniem powiadomienia o meczu.
+2. **4. Finalna kosmetyka "Dla Ciebie"**: Integracja sekcji rekomendacji z listą.
+
+**Czy kontynuujemy i wdrożymy punkt 3?** 🦉⚽⏰

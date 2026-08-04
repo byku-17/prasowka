@@ -85,12 +85,18 @@ void callbackDispatcher() {
               if (event.status == EventStatus.live) {
                 shouldNotify = true;
               } else if (event.status == EventStatus.scheduled) {
-                // Porównuj czas (godzina:minuta) zamiast pełną datę
-                // bo API może mieć inny rok niż telefon
-                final eventMinutes = event.date.hour * 60 + event.date.minute;
-                final nowMinutes = now.hour * 60 + now.minute;
-                final diffMinutes = eventMinutes - nowMinutes;
-                if (diffMinutes >= 0 && diffMinutes <= 15) shouldNotify = true;
+                // Sprawdź czy to na pewno dzisiaj (zapobiega alertom o tej samej godzinie jutro)
+                final isToday = event.date.year == now.year &&
+                               event.date.month == now.month &&
+                               event.date.day == now.day;
+                               
+                if (isToday) {
+                  // Porównuj czas (godzina:minuta)
+                  final eventMinutes = event.date.hour * 60 + event.date.minute;
+                  final nowMinutes = now.hour * 60 + now.minute;
+                  final diffMinutes = eventMinutes - nowMinutes;
+                  if (diffMinutes >= 0 && diffMinutes <= 15) shouldNotify = true;
+                }
               }
               if (!shouldNotify) continue;
 
@@ -173,6 +179,14 @@ void callbackDispatcher() {
             if (event.status != EventStatus.scheduled) continue;
 
             final eventTime = event.date;
+            
+            // Sprawdź czy to na pewno dzisiaj (zapobiega reminderom o tej samej godzinie jutro)
+            final isToday = eventTime.year == now.year &&
+                           eventTime.month == now.month &&
+                           eventTime.day == now.day;
+                           
+            if (!isToday) continue;
+
             final diffMinutes = eventTime.difference(now).inMinutes;
 
             // Wyślij przypomnienie 5 minut przed meczem (w oknie 3-7 min)
