@@ -123,20 +123,24 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Column(
+      child: Row(
         children: [
           // Weather tile (expandable)
-          _ExpandableWeatherTile(
-            data: _weatherData,
-            timeAgo: timeAgo,
-            onTap: _openWeatherDetail,
+          Expanded(
+            child: _ExpandableWeatherTile(
+              data: _weatherData,
+              timeAgo: timeAgo,
+              onTap: _openWeatherDetail,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(width: 8),
           // Air quality tile (expandable)
-          _ExpandableAirTile(
-            data: _airData,
-            timeAgo: timeAgo,
-            onTap: _openAirDetail,
+          Expanded(
+            child: _ExpandableAirTile(
+              data: _airData,
+              timeAgo: timeAgo,
+              onTap: _openAirDetail,
+            ),
           ),
         ],
       ),
@@ -160,7 +164,8 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
     final settings = context.read<SettingsProvider>();
     final coords = settings.cityCoordinates;
     final city = settings.preferredCity;
-    final url = 'https://airly.org/pl/map#lat=${coords.latitude.toStringAsFixed(4)}&lng=${coords.longitude.toStringAsFixed(4)}';
+    // Prostszy format Airly - mapa z współrzędnymi
+    final url = 'https://airly.org/map/${coords.latitude.toStringAsFixed(4)},${coords.longitude.toStringAsFixed(4)}';
     _openInternalBrowser(url, 'Jakość powietrza: $city (Airly)');
   }
 
