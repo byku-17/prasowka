@@ -35,16 +35,16 @@ class CitySourcesPage extends StatelessWidget {
             return ListTile(
               leading: Icon(
                 Icons.location_on,
-                color: isSelected ? AppTheme.accentGold : Colors.grey,
+                color: isSelected ? AppTheme.accentFor(context) : Colors.grey,
               ),
               title: Text(
                 c['name'] as String,
                 style: TextStyle(
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? AppTheme.accentGold : null,
+                  color: isSelected ? AppTheme.accentFor(context) : null,
                 ),
               ),
-              trailing: isSelected ? const Icon(Icons.check, color: AppTheme.accentGold) : null,
+              trailing: isSelected ? Icon(Icons.check, color: AppTheme.accentFor(context)) : null,
               onTap: () {
                 settings.setPreferredCity(c['name'] as String, c['lat'] as double, c['lon'] as double);
               },
@@ -59,7 +59,7 @@ class CitySourcesPage extends StatelessWidget {
             )
           else
             ...citySources.map((src) => CheckboxListTile(
-              secondary: const Icon(Icons.rss_feed, color: AppTheme.accentGold, size: 20),
+              secondary: Icon(Icons.rss_feed, color: AppTheme.accentFor(context), size: 20),
               title: Text(src.name, style: const TextStyle(fontSize: 14)),
               subtitle: Text(
                 src.rssUrl,
@@ -68,7 +68,7 @@ class CitySourcesPage extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               value: settings.isSourceActive(src.id),
-              activeColor: AppTheme.accentGold,
+              activeColor: AppTheme.accentFor(context),
               onChanged: (_) => settings.toggleSource(src.id),
             )),
           const Divider(height: 32),

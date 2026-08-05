@@ -11,7 +11,7 @@ class SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
       child: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accentGold, letterSpacing: 1.2, fontSize: 12),
+        style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accentFor(context), letterSpacing: 1.2, fontSize: 12),
       ),
     );
   }

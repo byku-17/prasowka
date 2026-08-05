@@ -35,7 +35,7 @@ class AppearanceSettingsPage extends StatelessWidget {
             subtitle: const Text('Sowa będzie szukać newsów w tle i da znać o tych, które pasują do Twoich polubień.'),
             value: settings.notificationsEnabled,
             onChanged: (val) => settings.toggleNotifications(val),
-            activeThumbColor: AppTheme.accentGold,
+            activeThumbColor: AppTheme.accentFor(context),
           ),
           const SectionHeader('WIDOK SPORTOWY'),
           SwitchListTile(
@@ -44,7 +44,7 @@ class AppearanceSettingsPage extends StatelessWidget {
             subtitle: const Text('Wyświetla pasek z wynikami na górze sekcji Sport.'),
             value: settings.showSportsBar,
             onChanged: (val) => settings.toggleSportsBar(val),
-            activeThumbColor: AppTheme.accentGold,
+            activeThumbColor: AppTheme.accentFor(context),
           ),
           if (settings.showSportsBar)
             SwitchListTile(
@@ -52,7 +52,7 @@ class AppearanceSettingsPage extends StatelessWidget {
               subtitle: const Text('Pokazuje wyłącznie mecze klubów i lig wpisanych w zainteresowaniach.', style: TextStyle(fontSize: 11)),
               value: settings.onlyFavoriteTeams,
               onChanged: (val) => settings.setOnlyFavoriteTeams(val),
-              activeThumbColor: AppTheme.accentGold,
+              activeThumbColor: AppTheme.accentFor(context),
               dense: true,
             ),
           const Divider(),
@@ -157,9 +157,9 @@ class AppearanceSettingsPage extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: isSelected ? AppTheme.accentGold : null),
+      leading: Icon(icon, color: isSelected ? AppTheme.accentFor(context) : null),
       title: Text(label),
-      trailing: isSelected ? const Icon(Icons.check, color: AppTheme.accentGold) : null,
+      trailing: isSelected ? Icon(Icons.check, color: AppTheme.accentFor(context)) : null,
       onTap: onTap,
     );
   }

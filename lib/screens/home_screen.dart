@@ -129,8 +129,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 TabBar(
                   controller: _tabController,
                   isScrollable: true,
-                  indicatorColor: AppTheme.accentGold,
-                  labelColor: AppTheme.accentGold,
+                  indicatorColor: AppTheme.accentFor(context),
+                  labelColor: AppTheme.accentFor(context),
                   unselectedLabelColor: Colors.white70,
                   tabs: _activeCategories.map((cat) {
                     String label = cat.name.toUpperCase();

@@ -169,7 +169,7 @@ class SportSettingsScreen extends StatelessWidget {
               }
               Navigator.pop(ctx);
             },
-            child: const Text('Dodaj', style: TextStyle(color: AppTheme.accentGold)),
+            child: Text('Dodaj', style: TextStyle(color: AppTheme.accentFor(context))),
           ),
         ],
       ),
@@ -197,7 +197,7 @@ class SportSettingsScreen extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () => _showLeaguePicker(context),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accentGold,
+              backgroundColor: AppTheme.accentFor(context),
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
@@ -230,7 +230,7 @@ class SportSettingsScreen extends StatelessWidget {
             onPressed: () => _showLeaguePicker(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accentGold.withValues(alpha: 0.2),
-              foregroundColor: AppTheme.accentGold,
+              foregroundColor: AppTheme.accentFor(context),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             ),
             icon: const Icon(Icons.add, size: 16),
@@ -276,7 +276,7 @@ class SportSettingsScreen extends StatelessWidget {
         trailing: Switch(
           value: isSelected,
           onChanged: (_) => settings.toggleLeague(league.id),
-          activeThumbColor: AppTheme.accentGold,
+          activeThumbColor: AppTheme.accentFor(context),
         ),
         onTap: () => settings.toggleLeague(league.id),
       ),
@@ -405,7 +405,7 @@ class _LeaguePickerScreenState extends State<_LeaguePickerScreen> {
               context.read<SettingsProvider>().setSelectedLeagues(_tempSelected);
               Navigator.pop(context);
             },
-            child: const Text('Zapisz', style: TextStyle(color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
+            child: Text('Zapisz', style: TextStyle(color: AppTheme.accentFor(context), fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -428,7 +428,7 @@ class _LeaguePickerScreenState extends State<_LeaguePickerScreen> {
               '$someSelected z ${leagues.length} lig',
               style: TextStyle(
                 fontSize: 11,
-                color: someSelected ? AppTheme.accentGold : Colors.grey,
+                color: someSelected ? AppTheme.accentFor(context) : Colors.grey,
               ),
             ),
             trailing: Row(
@@ -447,14 +447,14 @@ class _LeaguePickerScreenState extends State<_LeaguePickerScreen> {
               return CheckboxListTile(
                 value: selected,
                 onChanged: (_) => _toggle(league.id),
-                activeColor: AppTheme.accentGold,
+                activeColor: AppTheme.accentFor(context),
                 title: Text(league.name, style: const TextStyle(fontSize: 14)),
                 subtitle: Text(
                   league.country,
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
                 secondary: selected
-                    ? const Icon(Icons.check_circle, color: AppTheme.accentGold, size: 20)
+                    ? Icon(Icons.check_circle, color: AppTheme.accentFor(context), size: 20)
                     : Icon(Icons.circle_outlined, color: Colors.grey.withValues(alpha: 0.5), size: 20),
               );
             }).toList(),

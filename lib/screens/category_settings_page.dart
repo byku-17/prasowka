@@ -19,21 +19,21 @@ class CategorySettingsPage extends StatelessWidget {
           final isActive = settings.isCategoryActive(cat.id);
           return ListTile(
             key: ValueKey(cat.id),
-            leading: Icon(cat.icon, color: isActive ? AppTheme.accentGold : Colors.grey),
+            leading: Icon(cat.icon, color: isActive ? AppTheme.accentFor(context) : Colors.grey),
             title: Text(cat.name, style: TextStyle(color: isActive ? Colors.white : Colors.grey)),
             trailing: cat.id == 'all' 
                 ? const Icon(Icons.lock_outline, size: 18, color: Colors.grey)
                 : Switch(
                     value: isActive,
                     onChanged: (_) => settings.toggleCategory(cat.id),
-                    activeThumbColor: AppTheme.accentGold,
+                    activeThumbColor: AppTheme.accentFor(context),
                   ),
           );
         }).toList(),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddCategoryDialog(context, settings),
-        backgroundColor: AppTheme.accentGold,
+        backgroundColor: AppTheme.accentFor(context),
         child: const Icon(Icons.add, color: Colors.black),
       ),
     );
@@ -59,7 +59,7 @@ class CategorySettingsPage extends StatelessWidget {
                 Navigator.pop(context);
               }
             },
-            child: const Text('DODAJ', style: TextStyle(color: AppTheme.accentGold)),
+            child: Text('DODAJ', style: TextStyle(color: AppTheme.accentFor(context))),
           ),
         ],
       ),

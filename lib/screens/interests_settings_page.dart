@@ -55,7 +55,7 @@ class InterestsSettingsPageState extends State<InterestsSettingsPage> {
                     onDeleted: () => settings.removeKeyword(team),
                     deleteIconColor: Colors.red,
                     backgroundColor: AppTheme.accentGold.withValues(alpha: 0.1),
-                    side: const BorderSide(color: AppTheme.accentGold),
+                    side: BorderSide(color: AppTheme.accentFor(context)),
                   )).toList(),
                 ),
                 const SizedBox(height: 8),
@@ -64,7 +64,7 @@ class InterestsSettingsPageState extends State<InterestsSettingsPage> {
                   decoration: InputDecoration(
                     hintText: 'Dodaj nowe hasło...',
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.add_circle, color: AppTheme.accentGold),
+                      icon: Icon(Icons.add_circle, color: AppTheme.accentFor(context)),
                       onPressed: () => _submit(settings),
                     ),
                     filled: true,

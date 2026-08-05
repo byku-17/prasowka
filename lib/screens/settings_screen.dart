@@ -83,7 +83,7 @@ class SettingsScreen extends StatelessWidget {
           color: AppTheme.accentGold.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, color: AppTheme.accentGold),
+        child: Icon(icon, color: AppTheme.accentFor(context)),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
