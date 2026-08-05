@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/models/sport_league.dart';
 import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/providers/sports_provider.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
 class SportSettingsScreen extends StatelessWidget {
@@ -25,7 +26,153 @@ class SportSettingsScreen extends StatelessWidget {
       body: settings.selectedLeagueIds.isEmpty
           ? _buildEmptyState(context)
           : _buildSelectedSummary(context, settings),
-      bottomNavigationBar: _buildInfoBar(settings),
+      bottomNavigationBar: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildFavoriteTeamsSection(context, settings),
+            _buildDebugSection(context),
+            _buildInfoBar(settings),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDebugSection(BuildContext context) {
+    return Consumer<SportsProvider>(
+      builder: (context, provider, _) {
+        if (provider.debugLogs.isEmpty) return const SizedBox.shrink();
+        return Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('DEBUG', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange)),
+              const SizedBox(height: 4),
+              ...provider.debugLogs.take(20).map((log) => Text(
+                log,
+                style: const TextStyle(fontSize: 10, color: Colors.orange),
+              )),
+              if (provider.events.isNotEmpty)
+                Text(
+                  'Wydruk: ${provider.events.length} meczów w pamięci',
+                  style: const TextStyle(fontSize: 10, color: Colors.green),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFavoriteTeamsSection(BuildContext context, SettingsProvider settings) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.accentGold.withValues(alpha: 0.05),
+        border: Border(top: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.2))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.star, size: 16, color: AppTheme.accentGold),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ULUBIONE DRUŻYNY / ZAWODNICY',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.accentGold.withValues(alpha: 0.9),
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                onPressed: () => _showAddFavoriteDialog(context, settings),
+                icon: const Icon(Icons.add, size: 14),
+                label: const Text('Dodaj', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.accentGold,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+            ],
+          ),
+          if (settings.favoriteTeams.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Dodaj drużyny (np. "Wisła"), zawodników (np. "Świątek") lub kierowców F1 (np. "Verstappen") — pokażemy tylko ich mecze.',
+                style: TextStyle(fontSize: 11, color: Colors.grey.withValues(alpha: 0.7)),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: settings.favoriteTeams.map((team) => Chip(
+                  label: Text(team, style: const TextStyle(fontSize: 11)),
+                  deleteIcon: const Icon(Icons.close, size: 14),
+                  onDeleted: () => settings.removeFavoriteTeam(team),
+                  backgroundColor: AppTheme.accentGold.withValues(alpha: 0.15),
+                  deleteIconColor: AppTheme.accentGold.withValues(alpha: 0.7),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                )).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddFavoriteDialog(BuildContext context, SettingsProvider settings) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dodaj ulubioną drużynę / zawodnika'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'np. Wisła, Świątek, Verstappen...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                settings.addFavoriteTeam(name);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Dodaj', style: TextStyle(color: AppTheme.accentGold)),
+          ),
+        ],
+      ),
     );
   }
 

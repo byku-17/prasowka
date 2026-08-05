@@ -57,3 +57,16 @@ class RaceEvent extends SportEvent {
     this.results = const [],
   });
 }
+
+class MatchStatRow {
+  final String label;
+  final String homeValue;
+  final String awayValue;
+  const MatchStatRow({required this.label, required this.homeValue, required this.awayValue});
+}
+
+class MatchStats {
+  final String header;
+  final List<MatchStatRow> rows;
+  const MatchStats({required this.header, required this.rows});
+}

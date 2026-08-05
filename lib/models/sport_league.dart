@@ -163,6 +163,17 @@ class SportLeague {
       flashscoreUrl: 'https://www.flashscore.com/football/poland/ekstraklasa/',
     ),
     SportLeague(
+      id: 'football_super_lig',
+      name: 'Süper Lig',
+      country: 'Turcja',
+      countryCode: 'TR',
+      discipline: SportDiscipline.football,
+      sportType: SportType.football,
+      espnSport: 'soccer',
+      espnLeague: 'tur.1',
+      flashscoreUrl: 'https://www.flashscore.com/football/turkey/super-lig/',
+    ),
+    SportLeague(
       id: 'football_champions_league',
       name: 'Liga Mistrzów',
       country: 'Europa',

@@ -210,6 +210,20 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> addFavoriteTeam(String team) async {
+    final t = team.trim();
+    if (t.isEmpty || _favoriteTeams.any((e) => e.toLowerCase() == t.toLowerCase())) return;
+    _favoriteTeams.add(t);
+    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
+    notifyListeners();
+  }
+
+  Future<void> removeFavoriteTeam(String t) async {
+    _favoriteTeams.remove(t);
+    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
+    notifyListeners();
+  }
+
   Future<void> addKeyword(String keyword) async {
     final t = keyword.trim();
     if (t.isEmpty || _favoriteTeams.any((element) => element.toLowerCase() == t.toLowerCase())) return;

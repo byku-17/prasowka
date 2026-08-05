@@ -22,6 +22,7 @@ class SportsProvider with ChangeNotifier {
   List<SportEvent> get events => _events;
   List<String> get debugLogs => _debugLogs;
   bool get isLoading => _isLoading;
+  DateTime? get lastFetch => _lastFetch;
 
   /// Zbiór ID przypiętych meczów
   Set<String> get pinnedMatchIds {
@@ -45,37 +46,90 @@ class SportsProvider with ChangeNotifier {
   }
 
   Future<void> fetchEvents({
-    List<String>? favoriteKeywords, 
+    List<String>? favoriteKeywords,
     bool onlyFavoriteTeams = true,
     List<String>? selectedLeagueIds,
     bool force = false
-  }) async {
-    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!).inMinutes < 5) return;
+  }) {
+    final hasLive = _events.any((e) => e.status == EventStatus.live);
+    final hasFavorites = onlyFavoriteTeams && favoriteKeywords != null && favoriteKeywords.isNotEmpty;
+    // LIVE: 1 min, z ulubionymi: 30 min (oszczędność API — fixtures z 4 krajów), bez: 15 min
+    final ttl = hasLive ? 1 : (hasFavorites ? 30 : 15);
+
+    if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!).inMinutes < ttl) {
+      return Future.value();
+    }
 
     _isLoading = true;
     _debugLogs.clear();
-    _debugLogs.add('--- DIAGNOSTYKA V8.8 ---');
-    _debugLogs.add('Start: ${DateTime.now().toString().split('.')[0]}');
+    _debugLogs.add('--- DIAGNOSTYKA V9.0 ---');
+    _debugLogs.add('Start: ${DateTime.now().toString().split('.')[0]} (TTL: ${ttl}min)');
     notifyListeners();
 
+    return _performFetch(favoriteKeywords, onlyFavoriteTeams, selectedLeagueIds);
+  }
+
+  Future<void> _performFetch(List<String>? favoriteKeywords, bool onlyFavoriteTeams, List<String>? selectedLeagueIds) async {
     try {
       final newEvents = await _service.fetchAllEvents(selectedLeagueIds: selectedLeagueIds);
-      
+
       // 1. Filtrujemy pod zainteresowania
-      var filtered = _filterAndSortEvents(newEvents, favoriteKeywords, onlyFavoriteTeams);
-      
-      // 2. TRYB DISCOVERY: Jeśli pusto dla Twoich, ale serwer coś ma -> pokaż hity dnia
-      if (filtered.isEmpty && newEvents.isNotEmpty && onlyFavoriteTeams) {
-        _debugLogs.add('Discovery Mode: Pokazuję najważniejsze mecze ze świata.');
-        // Weź mecze z najwyższą ligą (np. te z logami)
-        filtered = newEvents.where((e) => e is MatchEvent && e.homeLogo != null).take(10).toList();
-        if (filtered.isEmpty) filtered = newEvents.take(5).toList();
+      List<SportEvent> filtered;
+      if (favoriteKeywords != null && favoriteKeywords.isNotEmpty) {
+        // Gdy user ma ulubione drużyny — pokaż tylko ich mecze
+        filtered = _filterAndSortEvents(newEvents, favoriteKeywords, true);
+        _debugLogs.add('Ulubione: ${favoriteKeywords.join(", ")}');
+        _debugLogs.add('Po filtrze: ${filtered.length} z ${newEvents.length} meczów');
+      } else if (onlyFavoriteTeams) {
+        // Tryb "tylko ulubione" ale brak ulubionych → top ligi
+        filtered = _filterTopLeagues(newEvents);
+        _debugLogs.add('Top ligi: ${filtered.length} z ${newEvents.length}');
+      } else {
+        // Tryb "pokaż wszystko"
+        filtered = newEvents;
+        _debugLogs.add('Wszystko: ${filtered.length} meczów');
+      }
+
+      // 2. DISCOVERY MODE: Jeśli pusto, pokaż top 5 meczów z popularnych lig
+      if (filtered.isEmpty && newEvents.isNotEmpty) {
+        final topMatches = _filterTopLeagues(newEvents).take(5).toList();
+        if (topMatches.isNotEmpty) {
+          _debugLogs.add('Discovery Mode: Pokazuję top ${topMatches.length} meczów.');
+          filtered = topMatches;
+        } else {
+          _debugLogs.add('Discovery Mode: Pokazuję wszystkie mecze z API.');
+          filtered = newEvents.take(10).toList();
+        }
       }
 
       _events = filtered;
       _lastFetch = DateTime.now();
       _debugLogs.add('Serwer zwrócił: ${newEvents.length} meczów');
       _debugLogs.add('Pasek wyświetla: ${_events.length} meczów');
+      if (newEvents.isNotEmpty) {
+        final matches = newEvents.whereType<MatchEvent>().toList();
+        _debugLogs.add('Meczy z API: ${matches.length}');
+        if (matches.isNotEmpty) {
+          // Pokaż przykłady drużyn z API
+          final homeTeams = matches.take(8).map((e) => e.homeTeam).join(', ');
+          _debugLogs.add('Drużyny (home): $homeTeams');
+        }
+        if (favoriteKeywords != null && favoriteKeywords.isNotEmpty) {
+          final normFavs = favoriteKeywords.map((f) => TextUtils.normalize(f)).toList();
+          _debugLogs.add('Szukam: ${normFavs.join(", ")}');
+          // Sprawdź czy któreś słowo pasuje
+          for (final fav in normFavs) {
+            final found = matches.where((e) {
+              final searchable = TextUtils.normalize("${e.homeTeam} ${e.awayTeam} ${e.competition}");
+              return TextUtils.fuzzyMatch(searchable, fav);
+            }).toList();
+            _debugLogs.add('  "$fav" → ${found.length} trafień');
+            if (found.isNotEmpty) {
+              _debugLogs.add('    Przykład: ${found.first.homeTeam} vs ${found.first.awayTeam}');
+            }
+          }
+        }
+      }
       
       _currentFavorites = favoriteKeywords;
       _currentOnlyFavorites = onlyFavoriteTeams;
@@ -115,16 +169,46 @@ class SportsProvider with ChangeNotifier {
     super.dispose();
   }
 
+  /// Filtruje tylko "topowe" ligi — bez Białorusi, itp.
+  List<SportEvent> _filterTopLeagues(List<SportEvent> list) {
+    const topCompetitions = {
+      // Piłka nożna
+      'premier league', 'ekstraklasa', 'la liga', 'laliga', 'serie a', 'bundesliga',
+      'ligue 1', 'champions league', 'europa league', 'liga mistrzów', 'liga europy',
+      'eredivisie', 'liga portugal', 'primeira liga', 'super lig', 'superliga',
+      // NBA / Koszykówka
+      'nba', 'euroleague', 'euroliga', 'plk',
+      // Hokej
+      'nhl', 'shl', 'liiga',
+      // NFL / MLB
+      'nfl', 'mlb', 'super bowl',
+      // Tenis
+      'atp', 'wta', 'wimbledon', 'roland garros', 'us open', 'australian open',
+      // F1
+      'formula 1', 'formula1', 'f1',
+    };
+
+    return list.where((e) {
+      if (e is MatchEvent) {
+        final comp = e.competition.toLowerCase();
+        return topCompetitions.any((top) => comp.contains(top));
+      } else if (e is RaceEvent) {
+        return true; // F1/WRC zawsze pokazuj
+      }
+      return false;
+    }).toList();
+  }
+
   List<SportEvent> _filterAndSortEvents(List<SportEvent> list, List<String>? favorites, bool onlyFavs) {
     if (onlyFavs && favorites != null && favorites.isNotEmpty) {
       final normalizedFavs = favorites.map((f) => TextUtils.normalize(f)).toList();
       list = list.where((e) {
         if (e is MatchEvent) {
           final searchable = TextUtils.normalize("${e.homeTeam} ${e.awayTeam} ${e.competition}");
-          return normalizedFavs.any((f) => searchable.contains(f));
+          return normalizedFavs.any((f) => TextUtils.fuzzyMatch(searchable, f));
         } else if (e is RaceEvent) {
           final searchable = TextUtils.normalize("${e.raceName} ${e.circuitName}");
-          return normalizedFavs.any((f) => searchable.contains(f));
+          return normalizedFavs.any((f) => TextUtils.fuzzyMatch(searchable, f));
         }
         return false;
       }).toList();
