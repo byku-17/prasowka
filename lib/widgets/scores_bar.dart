@@ -240,12 +240,7 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
       builder: (context, sports, _) {
         final isPinned = sports.isMatchPinned(event.id);
         return GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => ArticleWebViewScreen(
-              url: 'https://www.flashscore.com',
-              title: 'Flashscore — ${event.competition}',
-            ),
-          )),
+          onTap: () => _showMatchDetailBottomSheet(context, event, sports),
           child: Container(
           width: 200,
           margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -353,14 +348,203 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
     return "${_formatDateShort(date)} ${_formatTime(date)}";
   }
 
-  Widget _buildTeamLogo(String? url) {
-    if (url == null || url.isEmpty) return const Icon(Icons.shield, size: 14, color: Colors.grey);
+  void _showMatchDetailBottomSheet(BuildContext context, MatchEvent event, SportsProvider sports) {
+    final isPinned = sports.isMatchPinned(event.id);
+    final scoreParts = event.score.split(' - ');
+    final homeScore = scoreParts.isNotEmpty ? scoreParts[0] : '';
+    final awayScore = scoreParts.length > 1 ? scoreParts[1] : '';
+    final isScheduled = event.score.toLowerCase() == 'v' || event.status == EventStatus.scheduled;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        height: MediaQuery.of(context).size.height * 0.55,
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade600,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      event.competition.toUpperCase(),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  _buildStatusChip(event),
+                ],
+              ),
+            ),
+            // Match info
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  _buildTeamLogo(event.homeLogo, size: 40),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(event.homeTeam, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        if (!isScheduled)
+                          Text(homeScore, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
+                      ],
+                    ),
+                  ),
+                  if (!isScheduled) ...[
+                    Text('$homeScore - $awayScore', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(event.awayTeam, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600), textAlign: TextAlign.right),
+                        if (!isScheduled)
+                          Text(awayScore, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
+                      ],
+                    ),
+                  ),
+                  _buildTeamLogo(event.awayLogo, size: 40),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Date/Time + Minute
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _formatDateLabel(event.date),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  ),
+                  if (!isScheduled && event.status == EventStatus.live)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${event.time ?? "\'"}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 24),
+            // Actions
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  // Flashscore button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => ArticleWebViewScreen(
+                            url: 'https://www.flashscore.com',
+                            title: 'Flashscore — ${event.competition}',
+                          ),
+                        ));
+                      },
+                      icon: const Icon(Icons.open_in_new, size: 16),
+                      label: const Text('Otwórz Flashscore'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Pin button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        sports.togglePinMatch(event.id);
+                        Navigator.pop(context);
+                      },
+                      icon: Icon(isPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 16),
+                      label: Text(isPinned ? 'Odpiń mecz' : 'Przypnij mecz'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: isPinned ? Colors.orange : AppTheme.accentGold,
+                        side: BorderSide(color: isPinned ? Colors.orange : AppTheme.accentGold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(MatchEvent event) {
+    if (event.status == EventStatus.live) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text('LIVE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
+      );
+    } else if (event.status == EventStatus.finished) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text('KONIEC', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+      );
+    } else {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppTheme.accentGold.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text('WKRÓTCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
+      );
+    }
+  }
+
+  Widget _buildTeamLogo(String? url, {double size = 14}) {
+    if (url == null || url.isEmpty) return Icon(Icons.shield, size: size, color: Colors.grey);
     return CachedNetworkImage(
       imageUrl: url,
-      width: 14,
-      height: 14,
-      placeholder: (context, url) => const Icon(Icons.shield, size: 14, color: Colors.grey),
-      errorWidget: (context, url, error) => const Icon(Icons.shield, size: 14, color: Colors.grey),
+      width: size,
+      height: size,
+      placeholder: (context, url) => Icon(Icons.shield, size: size, color: Colors.grey),
+      errorWidget: (context, url, error) => Icon(Icons.shield, size: size, color: Colors.grey),
     );
   }
 }
