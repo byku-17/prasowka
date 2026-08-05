@@ -168,9 +168,10 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
 
   void _openAirDetail() {
     final settings = context.read<SettingsProvider>();
+    final coords = settings.cityCoordinates;
     final city = settings.preferredCity;
-    // Airly główna mapa - działa na mobile
-    final url = 'https://airly.org/map';
+    // Airly mapa z współrzędnymi w hash - działa na mobile
+    final url = 'https://airly.org/map#lat=${coords.latitude.toStringAsFixed(4)}&lng=${coords.longitude.toStringAsFixed(4)}&zoom=11';
     _openInternalBrowser(url, 'Jakość powietrza: $city (Airly)');
   }
 
