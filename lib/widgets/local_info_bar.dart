@@ -20,6 +20,7 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
   bool _hasError = false;
   String? _lastCityHash;
   DateTime? _lastFetchTime;
+  bool _expanded = false;
 
   @override
   void initState() {
@@ -120,25 +121,30 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
     }
 
     final timeAgo = _getTimeAgo();
+    // timeAgo kept for potential future use
+    (timeAgo);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Weather tile (expandable)
           Expanded(
             child: _ExpandableWeatherTile(
               data: _weatherData,
-              timeAgo: timeAgo,
+              expanded: _expanded,
+              onExpansionChanged: (v) => setState(() => _expanded = v),
               onTap: _openWeatherDetail,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           // Air quality tile (expandable)
           Expanded(
             child: _ExpandableAirTile(
               data: _airData,
-              timeAgo: timeAgo,
+              expanded: _expanded,
+              onExpansionChanged: (v) => setState(() => _expanded = v),
               onTap: _openAirDetail,
             ),
           ),
@@ -162,10 +168,9 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
 
   void _openAirDetail() {
     final settings = context.read<SettingsProvider>();
-    final coords = settings.cityCoordinates;
     final city = settings.preferredCity;
-    // Prostszy format Airly - mapa z współrzędnymi
-    final url = 'https://airly.org/map/${coords.latitude.toStringAsFixed(4)},${coords.longitude.toStringAsFixed(4)}';
+    // Airly główna mapa - działa na mobile
+    final url = 'https://airly.org/map';
     _openInternalBrowser(url, 'Jakość powietrza: $city (Airly)');
   }
 
@@ -182,88 +187,71 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
   }
 }
 
-class _ExpandableWeatherTile extends StatefulWidget {
+class _ExpandableWeatherTile extends StatelessWidget {
   final WeatherData? data;
-  final String timeAgo;
+  final bool expanded;
+  final ValueChanged<bool> onExpansionChanged;
   final VoidCallback onTap;
 
   const _ExpandableWeatherTile({
     required this.data,
-    required this.timeAgo,
+    required this.expanded,
+    required this.onExpansionChanged,
     required this.onTap,
   });
 
   @override
-  State<_ExpandableWeatherTile> createState() => _ExpandableWeatherTileState();
-}
-
-class _ExpandableWeatherTileState extends State<_ExpandableWeatherTile> {
-  bool _expanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final data = widget.data;
-
+    final w = data; // local copy for null safety
     return GestureDetector(
-      onTap: () => setState(() => _expanded = !_expanded),
+      onTap: () => onExpansionChanged(!expanded),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        padding: EdgeInsets.all(_expanded ? 16 : 12),
+        padding: EdgeInsets.all(expanded ? 12 : 10),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [AppTheme.primaryNavy, AppTheme.primaryNavy.withValues(alpha: 0.8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header row (always visible)
+            // Header row
             Row(
               children: [
-                const Icon(Icons.thermostat, color: AppTheme.accentGold, size: 24),
-                const SizedBox(width: 10),
+                const Icon(Icons.thermostat, color: AppTheme.accentGold, size: 22),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        data != null ? '${data.temperature.round()}°C' : '—',
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        w != null ? '${w.temperature.round()}°C' : '—°C',
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        data?.condition ?? 'Brak danych',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
+                        w?.condition ?? 'Brak danych',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 10),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                // Timestamp + expand indicator
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (widget.timeAgo.isNotEmpty)
-                      Text(
-                        'akt. ${widget.timeAgo}',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9),
-                      ),
-                    AnimatedRotation(
-                      turns: _expanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Colors.white.withValues(alpha: 0.5),
-                        size: 18,
-                      ),
-                    ),
-                  ],
+                AnimatedRotation(
+                  turns: expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Colors.white.withValues(alpha: 0.5),
+                    size: 16,
+                  ),
                 ),
               ],
             ),
@@ -271,34 +259,35 @@ class _ExpandableWeatherTileState extends State<_ExpandableWeatherTile> {
             AnimatedCrossFade(
               firstChild: const SizedBox.shrink(),
               secondChild: Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.only(top: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (data != null) ...[
+                    if (w != null)
                       Text(
-                        '💨 Wiatr: ${data.windSpeed.round()} km/h  💧 Wilgotność: ${data.humidity}%',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+                        '💨 ${w.windSpeed.round()} km/h  💧${w.humidity}%',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10),
                       ),
-                      const SizedBox(height: 8),
-                    ],
+                    const SizedBox(height: 6),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: widget.onTap,
-                        icon: const Icon(Icons.open_in_new, size: 14),
-                        label: const Text('Szczegóły na Windy'),
+                        onPressed: onTap,
+                        icon: const Icon(Icons.open_in_new, size: 12),
+                        label: const Text('Windy', style: TextStyle(fontSize: 10)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppTheme.accentGold,
                           side: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.5)),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              crossFadeState: expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
               duration: const Duration(milliseconds: 200),
             ),
           ],
@@ -308,96 +297,79 @@ class _ExpandableWeatherTileState extends State<_ExpandableWeatherTile> {
   }
 }
 
-class _ExpandableAirTile extends StatefulWidget {
+class _ExpandableAirTile extends StatelessWidget {
   final AirQualityData? data;
-  final String timeAgo;
+  final bool expanded;
+  final ValueChanged<bool> onExpansionChanged;
   final VoidCallback onTap;
 
   const _ExpandableAirTile({
     required this.data,
-    required this.timeAgo,
+    required this.expanded,
+    required this.onExpansionChanged,
     required this.onTap,
   });
 
   @override
-  State<_ExpandableAirTile> createState() => _ExpandableAirTileState();
-}
-
-class _ExpandableAirTileState extends State<_ExpandableAirTile> {
-  bool _expanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final data = widget.data;
-
-    final color = data == null
+    final a = data; // local copy for null safety
+    final color = a == null
         ? Colors.grey
-        : data.pm25 <= 10
+        : a.pm25 <= 10
             ? Colors.green
-            : data.pm25 <= 25
+            : a.pm25 <= 25
                 ? Colors.orange
                 : Colors.red;
 
     return GestureDetector(
-      onTap: () => setState(() => _expanded = !_expanded),
+      onTap: () => onExpansionChanged(!expanded),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        padding: EdgeInsets.all(_expanded ? 16 : 12),
+        padding: EdgeInsets.all(expanded ? 12 : 10),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [color.withValues(alpha: 0.9), color.withValues(alpha: 0.6)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header row (always visible)
+            // Header row
             Row(
               children: [
-                const Icon(Icons.air, color: Colors.white, size: 24),
-                const SizedBox(width: 10),
+                const Icon(Icons.air, color: Colors.white, size: 22),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        data != null ? 'PM2.5: ${data.pm25.round()}' : '—',
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        a != null ? 'PM2.5: ${a.pm25.round()}' : '—',
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        data?.level ?? 'Brak danych',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 11),
+                        a?.level ?? 'Brak danych',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 10),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                // Timestamp + expand indicator
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (widget.timeAgo.isNotEmpty)
-                      Text(
-                        'akt. ${widget.timeAgo}',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9),
-                      ),
-                    AnimatedRotation(
-                      turns: _expanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Colors.white.withValues(alpha: 0.5),
-                        size: 18,
-                      ),
-                    ),
-                  ],
+                AnimatedRotation(
+                  turns: expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Colors.white.withValues(alpha: 0.5),
+                    size: 16,
+                  ),
                 ),
               ],
             ),
@@ -405,34 +377,35 @@ class _ExpandableAirTileState extends State<_ExpandableAirTile> {
             AnimatedCrossFade(
               firstChild: const SizedBox.shrink(),
               secondChild: Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.only(top: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (data != null) ...[
+                    if (a != null)
                       Text(
-                        'PM10: ${data.pm10.round()}  O₃: ${data.o3.round()}  NO₂: ${data.no2.round()}',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+                        'PM10: ${a.pm10.round()}  O₃: ${a.o3.round()}  NO₂: ${a.no2.round()}',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10),
                       ),
-                      const SizedBox(height: 8),
-                    ],
+                    const SizedBox(height: 6),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: widget.onTap,
-                        icon: const Icon(Icons.open_in_new, size: 14),
-                        label: const Text('Szczegóły na Airly'),
+                        onPressed: onTap,
+                        icon: const Icon(Icons.open_in_new, size: 12),
+                        label: const Text('Airly', style: TextStyle(fontSize: 10)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
                           side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              crossFadeState: expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
               duration: const Duration(milliseconds: 200),
             ),
           ],
