@@ -12,12 +12,12 @@ class AppTheme {
   static const Color elegantGold = Color(0xFFD4A017);
 
   // --- KOLORY ROYAL (PURPLE & WHITE) ---
-  static const Color royalPurple = Color(0xFF9B6DD7);      // przyciemniony (był #B47AFF)
-  static const Color royalPurpleDark = Color(0xFF8B5CF6);   // accent w dark mode
-  static const Color lightPurple = Color(0xFFE8DAFF);       // jaśniejszy secondary
-  static const Color mediumPurple = Color(0xFF7C5CBF);      // ciemniejszy wariant medium
-  static const Color mediumBg = Color(0xFFF3EEFF);          // tło medium (ciemniejsze)
-  static const Color mediumCard = Color(0xFFEDE5FF);        // karty medium
+  static const Color royalPurple = Color(0xFF9B6DD7);
+  static const Color royalPurpleDark = Color(0xFF8B5CF6);
+  static const Color lightPurple = Color(0xFFE8DAFF);
+  static const Color mediumPurple = Color(0xFF7C5CBF);
+  static const Color mediumBg = Color(0xFFF3EEFF);
+  static const Color mediumCard = Color(0xFFEDE5FF);
 
   /// Zwraca kolor akcentu dopasowany do aktualnego motywu
   static Color accentFor(BuildContext context) {
@@ -26,10 +26,6 @@ class AppTheme {
   }
 
   static ThemeData getTheme(AppThemeVariant variant, bool isDark, {ColorScheme? dynamicScheme}) {
-    if (variant == AppThemeVariant.system && dynamicScheme != null) {
-      return _buildDynamicTheme(dynamicScheme, isDark);
-    }
-
     switch (variant) {
       case AppThemeVariant.elegantLight:
         return _buildElegantLightTheme();
@@ -37,41 +33,19 @@ class AppTheme {
         return isDark ? _buildRoyalDarkTheme() : _buildRoyalLightTheme();
       case AppThemeVariant.medium:
         return _buildMediumTheme();
+      case AppThemeVariant.system:
+        return isDark ? _buildClassicDarkTheme() : _buildClassicLightTheme();
       case AppThemeVariant.classic:
       default:
         return isDark ? _buildClassicDarkTheme() : _buildClassicLightTheme();
     }
   }
 
-  // --- BUILDERY MOTYWÓW ---
-
-  static ThemeData _buildClassicLightTheme() {
-    final base = ThemeData.light();
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      primaryColor: primaryNavy,
-      textTheme: GoogleFonts.syneTextTheme(base.textTheme).apply(
-        bodyColor: Colors.black87,
-        displayColor: Colors.black87,
-      ),
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryNavy,
-        primary: primaryNavy,
-        secondary: accentGold,
-        surface: Colors.white,
-      ),
-      scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: primaryNavy,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
-    );
-  }
+  // ─── CIEMNY: ciemne tło + złote/pomarańczowe akcenty ───
 
   static ThemeData _buildClassicDarkTheme() {
     const Color deepBlack = Color(0xFF1E2126);
+    const Color surfaceDark = Color(0xFF262B32);
     final base = ThemeData.dark();
     return ThemeData(
       useMaterial3: true,
@@ -91,11 +65,113 @@ class AppTheme {
       scaffoldBackgroundColor: deepBlack,
       appBarTheme: const AppBarTheme(
         backgroundColor: deepBlack,
-        foregroundColor: Colors.white,
+        foregroundColor: accentGold,
         centerTitle: true,
+      ),
+      cardTheme: CardThemeData(
+        color: surfaceDark,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Colors.white12, width: 1),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? accentGold : Colors.grey),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? accentGold.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: accentGold,
+          foregroundColor: deepBlack,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: accentGold),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(foregroundColor: accentGold),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: accentGold,
+        foregroundColor: deepBlack,
+      ),
+      dividerTheme: const DividerThemeData(color: Colors.white12),
+      iconTheme: const IconThemeData(color: Colors.white70),
+      listTileTheme: const ListTileThemeData(
+        textColor: Colors.white,
+        iconColor: Colors.white70,
       ),
     );
   }
+
+  // ─── JASNY: jasne tło + ciemne teksty ───
+
+  static ThemeData _buildClassicLightTheme() {
+    final base = ThemeData.light();
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      primaryColor: primaryNavy,
+      textTheme: GoogleFonts.syneTextTheme(base.textTheme).apply(
+        bodyColor: primaryNavy,
+        displayColor: primaryNavy,
+      ),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primaryNavy,
+        primary: primaryNavy,
+        secondary: accentGold,
+        surface: Colors.white,
+      ),
+      scaffoldBackgroundColor: const Color(0xFFF5F6F8),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFF5F6F8),
+        foregroundColor: primaryNavy,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFE8E9EC), width: 1),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? primaryNavy : Colors.grey),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? primaryNavy.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryNavy,
+          foregroundColor: Colors.white,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: primaryNavy),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(foregroundColor: primaryNavy),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: primaryNavy,
+        foregroundColor: Colors.white,
+      ),
+      dividerTheme: const DividerThemeData(color: Color(0xFFE0E0E0)),
+      iconTheme: const IconThemeData(color: Color(0xFF555555)),
+      listTileTheme: const ListTileThemeData(
+        textColor: primaryNavy,
+        iconColor: Color(0xFF555555),
+      ),
+    );
+  }
+
+  // ─── ELEGANT: ecru + złoto ───
 
   static ThemeData _buildElegantLightTheme() {
     final base = ThemeData.light();
@@ -104,8 +180,8 @@ class AppTheme {
       brightness: Brightness.light,
       primaryColor: elegantGold,
       textTheme: GoogleFonts.syneTextTheme(base.textTheme).apply(
-        bodyColor: Colors.black87,
-        displayColor: Colors.black87,
+        bodyColor: const Color(0xFF2C2C2C),
+        displayColor: const Color(0xFF2C2C2C),
       ),
       colorScheme: ColorScheme.fromSeed(
         seedColor: elegantGold,
@@ -115,18 +191,47 @@ class AppTheme {
       ),
       scaffoldBackgroundColor: elegantEcru,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 1,
+        backgroundColor: elegantEcru,
+        foregroundColor: Color(0xFF2C2C2C),
+        elevation: 0,
         centerTitle: true,
       ),
       cardTheme: CardThemeData(
         color: Colors.white,
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFE8DCC8), width: 1),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? elegantGold : Colors.grey),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? elegantGold.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: elegantGold,
+          foregroundColor: Colors.white,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: elegantGold),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(foregroundColor: elegantGold),
+      ),
+      dividerTheme: const DividerThemeData(color: Color(0xFFE8DCC8)),
+      iconTheme: const IconThemeData(color: Color(0xFF666666)),
+      listTileTheme: const ListTileThemeData(
+        textColor: Color(0xFF2C2C2C),
+        iconColor: Color(0xFF666666),
       ),
     );
   }
+
+  // ─── ROYAL PURPLE LIGHT: fioletowe tło + ciemne teksty ───
 
   static ThemeData _buildRoyalLightTheme() {
     final base = ThemeData.light();
@@ -145,7 +250,7 @@ class AppTheme {
         surface: Colors.white,
       ),
       scaffoldBackgroundColor: const Color(0xFFF5F0FF),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: royalPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -180,8 +285,16 @@ class AppTheme {
         backgroundColor: royalPurple,
         foregroundColor: Colors.white,
       ),
+      dividerTheme: const DividerThemeData(color: Color(0xFFDCC8FF)),
+      iconTheme: const IconThemeData(color: Color(0xFF6B5B8D)),
+      listTileTheme: const ListTileThemeData(
+        textColor: Color(0xFF2D2D3F),
+        iconColor: Color(0xFF6B5B8D),
+      ),
     );
   }
+
+  // ─── ROYAL PURPLE DARK: ciemne fioletowe tło + jasne teksty ───
 
   static ThemeData _buildRoyalDarkTheme() {
     const Color royalDarkBg = Color(0xFF1A1528);
@@ -203,7 +316,7 @@ class AppTheme {
         surface: royalDarkBg,
       ),
       scaffoldBackgroundColor: royalDarkBg,
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: royalDarkBg,
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -216,8 +329,16 @@ class AppTheme {
           side: const BorderSide(color: Colors.white12, width: 1),
         ),
       ),
+      dividerTheme: const DividerThemeData(color: Colors.white12),
+      iconTheme: const IconThemeData(color: Colors.white70),
+      listTileTheme: const ListTileThemeData(
+        textColor: Colors.white,
+        iconColor: Colors.white70,
+      ),
     );
   }
+
+  // ─── MEDIUM: fioletowe tło + ciemne teksty kontrastowe ───
 
   static ThemeData _buildMediumTheme() {
     final base = ThemeData.light();
@@ -236,7 +357,7 @@ class AppTheme {
         surface: Colors.white,
       ),
       scaffoldBackgroundColor: mediumBg,
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: mediumPurple,
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -271,19 +392,11 @@ class AppTheme {
         backgroundColor: mediumPurple,
         foregroundColor: Colors.white,
       ),
-    );
-  }
-
-  static ThemeData _buildDynamicTheme(ColorScheme scheme, bool isDark) {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: isDark ? Brightness.dark : Brightness.light,
-      colorScheme: scheme,
-      textTheme: GoogleFonts.syneTextTheme(isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme),
-      appBarTheme: AppBarTheme(
-        backgroundColor: scheme.surface,
-        foregroundColor: scheme.onSurface,
-        centerTitle: true,
+      dividerTheme: DividerThemeData(color: mediumPurple.withValues(alpha: 0.2)),
+      iconTheme: IconThemeData(color: mediumPurple.withValues(alpha: 0.7)),
+      listTileTheme: const ListTileThemeData(
+        textColor: Color(0xFF1E1B2E),
+        iconColor: Color(0xFF5A4A7A),
       ),
     );
   }

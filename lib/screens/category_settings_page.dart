@@ -20,7 +20,7 @@ class CategorySettingsPage extends StatelessWidget {
           return ListTile(
             key: ValueKey(cat.id),
             leading: Icon(cat.icon, color: isActive ? AppTheme.accentFor(context) : Colors.grey),
-            title: Text(cat.name, style: TextStyle(color: isActive ? Colors.white : Colors.grey)),
+            title: Text(cat.name, style: TextStyle(color: isActive ? Theme.of(context).listTileTheme.textColor : Colors.grey)),
             trailing: cat.id == 'all' 
                 ? const Icon(Icons.lock_outline, size: 18, color: Colors.grey)
                 : Switch(
