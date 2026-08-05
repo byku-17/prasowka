@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/screens/home_screen.dart';
-import 'package:prasowka/screens/search_screen.dart';
 import 'package:prasowka/screens/saved_screen.dart';
 import 'package:prasowka/screens/settings_screen.dart';
+import 'package:prasowka/screens/search_bottom_sheet.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
@@ -24,8 +24,6 @@ class _MainScreenState extends State<MainScreen> {
   DateTime? _lastBackPressTime;
   StreamSubscription? _notificationSubscription;
 
-  final _searchScreenKey = GlobalKey<SearchScreenState>();
-
   late final List<Widget> _screens;
 
   @override
@@ -35,7 +33,6 @@ class _MainScreenState extends State<MainScreen> {
     _pageController = PageController(initialPage: _currentIndex);
     _screens = [
       const HomeScreen(),
-      SearchScreen(key: _searchScreenKey),
       const SavedScreen(),
       const SettingsScreen(),
     ];
@@ -75,11 +72,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _onTabTapped(int index) {
-    // Tap na ten sam tab → aktywuj klawiaturę w SearchScreen
-    if (index == _currentIndex && index == 1) {
-      _searchScreenKey.currentState?.activateSearch();
-      return;
-    }
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 250),
@@ -90,6 +82,16 @@ class _MainScreenState extends State<MainScreen> {
   void _onPageChanged(int index) {
     setState(() => _currentIndex = index);
     context.read<SettingsProvider>().setLastTabIndex(index);
+  }
+
+  void _openSearch() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const SearchBottomSheet(),
+    );
   }
 
   @override
@@ -134,6 +136,15 @@ class _MainScreenState extends State<MainScreen> {
           physics: const ClampingScrollPhysics(),
           children: _screens,
         ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _openSearch,
+          backgroundColor: AppTheme.accentGold,
+          foregroundColor: Colors.black,
+          elevation: 6,
+          shape: const CircleBorder(),
+          child: const Icon(Icons.search, size: 28),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: _onTabTapped,
@@ -143,7 +154,6 @@ class _MainScreenState extends State<MainScreen> {
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Główna'),
-            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Szukaj'),
             BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Zapisane'),
             BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ustawienia'),
           ],
