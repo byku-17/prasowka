@@ -22,6 +22,24 @@ class _SearchBottomSheetState extends State<SearchBottomSheet> {
   bool _isLoading = false;
   bool _hasSearched = false;
 
+  static const _popularTopics = [
+    'Polska',
+    'Świat',
+    'Polityka',
+    'Gospodarka',
+    'Klimat',
+    'AI',
+    'Piłka nożna',
+    'Ekstraklasa',
+    'Premier League',
+    'NBA',
+    'Sport',
+    'Kultura',
+    'Nauka',
+    'Technologia',
+    'Podróże',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -158,18 +176,55 @@ class _SearchBottomSheetState extends State<SearchBottomSheet> {
     }
 
     if (!_hasSearched) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search, size: 48, color: Colors.grey.shade700),
-            const SizedBox(height: 16),
-            Text(
-              'Wpisz frazę (min. 3 znaki)',
-              style: TextStyle(color: Colors.grey.shade500),
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'POPULARNE TEMATY',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                color: Colors.grey.shade500,
+              ),
             ),
-          ],
-        ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _popularTopics.map((topic) {
+              return GestureDetector(
+                onTap: () {
+                  _searchController.text = topic;
+                  _onSearchChanged(topic);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white12
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Text(
+                    topic,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : AppTheme.graphite,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       );
     }
 
