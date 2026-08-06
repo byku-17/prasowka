@@ -226,6 +226,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           const inactiveIcon = Colors.grey;
           return Column(
             mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               FloatingActionButton.small(
                 heroTag: 'like',
@@ -264,6 +265,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           );
         },
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniStartFloat,
     );
   }
 
@@ -304,18 +306,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: const Color(0xFF2E3238),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.keyboard_arrow_up, color: Theme.of(context).colorScheme.onSurface, size: 24),
-                  const SizedBox(width: 8),
+                  Icon(Icons.keyboard_arrow_up, color: Colors.white70, size: 24),
+                  SizedBox(width: 8),
                   Text(
                     'Przesuń jeszcze raz, aby pobrać artykuł',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: Colors.white70,
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
                     ),
