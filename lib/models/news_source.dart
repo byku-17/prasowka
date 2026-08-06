@@ -45,6 +45,22 @@ class NewsSource extends HiveObject {
     return 'https://news.google.com/rss/search?q=$query&hl=pl&gl=PL&ceid=PL:pl';
   }
 
+  /// Mapowanie miasta na ID lokalnego portalu (obok Google News)
+  static const Map<String, String> cityLocalSourceId = {
+    'Warszawa': 'warszawa_pl',
+    'Kraków': 'krakow_pl',
+    'Wrocław': 'wroclaw_pl',
+    'Gdańsk': 'radiogdansk',
+    'Poznań': 'tenpoznan',
+    'Łódź': 'lokalna_news',
+    'Katowice': '24katowice',
+    'Szczecin': 'gs24_szczecin',
+    'Białystok': 'bialystokonline',
+    'Olsztyn': 'olsztyn24',
+    'Zielona Góra': 'zielonagoraonline',
+    'Rzeszów': 'rzeszow_news',
+  };
+
   NewsSource({
     required this.id,
     required this.name,
@@ -199,6 +215,20 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'vogue_kultura', name: 'Vogue Polska', rssUrl: 'https://www.vogue.pl/k/kultura/feed', categoryId: 'culture'),
 
     NewsSource(id: 'jakbyniepaczec_pod', name: 'Jakbyniepaczec', rssUrl: 'https://anchor.fm/s/3cc71778/podcast/rss', categoryId: 'culture'),
+
+    // --- PORTALE MIEJSKIE ---
+    NewsSource(id: 'warszawa_pl', name: 'Warszawa.pl', rssUrl: 'https://www.warszawa.pl/feed/', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'krakow_pl', name: 'Kraków.pl', rssUrl: 'https://krakow.pl/feeds/rss/komunikaty/26', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'wroclaw_pl', name: 'Wrocław.pl', rssUrl: 'https://www.wroclaw.pl/dla-mieszkanca/rss', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'radiogdansk', name: 'Radio Gdańsk', rssUrl: 'https://radiogdansk.pl/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'tenpoznan', name: 'TenPoznań.pl', rssUrl: 'https://tenpoznan.pl/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'lokalna_news', name: 'Lokalna.news (Łódź)', rssUrl: 'https://www.lokalna.news/rss/articles/pl', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: '24katowice', name: '24KATOWICE.pl', rssUrl: 'https://24katowice.pl/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'gs24_szczecin', name: 'Głos Szczeciński', rssUrl: 'https://gs24.pl/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'bialystokonline', name: 'BiałystokOnline', rssUrl: 'https://www.bfrv.pl/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'olsztyn24', name: 'Olsztyn24', rssUrl: 'https://olsztyn24.info/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'zielonagoraonline', name: 'ZielonaGóraOnline', rssUrl: 'https://zielonagoraonline.pl/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'rzeszow_news', name: 'Rzeszów News', rssUrl: 'https://rzeszow-news.pl/feed/', categoryId: 'warsaw', isDefault: true),
 
     // --- PODRÓŻE ---
     NewsSource(id: 'fly4free', name: 'Fly4free', rssUrl: 'https://www.fly4free.pl/feed/', categoryId: 'travel', isDefault: true),

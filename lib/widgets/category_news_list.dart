@@ -34,15 +34,32 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
     final city = settings.preferredCity;
     final catId = widget.category.id;
     
-    // Dla kategorii "warsaw" użyj Google News dla wybranego miasta
+    // Dla kategorii "warsaw" łączymy Google News + lokalny portal
     if (catId == 'warsaw') {
+      final sources = <NewsSource>[];
+      
+      // Dodaj lokalny portal dla miasta (jeśli istnieje)
+      final localSourceId = NewsSource.cityLocalSourceId[city];
+      if (localSourceId != null) {
+        final localSource = settings.allSources.firstWhere(
+          (s) => s.id == localSourceId,
+          orElse: () => NewsSource(id: '', name: '', rssUrl: '', categoryId: 'warsaw'),
+        );
+        if (localSource.id.isNotEmpty) {
+          sources.add(localSource);
+        }
+      }
+      
+      // Dodaj Google News dla miasta
       final googleNewsUrl = NewsSource.googleNewsCityUrl(city);
-      return [NewsSource(
+      sources.add(NewsSource(
         id: 'google_news_$city',
         name: 'Google News - $city',
         rssUrl: googleNewsUrl,
         categoryId: 'warsaw',
-      )];
+      ));
+      
+      return sources;
     }
 
     // Dla "api_news" nie potrzebujemy źródeł RSS
