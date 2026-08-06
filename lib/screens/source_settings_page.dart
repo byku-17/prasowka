@@ -15,6 +15,11 @@ class SourceSettingsPage extends StatelessWidget {
     {'name': 'Poznań', 'lat': 52.4064, 'lon': 16.9252},
     {'name': 'Łódź', 'lat': 51.7592, 'lon': 19.4560},
     {'name': 'Katowice', 'lat': 50.2649, 'lon': 19.0238},
+    {'name': 'Szczecin', 'lat': 53.4285, 'lon': 14.5528},
+    {'name': 'Białystok', 'lat': 53.1325, 'lon': 23.1688},
+    {'name': 'Olsztyn', 'lat': 53.7784, 'lon': 20.4801},
+    {'name': 'Zielona Góra', 'lat': 51.9356, 'lon': 15.5062},
+    {'name': 'Rzeszów', 'lat': 50.0412, 'lon': 21.9991},
   ];
 
   @override
