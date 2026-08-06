@@ -25,6 +25,62 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
   bool _isLoading = true;
   String? _currentUrl;
 
+  /// Zawsze wstrzykiwane — ukrywa banery cookie/RODO (bez pełnego reader mode)
+  static const _hideCookieBanners = '''
+    (function() {
+      var selectors = [
+        '[class*="cookie"]', '[id*="cookie"]',
+        '[class*="consent"]', '[id*="consent"]',
+        '[class*="rodo"]', '[id*="rodo"]',
+        '[class*="gdpr"]', '[id*="gdpr"]',
+        '[class*="cmp"]', '[id*="cmp"]',
+        '[class*="onetrust"]', '[id*="onetrust"]',
+        '[class*="cc-banner"]', '[class*="cc-window"]',
+        '[id*="sp_message"]', '[class*="sp_veil"]',
+        '[id*="accept-cookies"]', '[class*="accept-cookies"]',
+        '[class*="notice"]', '[id*="notice"]',
+        '[class*="Privacy"]', '[id*="Privacy"]',
+        '[class*="policy"]', '[id*="policy"]',
+        'div[class*="QC"]', 'div[id*="QC"]',
+        '[class*="CybotCookiebotDialog"]', '[id*="CybotCookiebotDialog"]',
+        '[id*="cookieconsent"]', '[class*="cookieconsent"]',
+        '[class*="iubenda"]', '[id*="iubenda"]',
+        '[class*="cookies-banner"]', '[id*="cookies-banner"]',
+        '[class*="cookie-law"]', '[id*="cookie-law"]',
+        '[class*="CookieConsent"]', '[id*="CookieConsent"]',
+        '[class*="accept-cookie"]', '[id*="accept-cookie"]',
+        '[id*="ez-cookie"]', '[class*="ez-cookie"]',
+        '[class*="pea_cook"]', '[id*="pea_cook"]',
+        '[id*="cookie-notice"]', '[class*="cookie-notice"]',
+        '[id*="cookie-wall"]', '[class*="cookie-wall"]'
+      ];
+      selectors.forEach(function(s) {
+        document.querySelectorAll(s).forEach(function(el) {
+          el.style.display = 'none';
+          el.remove();
+        });
+      });
+      // Ukryj fixed/sticky overlaye (cookie bannery często mają position:fixed)
+      document.querySelectorAll('*').forEach(function(el) {
+        var cs = window.getComputedStyle(el);
+        if ((cs.position === 'fixed' || cs.position === 'sticky') && cs.zIndex > 100) {
+          var tag = el.tagName.toLowerCase();
+          if (tag !== 'header' && tag !== 'nav' && tag !== 'footer') {
+            el.style.display = 'none';
+          }
+        }
+      });
+      // Kliknij wszystkie "Akceptuję" / "Accept" / "Zgadzam się" / "OK" przyciski
+      var btnTexts = ['akceptuj', 'accept', 'zgodz', 'ok', 'rozumiem', 'przejdź', 'close', 'zamknij'];
+      document.querySelectorAll('button, a, [role="button"]').forEach(function(el) {
+        var txt = (el.textContent || '').toLowerCase().trim();
+        if (btnTexts.some(function(t) { return txt.indexOf(t) === 0; }) && txt.length < 40) {
+          try { el.click(); } catch(e) {}
+        }
+      });
+    })();
+  ''';
+
   static const _readerCss = '''
     (function() {
       // 1. Ukryj cookie/RODO banery
@@ -147,6 +203,9 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
           if (mounted) setState(() => _isLoading = true);
         },
         onPageFinished: (_) {
+          // Zawsze ukrywaj banery cookie
+          _controller.runJavaScript(_hideCookieBanners);
+          // Full reader mode tylko dla artykułów
           if (widget.useReaderMode) {
             _injectReaderCss();
           }
