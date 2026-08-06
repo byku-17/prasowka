@@ -51,8 +51,40 @@ class SportsProvider with ChangeNotifier {
 
   List<SportEvent> get events {
     final all = <SportEvent>[];
+    final now = DateTime.now();
     for (final entry in _leagueCache.values) {
-      all.addAll(entry.events);
+      final age = now.difference(entry.fetchedAt);
+      for (final event in entry.events) {
+        if (event is MatchEvent) {
+          DataFreshness f;
+          if (age < const Duration(minutes: 2)) {
+            f = DataFreshness.fresh;
+          } else if (age < const Duration(minutes: 15)) {
+            f = DataFreshness.cached;
+          } else if (age < const Duration(minutes: 60)) {
+            f = DataFreshness.stale;
+          } else {
+            f = DataFreshness.unavailable;
+          }
+          all.add(MatchEvent(
+            id: event.id,
+            type: event.type,
+            date: event.date,
+            status: event.status,
+            homeTeam: event.homeTeam,
+            awayTeam: event.awayTeam,
+            score: event.score,
+            competition: event.competition,
+            homeLogo: event.homeLogo,
+            awayLogo: event.awayLogo,
+            time: event.time,
+            freshness: f,
+            fetchedAtUtc: entry.fetchedAt.toUtc(),
+          ));
+        } else {
+          all.add(event);
+        }
+      }
     }
     return all;
   }

@@ -465,6 +465,27 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
                 Text(awayScore, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
             ],
           ),
+          if (!isScheduled && event.fetchedAtUtc != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    event.freshness == DataFreshness.fresh ? Icons.circle : Icons.circle_outlined,
+                    size: 5,
+                    color: _freshnessColor(event.freshness),
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    _formatFreshness(event),
+                    style: TextStyle(
+                      fontSize: 7,
+                      color: _freshnessColor(event.freshness),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (isScheduled) ...[
             const Spacer(),
             Text(
@@ -482,6 +503,23 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
 
   String _formatDateShort(DateTime date) => "${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}";
   String _formatTime(DateTime date) => "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+
+  Color _freshnessColor(DataFreshness f) {
+    switch (f) {
+      case DataFreshness.fresh: return Colors.green;
+      case DataFreshness.cached: return Colors.grey;
+      case DataFreshness.stale: return Colors.orange;
+      case DataFreshness.unavailable: return Colors.red;
+    }
+  }
+
+  String _formatFreshness(MatchEvent event) {
+    if (event.fetchedAtUtc == null) return '';
+    final diff = DateTime.now().difference(event.fetchedAtUtc!);
+    if (diff.inSeconds < 60) return 'akt. ${diff.inSeconds}s temu';
+    if (diff.inMinutes < 60) return 'akt. ${diff.inMinutes} min temu';
+    return 'ostatni stan · ${diff.inHours}h temu';
+  }
 
   String _formatDateLabel(DateTime date) {
     final now = DateTime.now();

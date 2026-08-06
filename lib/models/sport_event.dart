@@ -2,6 +2,8 @@ enum SportType { football, nba, f1, tennis, volleyball, handball, nhl, mlb, nfl,
 
 enum EventStatus { live, finished, scheduled }
 
+enum DataFreshness { fresh, cached, stale, unavailable }
+
 abstract class SportEvent {
   final String id;
   final SportType type;
@@ -32,6 +34,8 @@ class MatchEvent extends SportEvent {
   final String score;
   final String? time;
   final String competition;
+  final DataFreshness freshness;
+  final DateTime? fetchedAtUtc;
 
   MatchEvent({
     required super.id,
@@ -45,6 +49,8 @@ class MatchEvent extends SportEvent {
     this.homeLogo,
     this.awayLogo,
     this.time,
+    this.freshness = DataFreshness.fresh,
+    this.fetchedAtUtc,
   });
 
   @override
@@ -61,6 +67,8 @@ class MatchEvent extends SportEvent {
     'score': score,
     'time': time,
     'competition': competition,
+    'freshness': freshness.name,
+    'fetchedAtUtc': fetchedAtUtc?.toIso8601String(),
   };
 
   factory MatchEvent.fromMap(Map m) => MatchEvent(
@@ -75,6 +83,8 @@ class MatchEvent extends SportEvent {
     homeLogo: m['homeLogo'],
     awayLogo: m['awayLogo'],
     time: m['time'],
+    freshness: DataFreshness.values.firstWhere((e) => e.name == (m['freshness'] ?? 'fresh')),
+    fetchedAtUtc: m['fetchedAtUtc'] != null ? DateTime.tryParse(m['fetchedAtUtc']) : null,
   );
 }
 
