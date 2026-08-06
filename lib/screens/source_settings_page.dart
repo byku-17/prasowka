@@ -13,13 +13,17 @@ class SourceSettingsPage extends StatelessWidget {
     {'name': 'Wrocław', 'lat': 51.1079, 'lon': 17.0385},
     {'name': 'Gdańsk', 'lat': 54.3520, 'lon': 18.6466},
     {'name': 'Poznań', 'lat': 52.4064, 'lon': 16.9252},
-    {'name': 'Łódź', 'lat': 51.7592, 'lon': 19.4560},
     {'name': 'Katowice', 'lat': 50.2649, 'lon': 19.0238},
-    {'name': 'Szczecin', 'lat': 53.4285, 'lon': 14.5528},
     {'name': 'Białystok', 'lat': 53.1325, 'lon': 23.1688},
-    {'name': 'Olsztyn', 'lat': 53.7784, 'lon': 20.4801},
     {'name': 'Zielona Góra', 'lat': 51.9356, 'lon': 15.5062},
     {'name': 'Rzeszów', 'lat': 50.0412, 'lon': 21.9991},
+    {'name': 'Łódź', 'lat': 51.7592, 'lon': 19.4560},
+    {'name': 'Szczecin', 'lat': 53.4285, 'lon': 14.5528},
+    {'name': 'Olsztyn', 'lat': 53.7784, 'lon': 20.4801},
+    {'name': 'Lublin', 'lat': 51.2465, 'lon': 22.5684},
+    {'name': 'Kielce', 'lat': 50.8661, 'lon': 20.6286},
+    {'name': 'Opole', 'lat': 50.6751, 'lon': 17.9213},
+    {'name': 'Toruń', 'lat': 53.0107, 'lon': 18.6047},
   ];
 
   @override
@@ -69,7 +73,7 @@ class SourceSettingsPage extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
-              'Dla wybranego miasta wyświetlamy wiadomości z Google News.',
+              'Dla wybranego miasta wyświetlamy Google News + lokalny portal.',
               style: TextStyle(fontSize: 11, color: Colors.grey[600]),
             ),
           ),

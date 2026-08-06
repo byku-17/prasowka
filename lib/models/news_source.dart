@@ -47,18 +47,21 @@ class NewsSource extends HiveObject {
 
   /// Mapowanie miasta na ID lokalnego portalu (obok Google News)
   static const Map<String, String> cityLocalSourceId = {
-    'Warszawa': 'warszawa_pl',
+    'Warszawa': 'warszawa_w_pigulce',
     'Kraków': 'krakow_pl',
     'Wrocław': 'wroclaw_pl',
     'Gdańsk': 'radiogdansk',
     'Poznań': 'tenpoznan',
-    'Łódź': 'lokalna_news',
     'Katowice': '24katowice',
-    'Szczecin': 'gs24_szczecin',
-    'Białystok': 'bialystokonline',
-    'Olsztyn': 'olsztyn24',
-    'Zielona Góra': 'zielonagoraonline',
+    'Białystok': 'poranny',
+    'Zielona Góra': 'rzg',
     'Rzeszów': 'rzeszow_news',
+    'Łódź': 'rmf24_lodz',
+    'Szczecin': 'rmf24_szczecin',
+    'Olsztyn': 'rmf24_olsztyn',
+    'Lublin': 'rmf24_lublin',
+    'Kielce': 'rmf24_kielce',
+    'Opole': 'radio_opole',
   };
 
   NewsSource({
@@ -217,18 +220,21 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'jakbyniepaczec_pod', name: 'Jakbyniepaczec', rssUrl: 'https://anchor.fm/s/3cc71778/podcast/rss', categoryId: 'culture'),
 
     // --- PORTALE MIEJSKIE ---
-    NewsSource(id: 'warszawa_pl', name: 'Warszawa.pl', rssUrl: 'https://www.warszawa.pl/feed/', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'warszawa_w_pigulce', name: 'Warszawa W Pigułce', rssUrl: 'https://warszawawpigulce.pl/feed/', categoryId: 'warsaw', isDefault: true),
     NewsSource(id: 'krakow_pl', name: 'Kraków.pl', rssUrl: 'https://krakow.pl/feeds/rss/komunikaty/26', categoryId: 'warsaw', isDefault: true),
     NewsSource(id: 'wroclaw_pl', name: 'Wrocław.pl', rssUrl: 'https://www.wroclaw.pl/dla-mieszkanca/rss', categoryId: 'warsaw', isDefault: true),
     NewsSource(id: 'radiogdansk', name: 'Radio Gdańsk', rssUrl: 'https://radiogdansk.pl/feed', categoryId: 'warsaw', isDefault: true),
     NewsSource(id: 'tenpoznan', name: 'TenPoznań.pl', rssUrl: 'https://tenpoznan.pl/feed', categoryId: 'warsaw', isDefault: true),
-    NewsSource(id: 'lokalna_news', name: 'Lokalna.news (Łódź)', rssUrl: 'https://www.lokalna.news/rss/articles/pl', categoryId: 'warsaw', isDefault: true),
     NewsSource(id: '24katowice', name: '24KATOWICE.pl', rssUrl: 'https://24katowice.pl/feed', categoryId: 'warsaw', isDefault: true),
-    NewsSource(id: 'gs24_szczecin', name: 'Głos Szczeciński', rssUrl: 'https://gs24.pl/feed', categoryId: 'warsaw', isDefault: true),
-    NewsSource(id: 'bialystokonline', name: 'BiałystokOnline', rssUrl: 'https://www.bfrv.pl/feed', categoryId: 'warsaw', isDefault: true),
-    NewsSource(id: 'olsztyn24', name: 'Olsztyn24', rssUrl: 'https://olsztyn24.info/feed', categoryId: 'warsaw', isDefault: true),
-    NewsSource(id: 'zielonagoraonline', name: 'ZielonaGóraOnline', rssUrl: 'https://zielonagoraonline.pl/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'poranny', name: 'Kurier Poranny (Białystok)', rssUrl: 'https://poranny.pl/rss', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'rzg', name: 'Radio Zielona Góra', rssUrl: 'https://rzg.pl/feed/', categoryId: 'warsaw', isDefault: true),
     NewsSource(id: 'rzeszow_news', name: 'Rzeszów News', rssUrl: 'https://rzeszow-news.pl/feed/', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'rmf24_lodz', name: 'RMF24 Łódź', rssUrl: 'https://www.rmf24.pl/regiony/lodz/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'rmf24_szczecin', name: 'RMF24 Szczecin', rssUrl: 'https://www.rmf24.pl/regiony/szczecin/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'rmf24_olsztyn', name: 'RMF24 Olsztyn', rssUrl: 'https://www.rmf24.pl/regiony/olsztyn/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'rmf24_lublin', name: 'RMF24 Lublin', rssUrl: 'https://www.rmf24.pl/regiony/lublin/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'rmf24_kielce', name: 'RMF24 Kielce', rssUrl: 'https://www.rmf24.pl/regiony/kielce/feed', categoryId: 'warsaw', isDefault: true),
+    NewsSource(id: 'radio_opole', name: 'Radio Opole', rssUrl: 'https://radio.opole.pl/rss.php?idp=100', categoryId: 'warsaw', isDefault: true),
 
     // --- PODRÓŻE ---
     NewsSource(id: 'fly4free', name: 'Fly4free', rssUrl: 'https://www.fly4free.pl/feed/', categoryId: 'travel', isDefault: true),
