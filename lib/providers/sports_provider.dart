@@ -43,13 +43,21 @@ class SportsProvider with ChangeNotifier {
   final SportsService _service = SportsService();
   
   final Map<String, _LeagueCacheEntry> _leagueCache = {};
+  List<SportEvent> _filteredEvents = [];
   final List<String> _debugLogs = [];
   bool _isLoading = false;
   DateTime? _lastFetch;
   Timer? _refreshTimer;
+  List<String>? _currentFavorites;
+  bool _currentOnlyFavorites = true;
   List<String>? _currentSelectedLeagues;
 
-  List<SportEvent> get events {
+  List<SportEvent> get events => _filteredEvents;
+  List<String> get debugLogs => _debugLogs;
+  bool get isLoading => _isLoading;
+  DateTime? get lastFetch => _lastFetch;
+
+  List<SportEvent> _allCachedEvents() {
     final all = <SportEvent>[];
     final now = DateTime.now();
     for (final entry in _leagueCache.values) {
@@ -88,10 +96,34 @@ class SportsProvider with ChangeNotifier {
     }
     return all;
   }
-  List<String> get debugLogs => _debugLogs;
-  bool get isLoading => _isLoading;
-  DateTime? get lastFetch => _lastFetch;
 
+  void _applyFilters() {
+    // Usuń wygasłe wpisy
+    final probeAll = _allCachedEvents();
+    final hasLive = probeAll.any((e) => e.status == EventStatus.live);
+    _leagueCache.removeWhere((key, entry) => entry.isExpired(hasLive));
+
+    // Oblicz przefiltrowane po cleanup
+    final allEvents = _allCachedEvents();
+
+    if (_currentFavorites != null && _currentFavorites!.isNotEmpty) {
+      _filteredEvents = _filterAndSortEvents(allEvents, _currentFavorites, _currentOnlyFavorites);
+    } else if (_currentOnlyFavorites) {
+      _filteredEvents = _filterTopLeagues(allEvents);
+    } else {
+      _filteredEvents = allEvents;
+    }
+
+    // Discovery mode
+    if (_filteredEvents.isEmpty && allEvents.isNotEmpty) {
+      final topMatches = _filterTopLeagues(allEvents).take(5).toList();
+      if (topMatches.isNotEmpty) {
+        _filteredEvents = topMatches;
+      } else {
+        _filteredEvents = allEvents.take(10).toList();
+      }
+    }
+  }
   /// Zbiór ID przypiętych meczów
   Set<String> get pinnedMatchIds {
     if (!Hive.isBoxOpen(_pinnedBoxName)) return {};
@@ -119,7 +151,11 @@ class SportsProvider with ChangeNotifier {
     List<String>? selectedLeagueIds,
     bool force = false
   }) {
-    final currentEvents = events;
+    // Zapisz aktualne filtry (używane przez _applyFilters)
+    _currentFavorites = favoriteKeywords;
+    _currentOnlyFavorites = onlyFavoriteTeams;
+
+    final currentEvents = _allCachedEvents();
     final hasLive = currentEvents.any((e) => e.status == EventStatus.live);
     final hasFavorites = onlyFavoriteTeams && favoriteKeywords != null && favoriteKeywords.isNotEmpty;
     final ttl = hasLive ? 1 : (hasFavorites ? 30 : 15);
@@ -135,10 +171,10 @@ class SportsProvider with ChangeNotifier {
     _debugLogs.add('Cache: ${_leagueCache.length} lig w cache');
     notifyListeners();
 
-    return _performFetch(favoriteKeywords, onlyFavoriteTeams, selectedLeagueIds);
+    return _performFetch(selectedLeagueIds);
   }
 
-  Future<void> _performFetch(List<String>? favoriteKeywords, bool onlyFavoriteTeams, List<String>? selectedLeagueIds) async {
+  Future<void> _performFetch(List<String>? selectedLeagueIds) async {
     try {
       final newEvents = await _service.fetchAllEvents(selectedLeagueIds: selectedLeagueIds);
 
@@ -156,54 +192,29 @@ class SportsProvider with ChangeNotifier {
         );
       }
 
-      // Agreguj z cache (bez wygasłych)
-      final currentEvents = events;
-      final hasLive = currentEvents.any((e) => e.status == EventStatus.live);
-
       // Usuń wygasłe wpisy
+      final allNow = _allCachedEvents();
+      final hasLive = allNow.any((e) => e.status == EventStatus.live);
       _leagueCache.removeWhere((key, entry) => entry.isExpired(hasLive));
 
-      // 1. Filtrujemy pod zainteresowania
-      List<SportEvent> filtered;
-      if (favoriteKeywords != null && favoriteKeywords.isNotEmpty) {
-        filtered = _filterAndSortEvents(currentEvents, favoriteKeywords, true);
-        _debugLogs.add('Ulubione: ${favoriteKeywords.join(", ")}');
-        _debugLogs.add('Po filtrze: ${filtered.length} z ${currentEvents.length} meczów');
-      } else if (onlyFavoriteTeams) {
-        filtered = _filterTopLeagues(currentEvents);
-        _debugLogs.add('Top ligi: ${filtered.length} z ${currentEvents.length}');
-      } else {
-        filtered = currentEvents;
-        _debugLogs.add('Wszystko: ${filtered.length} meczów');
-      }
-
-      // 2. DISCOVERY MODE
-      if (filtered.isEmpty && currentEvents.isNotEmpty) {
-        final topMatches = _filterTopLeagues(currentEvents).take(5).toList();
-        if (topMatches.isNotEmpty) {
-          _debugLogs.add('Discovery Mode: Pokazuję top ${topMatches.length} meczów.');
-          filtered = topMatches;
-        } else {
-          _debugLogs.add('Discovery Mode: Pokazuję wszystkie mecze z API.');
-          filtered = currentEvents.take(10).toList();
-        }
-      }
+      // Zastosuj filtry (favicon/onlyFavorites/discovery)
+      _applyFilters();
 
       // Zapisz do cache Hive
       _saveCacheToHive();
 
       _lastFetch = DateTime.now();
       _debugLogs.add('Cache lig: ${_leagueCache.length}');
-      _debugLogs.add('Pasek wyświetla: ${filtered.length} meczów');
-      if (filtered.isNotEmpty) {
-        final matches = filtered.whereType<MatchEvent>().toList();
+      _debugLogs.add('Pasek wyświetla: ${_filteredEvents.length} meczów');
+      if (_filteredEvents.isNotEmpty) {
+        final matches = _filteredEvents.whereType<MatchEvent>().toList();
         _debugLogs.add('Meczy: ${matches.length}');
         if (matches.isNotEmpty) {
           final homeTeams = matches.take(8).map((e) => e.homeTeam).join(', ');
           _debugLogs.add('Drużyny (home): $homeTeams');
         }
-        if (favoriteKeywords != null && favoriteKeywords.isNotEmpty) {
-          final normFavs = favoriteKeywords.map((f) => TextUtils.normalize(f)).toList();
+        if (_currentFavorites != null && _currentFavorites!.isNotEmpty) {
+          final normFavs = _currentFavorites!.map((f) => TextUtils.normalize(f)).toList();
           _debugLogs.add('Szukam: ${normFavs.join(", ")}');
           for (final fav in normFavs) {
             final found = matches.where((e) {
@@ -220,7 +231,7 @@ class SportsProvider with ChangeNotifier {
       
       _currentSelectedLeagues = selectedLeagueIds;
 
-      if (events.any((e) => e.status == EventStatus.live)) {
+      if (_filteredEvents.any((e) => e.status == EventStatus.live)) {
         _startAutoRefresh();
       } else {
         _stopAutoRefresh();
@@ -249,9 +260,14 @@ class SportsProvider with ChangeNotifier {
            source: event.id.split('_').first,
          );
        }
+       // Usuń wygasłe i zastosuj filtry
+       final allNow = _allCachedEvents();
+       final hasLive = allNow.any((e) => e.status == EventStatus.live);
+       _leagueCache.removeWhere((key, entry) => entry.isExpired(hasLive));
+       _applyFilters();
        _lastFetch = DateTime.now();
        notifyListeners();
-       if (!events.any((e) => e.status == EventStatus.live)) _stopAutoRefresh();
+       if (!_filteredEvents.any((e) => e.status == EventStatus.live)) _stopAutoRefresh();
     });
   }
 
@@ -290,6 +306,7 @@ class SportsProvider with ChangeNotifier {
       if (lastFetchStr != null) {
         _lastFetch = DateTime.tryParse(lastFetchStr);
       }
+      _applyFilters();
       notifyListeners();
     } catch (_) {}
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/models/sport_league.dart';
+import 'package:prasowka/utils/canonical_key.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:prasowka/services/sports_request_queue.dart';
@@ -82,9 +83,29 @@ class SportsService {
       allEvents.addAll(list);
     }
 
-    // Deduplicate by ID
+    // Deduplicate by canonicalKey (cross-source dedup)
+    // Ten sam mecz z SportDB/ESPN/TSDB dostaje ten sam klucz
     final Map<String, SportEvent> unique = {};
-    for (var e in allEvents) { unique[e.id] = e; }
+    final Map<String, SportEvent> canonicalToBest = {};
+    for (var e in allEvents) {
+      if (e is MatchEvent) {
+        final key = CanonicalKey.generate(e);
+        final existing = canonicalToBest[key];
+        if (existing == null) {
+          canonicalToBest[key] = e;
+        } else {
+          // Preferuj: live > finished > scheduled
+          final priority = {EventStatus.live: 3, EventStatus.finished: 2, EventStatus.scheduled: 1};
+          if ((priority[e.status] ?? 0) > (priority[existing.status] ?? 0)) {
+            canonicalToBest[key] = e;
+          }
+        }
+      } else {
+        // RaceEvent — dedup by id
+        unique[e.id] = e;
+      }
+    }
+    unique.addAll(canonicalToBest);
 
     debugPrint('Prasówka Sports V9.1: Zakończono. Unikalnych: ${unique.length}');
     return unique.values.toList();
