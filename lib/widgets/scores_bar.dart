@@ -386,6 +386,7 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
           onTap: widget.onTap,
           child: Container(
           width: 175,
+          clipBehavior: Clip.hardEdge,
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
@@ -565,6 +566,7 @@ class _RaceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 175,
+      clipBehavior: Clip.hardEdge,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -612,6 +614,7 @@ class _FallbackLeagueTile extends StatelessWidget {
       onTap: () => _openFlashscore(context),
       child: Container(
         width: 170,
+        clipBehavior: Clip.hardEdge,
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
