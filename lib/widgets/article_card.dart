@@ -185,11 +185,11 @@ class ArticleCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (article.imageUrl != null)
-                AspectRatio(
-                  aspectRatio: 1.8,
+                Expanded(
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -217,17 +217,19 @@ class ArticleCard extends StatelessWidget {
                   ),
                 ),
               if (article.imageUrl == null)
-                Container(
-                  height: 80,
-                  color: Colors.grey.withValues(alpha: 0.1),
-                  child: Center(
-                    child: Icon(Icons.article_outlined, color: Colors.grey.shade400, size: 28),
+                Expanded(
+                  child: Container(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    child: Center(
+                      child: Icon(Icons.article_outlined, color: Colors.grey.shade400, size: 28),
+                    ),
                   ),
                 ),
               Padding(
-                padding: const EdgeInsets.all(10.0),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       article.translatedTitle ?? article.title,
@@ -239,9 +241,8 @@ class ArticleCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Text(
@@ -254,7 +255,7 @@ class ArticleCard extends StatelessWidget {
                           Icon(Icons.check_circle, color: checkIconColor, size: 14),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     _buildActionsSmall(context),
                   ],
                 ),

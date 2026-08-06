@@ -84,7 +84,7 @@ class _ScoresBarState extends State<ScoresBar> {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: 105,
+              height: 85,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -251,7 +251,7 @@ class _ScoresBarState extends State<ScoresBar> {
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InterestsSettingsPage())),
       child: Container(
-        height: 120,
+        height: 85,
         width: double.infinity,
         alignment: Alignment.center,
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -294,14 +294,14 @@ class _ScoresBarState extends State<ScoresBar> {
 
   Widget _buildLoading() {
     return Container(
-      height: 115,
+      height: 85,
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         itemCount: 3,
         itemBuilder: (context, index) => Container(
-          width: 160,
+          width: 175,
           margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.05),
@@ -385,9 +385,9 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
         return GestureDetector(
           onTap: widget.onTap,
           child: Container(
-          width: 200,
+          width: 175,
           margin: const EdgeInsets.symmetric(horizontal: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
@@ -405,7 +405,7 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
                   Expanded(
                     child: Text(
                       "${event.competition.toUpperCase()} | ${_formatDateLabel(event.date)}",
-                      style: const TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 7, color: Colors.grey, fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -441,28 +441,28 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
                     const Text('KONIEC', style: TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
                 ],
               ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              _buildTeamLogo(event.homeLogo),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(event.homeTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
-              ),
-              if (!isScheduled)
-                Text(homeScore, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
-            ],
-          ),
           const SizedBox(height: 6),
           Row(
             children: [
-              _buildTeamLogo(event.awayLogo),
-              const SizedBox(width: 8),
+              _buildTeamLogo(event.homeLogo, size: 12),
+              const SizedBox(width: 6),
               Expanded(
-                child: Text(event.awayTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
+                child: Text(event.homeTeam, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
               ),
               if (!isScheduled)
-                Text(awayScore, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
+                Text(homeScore, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              _buildTeamLogo(event.awayLogo, size: 12),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(event.awayTeam, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
+              ),
+              if (!isScheduled)
+                Text(awayScore, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
             ],
           ),
           if (isScheduled) ...[
@@ -526,9 +526,9 @@ class _RaceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 200,
+      width: 175,
       margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
@@ -543,18 +543,18 @@ class _RaceTile extends StatelessWidget {
             children: [
               Text(
                 event.type == SportType.wrc ? 'WRC' : 'FORMULA 1',
-                style: TextStyle(fontSize: 9, color: AppTheme.accentForBrightness(context), fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 8, color: AppTheme.accentForBrightness(context), fontWeight: FontWeight.bold),
               ),
-              Text(event.countryCode, style: const TextStyle(fontSize: 9, color: Colors.grey)),
+              Text(event.countryCode, style: const TextStyle(fontSize: 8, color: Colors.grey)),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(event.raceName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text(event.circuitName, style: const TextStyle(fontSize: 10, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
+          Text(event.raceName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(event.circuitName, style: const TextStyle(fontSize: 9, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
           const Spacer(),
           Text(
             event.status == EventStatus.scheduled ? 'W TEN WEEKEND' : 'WYNIKI GP',
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900),
           ),
         ],
       ),
