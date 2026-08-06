@@ -49,27 +49,20 @@ class SourceSettingsPage extends StatelessWidget {
               ),
             ),
           ),
-          ..._cities.map((c) {
-            final isSelected = city == c['name'];
-            return ListTile(
-              dense: true,
-              leading: Icon(
-                Icons.location_on,
-                color: isSelected ? AppTheme.accentFor(context) : Colors.grey,
-                size: 20,
+          ListTile(
+            dense: true,
+            leading: Icon(Icons.location_on, color: AppTheme.accentFor(context), size: 20),
+            title: Text(
+              city,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppTheme.accentFor(context),
+                fontSize: 14,
               ),
-              title: Text(
-                c['name'] as String,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? AppTheme.accentFor(context) : null,
-                  fontSize: 14,
-                ),
-              ),
-              trailing: isSelected ? Icon(Icons.check, color: AppTheme.accentFor(context), size: 20) : null,
-              onTap: () => settings.setPreferredCity(c['name'] as String, c['lat'] as double, c['lon'] as double),
-            );
-          }),
+            ),
+            trailing: const Icon(Icons.unfold_more, size: 20),
+            onTap: () => _showCityPicker(context, settings, city),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
@@ -101,6 +94,86 @@ class SourceSettingsPage extends StatelessWidget {
     );
   }
 
+  void _showCityPicker(BuildContext context, SettingsProvider settings, String currentCity) {
+    final accent = AppTheme.accentFor(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'WYBIERZ MIASTO',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: accent,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: _cities.length,
+                itemBuilder: (ctx, i) {
+                  final c = _cities[i];
+                  final isSelected = currentCity == c['name'];
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(
+                      Icons.location_on,
+                      color: isSelected ? accent : Colors.grey,
+                      size: 20,
+                    ),
+                    title: Text(
+                      c['name'] as String,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? accent : null,
+                        fontSize: 14,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? Icon(Icons.check, color: accent, size: 20)
+                        : null,
+                    onTap: () {
+                      settings.setPreferredCity(
+                        c['name'] as String,
+                        c['lat'] as double,
+                        c['lon'] as double,
+                      );
+                      Navigator.pop(ctx);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCategoryTile(BuildContext context, dynamic cat, SettingsProvider settings, String city) {
     var sources = settings.allSources.where((s) => s.categoryId == cat.id).toList();
 
@@ -109,11 +182,20 @@ class SourceSettingsPage extends StatelessWidget {
       final displayName = city;
       final googleNewsUrl = NewsSource.googleNewsCityUrl(city);
       
+      final localSourceName = NewsSource.cityLocalSourceId[city] != null
+          ? settings.allSources.firstWhere(
+              (s) => s.id == NewsSource.cityLocalSourceId[city],
+              orElse: () => settings.allSources.first,
+            ).name
+          : null;
+
       return ExpansionTile(
         leading: Icon(cat.icon, color: AppTheme.accentFor(context), size: 20),
         title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         subtitle: Text(
-          'Google News - automatycznie dobrane wiadomości',
+          localSourceName != null
+              ? 'Google News + $localSourceName'
+              : 'Google News',
           style: TextStyle(fontSize: 11, color: Colors.grey[600]),
         ),
         children: [
@@ -124,6 +206,13 @@ class SourceSettingsPage extends StatelessWidget {
             subtitle: Text(googleNewsUrl, style: const TextStyle(fontSize: 10, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
             trailing: Icon(Icons.check_circle, color: AppTheme.accentFor(context), size: 20),
           ),
+          if (localSourceName != null)
+            ListTile(
+              dense: true,
+              leading: Icon(Icons.public, color: AppTheme.accentFor(context), size: 20),
+              title: Text(localSourceName, style: const TextStyle(fontSize: 13)),
+              trailing: Icon(Icons.check_circle, color: AppTheme.accentFor(context), size: 20),
+            ),
         ],
       );
     }
