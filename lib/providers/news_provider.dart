@@ -29,7 +29,7 @@ class NewsProvider with ChangeNotifier {
   NewsCategory _selectedCategory = NewsCategory.defaultCategories.first;
   
   List<String>? _lastActiveSourceIds;
-  List<String>? _lastFavoriteTeams;
+  List<String>? _lastKeywords;
   final Map<String, DateTime> _lastFetchTimes = {};
   final Map<String, String> _requestIds = {};
 
@@ -61,7 +61,7 @@ class NewsProvider with ChangeNotifier {
     NewsCategory? category,
     List<NewsSource>? allSources,
     List<String>? enabledSourceIds,
-    List<String>? favoriteTeams,
+    List<String>? keywords,
     bool forceRefresh = false,
   }) async {
     final targetCategory = category ?? _selectedCategory;
@@ -70,7 +70,7 @@ class NewsProvider with ChangeNotifier {
     _requestIds[categoryId] = requestId;
     
     if (enabledSourceIds != null) _lastActiveSourceIds = enabledSourceIds;
-    if (favoriteTeams != null) _lastFavoriteTeams = favoriteTeams;
+    if (keywords != null) _lastKeywords = keywords;
 
     final cached = _storageService.getCategoryCache(categoryId);
     if (cached.isNotEmpty && !forceRefresh) {
@@ -196,13 +196,13 @@ class NewsProvider with ChangeNotifier {
         final transferList = accumulated.map((a) => a.toTransferMap()).toList();
         final mixed = await compute(_sortAndMixArticlesStatic, {
           'list': transferList,
-          'teams': favoriteTeams ?? _lastFavoriteTeams,
+          'teams': keywords ?? _lastKeywords,
           'categoryId': categoryId,
         });
         _articlesMap[categoryId] = mixed;
         finalList = mixed;
       } else {
-        _sortAndMixArticlesSync(accumulated, favoriteTeams ?? _lastFavoriteTeams, categoryId);
+        _sortAndMixArticlesSync(accumulated, keywords ?? _lastKeywords, categoryId);
         _articlesMap[categoryId] = accumulated;
         finalList = accumulated;
       }

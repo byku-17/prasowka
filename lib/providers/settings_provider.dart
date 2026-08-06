@@ -19,6 +19,7 @@ class SettingsProvider with ChangeNotifier {
   static const String activeCategoriesKey = 'activeCategoryIds';
   static const String sourcesEnabledKey = 'activeSourceIds';
   static const String teamsKey = 'favoriteTeams';
+  static const String keywordsKey = 'userKeywords';
   static const String categoryOrderKey = 'categoryOrder';
   static const String notificationsKey = 'notificationsEnabled';
   static const String onboardingKey = 'onboardingCompleted';
@@ -36,6 +37,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> _activeCategoryIds = [];
   List<String> _enabledSourceIds = [];
   List<String> _favoriteTeams = [];
+  List<String> _keywords = [];
   List<String> _categoryOrder = [];
   List<NewsSource> _allSources = [];
   bool _onlyFavoriteTeams = true; 
@@ -54,6 +56,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> get activeCategoryIds => _activeCategoryIds;
   List<String> get enabledSourceIds => _enabledSourceIds;
   List<String> get favoriteTeams => _favoriteTeams;
+  List<String> get keywords => _keywords;
   List<NewsSource> get allSources => _allSources;
   bool get onlyFavoriteTeams => _onlyFavoriteTeams;
   bool get notificationsEnabled => _notificationsEnabled;
@@ -170,6 +173,16 @@ class SettingsProvider with ChangeNotifier {
 
     // 6. Zainteresowania
     _favoriteTeams = List<String>.from(settingsBox.get(teamsKey, defaultValue: <String>[]));
+    
+    // 6b. Keywords (oddzielne od favoriteTeams)
+    final storedKeywords = settingsBox.get(keywordsKey);
+    if (storedKeywords == null || (storedKeywords as List).isEmpty) {
+      // Migracja: skopiuj z favoriteTeams jeśli keywords puste
+      _keywords = List<String>.from(_favoriteTeams);
+      await settingsBox.put(keywordsKey, _keywords);
+    } else {
+      _keywords = List<String>.from(storedKeywords);
+    }
 
     // 7. Powiadomienia
     _notificationsEnabled = settingsBox.get(notificationsKey, defaultValue: false);
@@ -226,9 +239,9 @@ class SettingsProvider with ChangeNotifier {
 
   Future<void> addKeyword(String keyword) async {
     final t = keyword.trim();
-    if (t.isEmpty || _favoriteTeams.any((element) => element.toLowerCase() == t.toLowerCase())) return;
-    _favoriteTeams.add(t);
-    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
+    if (t.isEmpty || _keywords.any((element) => element.toLowerCase() == t.toLowerCase())) return;
+    _keywords.add(t);
+    await Hive.box(settingsBoxName).put(keywordsKey, _keywords);
     
     final sourceId = 'google_news_${t.toLowerCase().replaceAll(' ', '_')}';
     final googleSource = NewsSource(
@@ -242,8 +255,8 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> removeKeyword(String t) async {
-    _favoriteTeams.remove(t);
-    await Hive.box(settingsBoxName).put(teamsKey, _favoriteTeams);
+    _keywords.remove(t);
+    await Hive.box(settingsBoxName).put(keywordsKey, _keywords);
     final sourceId = 'google_news_${t.toLowerCase().replaceAll(' ', '_')}';
     await deleteSource(sourceId);
     notifyListeners();

@@ -5,7 +5,6 @@ import 'package:prasowka/screens/category_settings_page.dart';
 import 'package:prasowka/screens/city_sources_page.dart';
 import 'package:prasowka/screens/source_settings_page.dart';
 import 'package:prasowka/screens/interests_settings_page.dart';
-import 'package:prasowka/screens/sport_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -51,15 +50,8 @@ class SettingsScreen extends StatelessWidget {
             context,
             icon: Icons.psychology_outlined,
             title: 'Moje Zainteresowania',
-            subtitle: 'Kluby, ligi i tematy newsów',
+            subtitle: 'Tematy newsów, ligi i drużyny do wyników live',
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InterestsSettingsPage())),
-          ),
-          _buildSettingsTile(
-            context,
-            icon: Icons.sports_soccer_outlined,
-            title: 'Moje Sporty',
-            subtitle: 'Wybierz ligi do wyników na żywo',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SportSettingsScreen())),
           ),
           const Divider(height: 32),
           const Padding(

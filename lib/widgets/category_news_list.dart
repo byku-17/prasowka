@@ -65,7 +65,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
       category: widget.category,
       allSources: _getSourcesForCategory(settings),
       enabledSourceIds: settings.enabledSourceIds,
-      favoriteTeams: settings.favoriteTeams,
+      keywords: settings.keywords,
       forceRefresh: true,
     );
   }
@@ -131,7 +131,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
                   category: widget.category,
                   allSources: _getSourcesForCategory(settings),
                   enabledSourceIds: settings.enabledSourceIds,
-                  favoriteTeams: settings.favoriteTeams,
+                  keywords: settings.keywords,
                   forceRefresh: true,
                 ),
                 child: ListView.builder(
@@ -232,7 +232,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
               category: widget.category,
               allSources: settings.allSources,
               enabledSourceIds: settings.enabledSourceIds,
-              favoriteTeams: settings.favoriteTeams,
+              keywords: settings.keywords,
               forceRefresh: true,
             ),
             style: ElevatedButton.styleFrom(
