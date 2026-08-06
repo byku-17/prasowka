@@ -103,6 +103,7 @@ class _TodayScreenState extends State<TodayScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: _buildNotificationBell(context),
         title: Text(
           'PRASÓWKA',
           style: GoogleFonts.syne(
@@ -111,8 +112,8 @@ class _TodayScreenState extends State<TodayScreen> {
             fontSize: 20,
           ),
         ),
+        centerTitle: true,
         actions: [
-          _buildNotificationBell(context),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.push(
