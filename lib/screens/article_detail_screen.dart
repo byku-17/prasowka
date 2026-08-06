@@ -112,6 +112,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: Listener(
         onPointerDown: _onPointerDown,
@@ -124,10 +126,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
                 background: article.imageUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: article.imageUrl!,
-                        fit: BoxFit.cover,
-                      )
+                    ? CachedNetworkImage(imageUrl: article.imageUrl!, fit: BoxFit.cover)
                     : Container(color: const Color(0xFF1E2126)),
               ),
               actions: [
@@ -146,10 +145,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     if (!needsTranslation) return const SizedBox.shrink();
                     return IconButton(
                       icon: provider.isTranslating
-                          ? const SizedBox(
-                              width: 20, height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.translate, color: Colors.blueAccent),
                       onPressed: provider.isTranslating ? null : () => provider.translateArticle(article),
                       tooltip: 'Tłumacz na polski',
@@ -173,7 +169,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -195,13 +191,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Consumer<NewsProvider>(
-                      builder: (context, provider, child) {
-                        return Text(
-                          article.translatedTitle ?? article.title,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(height: 1.2),
-                        );
-                      },
+                    Text(
+                      article.translatedTitle ?? article.title,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(height: 1.2),
                     ),
                     const SizedBox(height: 24),
                     const Divider(),
@@ -211,98 +203,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                       builder: (context, provider, child) {
                         final hasFullContent = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
 
-                        if (provider.isFetchingFullContent || provider.isTranslating) {
-                          return Column(
-                            children: [
-                              if (!hasFullContent)
-                                HtmlWidget(
-                                  article.translatedDescription ?? (article.description.isNotEmpty ? article.description : ''),
-                                  textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
-                                  onTapUrl: (url) async { await _launchUrl(context, url); return true; },
-                                ),
-                              const SizedBox(height: 32),
-                              const CircularProgressIndicator(),
-                              const SizedBox(height: 12),
-                              Text(
-                                provider.isTranslating ? 'Sowa tłumaczy dla Ciebie...' : 'Sowa czyta artykuł dla Ciebie...',
-                                style: const TextStyle(fontStyle: FontStyle.italic),
-                              ),
-                            ],
-                          );
-                        }
-
-                        if (!hasFullContent) {
-                          return Column(
-                            children: [
-                              HtmlWidget(
-                                article.translatedDescription ?? (article.description.isNotEmpty ? article.description : 'Brak treści artykułu.'),
-                                textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
-                                onTapUrl: (url) async { await _launchUrl(context, url); return true; },
-                              ),
-                              if (_showSwipeHint) ...[
-                                const SizedBox(height: 24),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.accentFor(context).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppTheme.accentFor(context).withValues(alpha: 0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.keyboard_arrow_up, color: AppTheme.accentFor(context), size: 24),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Przesuń jeszcze raz, aby pobrać artykuł',
-                                        style: TextStyle(
-                                          color: AppTheme.accentFor(context),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 32),
-                              _buildActionButtons(context, provider),
-                            ],
-                          );
-                        }
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            HtmlWidget(
-                              article.translatedFullContent ?? article.fullContent!,
-                              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
-                              onTapUrl: (url) async { await _launchUrl(context, url); return true; },
-                            ),
-                            const SizedBox(height: 32),
-                            Center(
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  Navigator.of(context).push(MaterialPageRoute(
-                                    builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
-                                  ));
-                                },
-                                icon: const Icon(Icons.open_in_browser, size: 18),
-                                label: const Text('CZYTAJ W APLIKACJI'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppTheme.accentFor(context),
-                                  side: BorderSide(color: AppTheme.accentFor(context)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                ),
-                              ),
-                            ),
-                          ],
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 400),
+                          switchInCurve: Curves.easeIn,
+                          switchOutCurve: Curves.easeOut,
+                          child: _buildContentBody(context, provider, hasFullContent),
                         );
                       },
                     ),
 
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 100),
                   ],
                 ),
               ),
@@ -312,9 +222,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       ),
       floatingActionButton: Consumer<NewsProvider>(
         builder: (context, provider, child) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
           final inactiveBg = isDark ? Colors.white : Theme.of(context).cardColor;
-          final inactiveIcon = isDark ? Colors.grey : Colors.grey;
+          const inactiveIcon = Colors.grey;
           return Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -355,6 +264,99 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildContentBody(BuildContext context, NewsProvider provider, bool hasFullContent) {
+    if (provider.isFetchingFullContent || provider.isTranslating) {
+      return Column(
+        key: const ValueKey('loading'),
+        children: [
+          if (!hasFullContent)
+            HtmlWidget(
+              article.translatedDescription ?? (article.description.isNotEmpty ? article.description : ''),
+              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
+              onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+            ),
+          const SizedBox(height: 32),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 12),
+          Text(
+            provider.isTranslating ? 'Sowa tłumaczy dla Ciebie...' : 'Sowa czyta artykuł dla Ciebie...',
+            style: const TextStyle(fontStyle: FontStyle.italic),
+          ),
+        ],
+      );
+    }
+
+    if (!hasFullContent) {
+      return Column(
+        key: const ValueKey('snippet'),
+        children: [
+          HtmlWidget(
+            article.translatedDescription ?? (article.description.isNotEmpty ? article.description : 'Brak treści artykułu.'),
+            textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
+            onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+          ),
+          if (_showSwipeHint) ...[
+            const SizedBox(height: 24),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.keyboard_arrow_up, color: Theme.of(context).colorScheme.onSurface, size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Przesuń jeszcze raz, aby pobrać artykuł',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 32),
+          _buildActionButtons(context, provider),
+        ],
+      );
+    }
+
+    return Column(
+      key: const ValueKey('full'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        HtmlWidget(
+          article.translatedFullContent ?? article.fullContent!,
+          textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
+          onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+        ),
+        const SizedBox(height: 32),
+        Center(
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
+              ));
+            },
+            icon: const Icon(Icons.open_in_browser, size: 18),
+            label: const Text('CZYTAJ W APLIKACJI'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.accentFor(context),
+              side: BorderSide(color: AppTheme.accentFor(context)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
