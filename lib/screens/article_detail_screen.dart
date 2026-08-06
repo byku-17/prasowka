@@ -352,7 +352,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: OutlinedButton.icon(
             onPressed: () {
@@ -368,6 +368,61 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: () => provider.toggleLike(article),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: article.isLiked ? AppTheme.accentFor(context) : Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              article.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+              color: article.isLiked ? Colors.white : Theme.of(context).colorScheme.onSurface,
+              size: 22,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        MenuAnchor(
+          menuChildren: [
+            MenuItemButton(
+              onPressed: () => provider.toggleDislike(article),
+              leadingIcon: Icon(article.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined),
+              child: Text(article.isDisliked ? 'Cofnij ocenę' : 'Nie podoba mi się'),
+            ),
+            MenuItemButton(
+              onPressed: () => provider.toggleReadLater(article),
+              leadingIcon: Icon(article.readLater ? Icons.timer : Icons.timer_outlined),
+              child: Text(article.readLater ? 'Usuń z "Na później"' : 'Na później'),
+            ),
+            MenuItemButton(
+              onPressed: () => provider.toggleFavorite(article),
+              leadingIcon: Icon(article.isFavorite ? Icons.favorite : Icons.favorite_border),
+              child: Text(article.isFavorite ? 'Usuń z ulubionych' : 'Ulubione'),
+            ),
+          ],
+          builder: (context, menuController, child) {
+            return GestureDetector(
+              onTap: () => menuController.isOpen ? menuController.close() : menuController.open(),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.more_vert,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  size: 22,
+                ),
+              ),
+            );
+          },
         ),
       ],
     );
