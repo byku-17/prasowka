@@ -112,8 +112,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       body: Listener(
         onPointerDown: _onPointerDown,
@@ -220,52 +218,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           ],
         ),
       ),
-      floatingActionButton: Consumer<NewsProvider>(
-        builder: (context, provider, child) {
-          final inactiveBg = isDark ? Colors.white : Theme.of(context).cardColor;
-          const inactiveIcon = Colors.grey;
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FloatingActionButton.small(
-                heroTag: 'like',
-                onPressed: () => provider.toggleLike(article),
-                backgroundColor: article.isLiked ? AppTheme.accentFor(context) : inactiveBg,
-                child: Icon(article.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined, color: article.isLiked ? Colors.white : inactiveIcon),
-              ),
-              const SizedBox(height: 8),
-              FloatingActionButton.small(
-                heroTag: 'dislike',
-                onPressed: () => provider.toggleDislike(article),
-                backgroundColor: article.isDisliked ? Colors.red : inactiveBg,
-                child: Icon(article.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined, color: article.isDisliked ? Colors.white : inactiveIcon),
-              ),
-              const SizedBox(height: 8),
-              FloatingActionButton.small(
-                heroTag: 'readLater',
-                onPressed: () => provider.toggleReadLater(article),
-                backgroundColor: article.readLater ? AppTheme.accentFor(context) : inactiveBg,
-                child: Icon(
-                  article.readLater ? Icons.timer : Icons.timer_outlined,
-                  color: article.readLater ? Colors.white : AppTheme.accentFor(context),
-                ),
-              ),
-              const SizedBox(height: 12),
-              FloatingActionButton(
-                heroTag: 'favorite',
-                onPressed: () => provider.toggleFavorite(article),
-                backgroundColor: article.isFavorite ? Colors.red : inactiveBg,
-                child: Icon(
-                  article.isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: article.isFavorite ? Colors.white : Colors.red,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniStartFloat,
     );
   }
 
