@@ -6,20 +6,56 @@ import 'package:prasowka/services/sports_service.dart';
 import 'package:prasowka/utils/text_utils.dart';
 
 const String _pinnedBoxName = 'pinned_matches';
+const String _sportsCacheBoxName = 'sports_cache';
+const Duration _liveTtl = Duration(minutes: 1);
+const Duration _normalTtl = Duration(minutes: 15);
+
+class _LeagueCacheEntry {
+  final List<SportEvent> events;
+  final DateTime fetchedAt;
+  final String source;
+
+  _LeagueCacheEntry({
+    required this.events,
+    required this.fetchedAt,
+    required this.source,
+  });
+
+  bool isExpired(bool hasLive) {
+    final ttl = hasLive ? _liveTtl : _normalTtl;
+    return DateTime.now().difference(fetchedAt) > ttl;
+  }
+
+  Map<String, dynamic> toMap() => {
+    'events': events.map((e) => e.toMap()).toList(),
+    'fetchedAt': fetchedAt.toIso8601String(),
+    'source': source,
+  };
+
+  factory _LeagueCacheEntry.fromMap(Map m) => _LeagueCacheEntry(
+    events: (m['events'] as List).map((e) => SportEvent.fromMap(e)).toList(),
+    fetchedAt: DateTime.parse(m['fetchedAt']),
+    source: m['source'] ?? '',
+  );
+}
 
 class SportsProvider with ChangeNotifier {
   final SportsService _service = SportsService();
   
-  List<SportEvent> _events = [];
+  final Map<String, _LeagueCacheEntry> _leagueCache = {};
   final List<String> _debugLogs = [];
   bool _isLoading = false;
   DateTime? _lastFetch;
   Timer? _refreshTimer;
-  List<String>? _currentFavorites;
-  bool _currentOnlyFavorites = true;
   List<String>? _currentSelectedLeagues;
 
-  List<SportEvent> get events => _events;
+  List<SportEvent> get events {
+    final all = <SportEvent>[];
+    for (final entry in _leagueCache.values) {
+      all.addAll(entry.events);
+    }
+    return all;
+  }
   List<String> get debugLogs => _debugLogs;
   bool get isLoading => _isLoading;
   DateTime? get lastFetch => _lastFetch;
@@ -51,9 +87,9 @@ class SportsProvider with ChangeNotifier {
     List<String>? selectedLeagueIds,
     bool force = false
   }) {
-    final hasLive = _events.any((e) => e.status == EventStatus.live);
+    final currentEvents = events;
+    final hasLive = currentEvents.any((e) => e.status == EventStatus.live);
     final hasFavorites = onlyFavoriteTeams && favoriteKeywords != null && favoriteKeywords.isNotEmpty;
-    // LIVE: 1 min, z ulubionymi: 30 min (oszczędność API — fixtures z 4 krajów), bez: 15 min
     final ttl = hasLive ? 1 : (hasFavorites ? 30 : 15);
 
     if (!force && _lastFetch != null && DateTime.now().difference(_lastFetch!).inMinutes < ttl) {
@@ -62,8 +98,9 @@ class SportsProvider with ChangeNotifier {
 
     _isLoading = true;
     _debugLogs.clear();
-    _debugLogs.add('--- DIAGNOSTYKA V9.0 ---');
+    _debugLogs.add('--- DIAGNOSTYKA V9.1 ---');
     _debugLogs.add('Start: ${DateTime.now().toString().split('.')[0]} (TTL: ${ttl}min)');
+    _debugLogs.add('Cache: ${_leagueCache.length} lig w cache');
     notifyListeners();
 
     return _performFetch(favoriteKeywords, onlyFavoriteTeams, selectedLeagueIds);
@@ -73,51 +110,69 @@ class SportsProvider with ChangeNotifier {
     try {
       final newEvents = await _service.fetchAllEvents(selectedLeagueIds: selectedLeagueIds);
 
+      // Cache per competition
+      for (final event in newEvents) {
+        final competition = event is MatchEvent ? event.competition : (event is RaceEvent ? 'races' : 'unknown');
+        _leagueCache[competition] = _LeagueCacheEntry(
+          events: newEvents.where((e) {
+            if (e is MatchEvent) return e.competition == competition;
+            if (e is RaceEvent) return competition == 'races';
+            return false;
+          }).toList(),
+          fetchedAt: DateTime.now(),
+          source: event.id.split('_').first,
+        );
+      }
+
+      // Agreguj z cache (bez wygasłych)
+      final currentEvents = events;
+      final hasLive = currentEvents.any((e) => e.status == EventStatus.live);
+
+      // Usuń wygasłe wpisy
+      _leagueCache.removeWhere((key, entry) => entry.isExpired(hasLive));
+
       // 1. Filtrujemy pod zainteresowania
       List<SportEvent> filtered;
       if (favoriteKeywords != null && favoriteKeywords.isNotEmpty) {
-        // Gdy user ma ulubione drużyny — pokaż tylko ich mecze
-        filtered = _filterAndSortEvents(newEvents, favoriteKeywords, true);
+        filtered = _filterAndSortEvents(currentEvents, favoriteKeywords, true);
         _debugLogs.add('Ulubione: ${favoriteKeywords.join(", ")}');
-        _debugLogs.add('Po filtrze: ${filtered.length} z ${newEvents.length} meczów');
+        _debugLogs.add('Po filtrze: ${filtered.length} z ${currentEvents.length} meczów');
       } else if (onlyFavoriteTeams) {
-        // Tryb "tylko ulubione" ale brak ulubionych → top ligi
-        filtered = _filterTopLeagues(newEvents);
-        _debugLogs.add('Top ligi: ${filtered.length} z ${newEvents.length}');
+        filtered = _filterTopLeagues(currentEvents);
+        _debugLogs.add('Top ligi: ${filtered.length} z ${currentEvents.length}');
       } else {
-        // Tryb "pokaż wszystko"
-        filtered = newEvents;
+        filtered = currentEvents;
         _debugLogs.add('Wszystko: ${filtered.length} meczów');
       }
 
-      // 2. DISCOVERY MODE: Jeśli pusto, pokaż top 5 meczów z popularnych lig
-      if (filtered.isEmpty && newEvents.isNotEmpty) {
-        final topMatches = _filterTopLeagues(newEvents).take(5).toList();
+      // 2. DISCOVERY MODE
+      if (filtered.isEmpty && currentEvents.isNotEmpty) {
+        final topMatches = _filterTopLeagues(currentEvents).take(5).toList();
         if (topMatches.isNotEmpty) {
           _debugLogs.add('Discovery Mode: Pokazuję top ${topMatches.length} meczów.');
           filtered = topMatches;
         } else {
           _debugLogs.add('Discovery Mode: Pokazuję wszystkie mecze z API.');
-          filtered = newEvents.take(10).toList();
+          filtered = currentEvents.take(10).toList();
         }
       }
 
-      _events = filtered;
+      // Zapisz do cache Hive
+      _saveCacheToHive();
+
       _lastFetch = DateTime.now();
-      _debugLogs.add('Serwer zwrócił: ${newEvents.length} meczów');
-      _debugLogs.add('Pasek wyświetla: ${_events.length} meczów');
-      if (newEvents.isNotEmpty) {
-        final matches = newEvents.whereType<MatchEvent>().toList();
-        _debugLogs.add('Meczy z API: ${matches.length}');
+      _debugLogs.add('Cache lig: ${_leagueCache.length}');
+      _debugLogs.add('Pasek wyświetla: ${filtered.length} meczów');
+      if (filtered.isNotEmpty) {
+        final matches = filtered.whereType<MatchEvent>().toList();
+        _debugLogs.add('Meczy: ${matches.length}');
         if (matches.isNotEmpty) {
-          // Pokaż przykłady drużyn z API
           final homeTeams = matches.take(8).map((e) => e.homeTeam).join(', ');
           _debugLogs.add('Drużyny (home): $homeTeams');
         }
         if (favoriteKeywords != null && favoriteKeywords.isNotEmpty) {
           final normFavs = favoriteKeywords.map((f) => TextUtils.normalize(f)).toList();
           _debugLogs.add('Szukam: ${normFavs.join(", ")}');
-          // Sprawdź czy któreś słowo pasuje
           for (final fav in normFavs) {
             final found = matches.where((e) {
               final searchable = TextUtils.normalize("${e.homeTeam} ${e.awayTeam} ${e.competition}");
@@ -131,11 +186,9 @@ class SportsProvider with ChangeNotifier {
         }
       }
       
-      _currentFavorites = favoriteKeywords;
-      _currentOnlyFavorites = onlyFavoriteTeams;
       _currentSelectedLeagues = selectedLeagueIds;
 
-      if (_events.any((e) => e.status == EventStatus.live)) {
+      if (events.any((e) => e.status == EventStatus.live)) {
         _startAutoRefresh();
       } else {
         _stopAutoRefresh();
@@ -152,15 +205,61 @@ class SportsProvider with ChangeNotifier {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
        final newEvents = await _service.fetchAllEvents(selectedLeagueIds: _currentSelectedLeagues);
-       _events = _filterAndSortEvents(newEvents, _currentFavorites, _currentOnlyFavorites);
+       for (final event in newEvents) {
+         final competition = event is MatchEvent ? event.competition : (event is RaceEvent ? 'races' : 'unknown');
+         _leagueCache[competition] = _LeagueCacheEntry(
+           events: newEvents.where((e) {
+             if (e is MatchEvent) return e.competition == competition;
+             if (e is RaceEvent) return competition == 'races';
+             return false;
+           }).toList(),
+           fetchedAt: DateTime.now(),
+           source: event.id.split('_').first,
+         );
+       }
+       _lastFetch = DateTime.now();
        notifyListeners();
-       if (!_events.any((e) => e.status == EventStatus.live)) _stopAutoRefresh();
+       if (!events.any((e) => e.status == EventStatus.live)) _stopAutoRefresh();
     });
   }
 
   void _stopAutoRefresh() {
     _refreshTimer?.cancel();
     _refreshTimer = null;
+  }
+
+  Future<void> _saveCacheToHive() async {
+    try {
+      if (!Hive.isBoxOpen(_sportsCacheBoxName)) {
+        await Hive.openBox(_sportsCacheBoxName);
+      }
+      final box = Hive.box(_sportsCacheBoxName);
+      final data = _leagueCache.map((k, v) => MapEntry(k, v.toMap()));
+      await box.put('leagueCache', data);
+      await box.put('lastFetch', _lastFetch?.toIso8601String());
+    } catch (_) {}
+  }
+
+  Future<void> loadCacheFromHive() async {
+    try {
+      if (!Hive.isBoxOpen(_sportsCacheBoxName)) {
+        await Hive.openBox(_sportsCacheBoxName);
+      }
+      final box = Hive.box(_sportsCacheBoxName);
+      final data = box.get('leagueCache');
+      if (data is Map) {
+        for (final entry in data.entries) {
+          try {
+            _leagueCache[entry.key] = _LeagueCacheEntry.fromMap(entry.value);
+          } catch (_) {}
+        }
+      }
+      final lastFetchStr = box.get('lastFetch');
+      if (lastFetchStr != null) {
+        _lastFetch = DateTime.tryParse(lastFetchStr);
+      }
+      notifyListeners();
+    } catch (_) {}
   }
 
   @override

@@ -34,6 +34,7 @@ void main() async {
     await news.init();
     await NotificationHistory().init();
     await BackgroundService().init();
+    await sports.loadCacheFromHive();
 
     // Sprawdzenie cold startu (aplikacja uruchomiona z powiadomienia)
     if (settings.notificationsEnabled) {

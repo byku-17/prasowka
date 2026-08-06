@@ -14,6 +14,14 @@ abstract class SportEvent {
     required this.date,
     required this.status,
   });
+
+  Map<String, dynamic> toMap();
+
+  static SportEvent fromMap(Map m) {
+    if (m['kind'] == 'match') return MatchEvent.fromMap(m);
+    if (m['kind'] == 'race') return RaceEvent.fromMap(m);
+    throw ArgumentError('Unknown SportEvent kind: ${m['kind']}');
+  }
 }
 
 class MatchEvent extends SportEvent {
@@ -22,7 +30,7 @@ class MatchEvent extends SportEvent {
   final String? homeLogo;
   final String? awayLogo;
   final String score;
-  final String? time; // np. 75' lub "Q3"
+  final String? time;
   final String competition;
 
   MatchEvent({
@@ -38,13 +46,43 @@ class MatchEvent extends SportEvent {
     this.awayLogo,
     this.time,
   });
+
+  @override
+  Map<String, dynamic> toMap() => {
+    'kind': 'match',
+    'id': id,
+    'type': type.name,
+    'date': date.toIso8601String(),
+    'status': status.name,
+    'homeTeam': homeTeam,
+    'awayTeam': awayTeam,
+    'homeLogo': homeLogo,
+    'awayLogo': awayLogo,
+    'score': score,
+    'time': time,
+    'competition': competition,
+  };
+
+  factory MatchEvent.fromMap(Map m) => MatchEvent(
+    id: m['id'],
+    type: SportType.values.firstWhere((e) => e.name == m['type']),
+    date: DateTime.parse(m['date']),
+    status: EventStatus.values.firstWhere((e) => e.name == m['status']),
+    homeTeam: m['homeTeam'],
+    awayTeam: m['awayTeam'],
+    score: m['score'],
+    competition: m['competition'],
+    homeLogo: m['homeLogo'],
+    awayLogo: m['awayLogo'],
+    time: m['time'],
+  );
 }
 
 class RaceEvent extends SportEvent {
   final String raceName;
   final String circuitName;
   final String countryCode;
-  final List<String> results; // np. podium ["Verstappen", "Norris", "Hamilton"]
+  final List<String> results;
 
   RaceEvent({
     required super.id,
@@ -56,6 +94,30 @@ class RaceEvent extends SportEvent {
     required this.countryCode,
     this.results = const [],
   });
+
+  @override
+  Map<String, dynamic> toMap() => {
+    'kind': 'race',
+    'id': id,
+    'type': type.name,
+    'date': date.toIso8601String(),
+    'status': status.name,
+    'raceName': raceName,
+    'circuitName': circuitName,
+    'countryCode': countryCode,
+    'results': results,
+  };
+
+  factory RaceEvent.fromMap(Map m) => RaceEvent(
+    id: m['id'],
+    type: SportType.values.firstWhere((e) => e.name == m['type']),
+    date: DateTime.parse(m['date']),
+    status: EventStatus.values.firstWhere((e) => e.name == m['status']),
+    raceName: m['raceName'],
+    circuitName: m['circuitName'],
+    countryCode: m['countryCode'],
+    results: List<String>.from(m['results'] ?? []),
+  );
 }
 
 class MatchStatRow {
