@@ -894,8 +894,8 @@ class _MatchDetailSheetState extends State<_MatchDetailSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentForBrightness(context))),
-            SizedBox(height: 12),
-            Text('Ładowanie statystyk...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 12),
+            const Text('Ładowanie statystyk...', style: TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
       );

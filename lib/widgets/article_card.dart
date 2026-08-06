@@ -155,7 +155,7 @@ class ArticleCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         _formatTimeAgo(article.publishedAt),
-                        style: TextStyle(color: Colors.grey, fontSize: 10),
+                        style: const TextStyle(color: Colors.grey, fontSize: 10),
                       ),
                       const SizedBox(width: 12),
                       _buildActions(context),
