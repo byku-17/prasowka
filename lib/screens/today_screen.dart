@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:prasowka/models/article.dart';
+import 'package:prasowka/models/news_category.dart';
+import 'package:prasowka/models/news_source.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
-import 'package:prasowka/widgets/article_card.dart';
 import 'package:prasowka/screens/article_detail_screen.dart';
+import 'package:prasowka/screens/notifications_screen.dart';
+import 'package:prasowka/screens/settings_screen.dart';
+import 'package:prasowka/services/notification_history.dart';
+import 'package:prasowka/theme/app_theme.dart';
+import 'package:prasowka/widgets/article_card.dart';
+import 'package:prasowka/widgets/news_skeleton.dart';
 
 class TodayScreen extends StatefulWidget {
   const TodayScreen({super.key});
@@ -13,60 +22,292 @@ class TodayScreen extends StatefulWidget {
 }
 
 class _TodayScreenState extends State<TodayScreen> {
+  final ScrollController _scrollController = ScrollController();
+  bool _showBackToTop = false;
+  bool _hasFetched = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchNews());
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 600 && !_showBackToTop) {
+        setState(() => _showBackToTop = true);
+      } else if (_scrollController.offset <= 600 && _showBackToTop) {
+        setState(() => _showBackToTop = false);
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchIfNeeded());
   }
 
-  void _fetchNews() {
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _fetchIfNeeded() {
+    if (_hasFetched) return;
+    _hasFetched = true;
+
     final settings = context.read<SettingsProvider>();
     final provider = context.read<NewsProvider>();
     final allSources = settings.allSources;
     final enabledIds = settings.enabledSourceIds;
+
+    // Filtruj do topSourceIds + custom sources
+    final topSources = allSources
+        .where((s) => NewsSource.topSourceIds.contains(s.id) || s.id.startsWith('custom_'))
+        .toList();
+
     provider.fetchNews(
-      allSources: allSources,
+      category: NewsCategory(
+        id: 'all',
+        name: 'Wszystkie',
+        iconCode: Icons.auto_awesome.codePoint,
+      ),
+      allSources: topSources,
       enabledSourceIds: enabledIds,
       keywords: settings.keywords,
       forceRefresh: true,
     );
   }
 
+  void _scrollToTop() {
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Widget _buildNotificationBell(BuildContext context) {
+    final unread = NotificationHistory().unreadCount;
+    return IconButton(
+      icon: Badge(
+        isLabelVisible: unread > 0,
+        label: Text(unread > 99 ? '99+' : '$unread', style: const TextStyle(fontSize: 10)),
+        backgroundColor: Colors.red,
+        child: const Icon(Icons.notifications_outlined),
+      ),
+      tooltip: 'Powiadomienia',
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+        ).then((_) => setState(() {}));
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<NewsProvider>();
-    final articles = provider.articles;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('TWOJE NOWINY'),
+        title: Text(
+          'PRASÓWKA',
+          style: GoogleFonts.syne(
+            letterSpacing: 2.0,
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+          ),
+        ),
         actions: [
+          _buildNotificationBell(context),
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.pushNamed(context, '/settings'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),
-      body: articles.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () async => _fetchNews(),
+      body: Consumer<NewsProvider>(
+        builder: (context, provider, child) {
+          final articles = provider.getArticlesForCategory('all');
+          final isLoading = provider.isCategoryLoading('all');
+          final hasEverLoaded = provider.hasCategoryEverLoaded('all');
+
+          // Shimmer
+          if (articles.isEmpty && (isLoading || !hasEverLoaded)) {
+            return ListView.builder(
+              itemCount: 5,
+              itemBuilder: (context, index) => const NewsSkeleton(),
+            );
+          }
+
+          // Empty state
+          if (articles.isEmpty && hasEverLoaded) {
+            return _buildEmptyState(context, provider);
+          }
+
+          // Lista z rekomendacjami
+          return Stack(
+            children: [
+              RefreshIndicator(
+                color: AppTheme.accentGold,
+                onRefresh: () async {
+                  _hasFetched = false;
+                  _fetchIfNeeded();
+                },
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: EdgeInsets.zero,
+                  addRepaintBoundaries: true,
+                  itemCount: articles.length + 1, // +1 na rekomendacje
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return _buildRecommendationsSection(
+                        context,
+                        provider.recommendedArticles,
+                      );
+                    }
+                    final article = articles[index - 1];
+                    return ArticleCard(
+                      article: article,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ArticleDetailScreen(article: article),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (_showBackToTop)
+                Positioned(
+                  right: 16,
+                  bottom: 16,
+                  child: FloatingActionButton.small(
+                    onPressed: _scrollToTop,
+                    backgroundColor: AppTheme.accentGold,
+                    foregroundColor: Colors.black,
+                    elevation: 4,
+                    child: const Icon(Icons.arrow_upward),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRecommendationsSection(BuildContext context, List<Article> recommended) {
+    final hasRecs = recommended.isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      key: ValueKey('recs_${hasRecs}_${recommended.length}'),
+      color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.withValues(alpha: 0.05),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasRecs) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: AppTheme.accentFor(context), size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'DLA CIEBIE',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                      color: AppTheme.accentFor(context),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 240,
               child: ListView.builder(
-                itemCount: articles.length,
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: recommended.length,
                 itemBuilder: (context, index) {
-                  final article = articles[index];
-                  return ArticleCard(
-                    article: article,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ArticleDetailScreen(article: article),
+                  final a = recommended[index];
+                  return RepaintBoundary(
+                    child: ArticleCard(
+                      article: a,
+                      isSmall: true,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ArticleDetailScreen(article: a),
+                        ),
                       ),
                     ),
                   );
                 },
               ),
             ),
+            const SizedBox(height: 16),
+          ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+            child: Text(
+              'NAJNOWSZE WIADOMOŚCI',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+                fontSize: 10,
+                color: isDark ? Colors.grey : Colors.grey.shade600,
+              ),
+            ),
+          ),
+          Divider(height: 1, thickness: 0.5, color: isDark ? Colors.white10 : Colors.grey.shade300),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, NewsProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      color: isDark ? Colors.black : Colors.white,
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.wifi_off, size: 80, color: Colors.redAccent),
+          const SizedBox(height: 24),
+          Text(
+            'BRAK TREŚCI',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Nie udało się pobrać artykułów. Sprawdź połączenie z internetem i spróbuj ponownie.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 14),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: () {
+              _hasFetched = false;
+              _fetchIfNeeded();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentFor(context),
+              foregroundColor: isDark ? Colors.black : Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            ),
+            icon: const Icon(Icons.bolt),
+            label: const Text('POBIERZ PONOWNIE', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 }
