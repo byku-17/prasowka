@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/screens/appearance_settings_page.dart';
 import 'package:prasowka/screens/category_settings_page.dart';
-import 'package:prasowka/screens/city_sources_page.dart';
 import 'package:prasowka/screens/source_settings_page.dart';
 import 'package:prasowka/screens/interests_settings_page.dart';
 
@@ -34,16 +33,9 @@ class SettingsScreen extends StatelessWidget {
           ),
           _buildSettingsTile(
             context,
-            icon: Icons.location_city,
-            title: 'Miasto i Źródła',
-            subtitle: 'Wybierz miasto, lokalne RSS',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CitySourcesPage())),
-          ),
-          _buildSettingsTile(
-            context,
             icon: Icons.rss_feed,
             title: 'Zarządzanie Źródłami',
-            subtitle: 'Włączanie portali, własne kanały RSS',
+            subtitle: 'Miasto, lokalne i portale RSS',
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SourceSettingsPage())),
           ),
           _buildSettingsTile(
