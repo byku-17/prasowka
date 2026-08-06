@@ -306,6 +306,18 @@ class SportsProvider with ChangeNotifier {
       if (lastFetchStr != null) {
         _lastFetch = DateTime.tryParse(lastFetchStr);
       }
+      // Wczytaj favoriteTeams z Hive, żeby _applyFilters() miało dostęp
+      // do ulubionych od razu (nie czeka na ScoresBar.fetchEvents)
+      if (!Hive.isBoxOpen('settings')) {
+        await Hive.openBox('settings');
+      }
+      final settingsBox = Hive.box('settings');
+      final favs = List<String>.from(settingsBox.get('favoriteTeams', defaultValue: <String>[]));
+      final onlyFavs = settingsBox.get('onlyFavoriteTeams', defaultValue: true) as bool;
+      if (favs.isNotEmpty) {
+        _currentFavorites = favs;
+        _currentOnlyFavorites = onlyFavs;
+      }
       _applyFilters();
       notifyListeners();
     } catch (_) {}
