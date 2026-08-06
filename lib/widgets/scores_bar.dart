@@ -399,6 +399,7 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -415,72 +416,72 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
                     onTap: () => sports.togglePinMatch(event.id),
                     child: Icon(
                       isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                      size: 14,
+                      size: 12,
                       color: isPinned ? AppTheme.accentForBrightness(context) : Colors.grey.withValues(alpha: 0.4),
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 2),
                   if (event.status == EventStatus.live)
                     _pulseAnimation != null
                         ? AnimatedBuilder(
                             animation: _pulseAnimation!,
                             builder: (context, child) => Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                               decoration: BoxDecoration(
                                 color: Colors.red.withValues(alpha: _pulseAnimation!.value),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(3),
                               ),
-                              child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
+                              child: const Text('LIVE', style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white)),
                             ),
                           )
                         : Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
-                            child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white)),
+                            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                            decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(3)),
+                            child: const Text('LIVE', style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: Colors.white)),
                           )
                   else if (event.status == EventStatus.finished)
-                    const Text('KONIEC', style: TextStyle(fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
+                    const Text('KONIEC', style: TextStyle(fontSize: 7, color: Colors.grey, fontWeight: FontWeight.bold)),
                 ],
               ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 3),
           Row(
             children: [
-              _buildTeamLogo(event.homeLogo, size: 12),
-              const SizedBox(width: 6),
+              _buildTeamLogo(event.homeLogo, size: 10),
+              const SizedBox(width: 4),
               Expanded(
-                child: Text(event.homeTeam, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
+                child: Text(event.homeTeam, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
               ),
               if (!isScheduled)
-                Text(homeScore, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
+                Text(homeScore, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Row(
             children: [
-              _buildTeamLogo(event.awayLogo, size: 12),
-              const SizedBox(width: 6),
+              _buildTeamLogo(event.awayLogo, size: 10),
+              const SizedBox(width: 4),
               Expanded(
-                child: Text(event.awayTeam, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
+                child: Text(event.awayTeam, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
               ),
               if (!isScheduled)
-                Text(awayScore, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
+                Text(awayScore, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
             ],
           ),
           if (!isScheduled && event.fetchedAtUtc != null)
             Padding(
-              padding: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.only(top: 1),
               child: Row(
                 children: [
                   Icon(
                     event.freshness == DataFreshness.fresh ? Icons.circle : Icons.circle_outlined,
-                    size: 5,
+                    size: 4,
                     color: _freshnessColor(event.freshness),
                   ),
-                  const SizedBox(width: 3),
+                  const SizedBox(width: 2),
                   Text(
                     _formatFreshness(event),
                     style: TextStyle(
-                      fontSize: 7,
+                      fontSize: 6,
                       color: _freshnessColor(event.freshness),
                     ),
                   ),
@@ -491,7 +492,7 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
             const Spacer(),
             Text(
               _formatTileTime(event),
-              style: TextStyle(fontSize: 8, color: AppTheme.accentForBrightness(context), fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 7, color: AppTheme.accentForBrightness(context), fontWeight: FontWeight.bold),
             ),
           ],
         ],
