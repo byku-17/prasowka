@@ -270,7 +270,7 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
             icon: const Icon(Icons.share),
             onPressed: () {
               final url = _currentUrl ?? widget.url;
-              Share.share('${widget.title}\n\n$url');
+              SharePlus.instance.share(ShareParams(text: '${widget.title}\n\n$url'));
             },
           ),
           IconButton(

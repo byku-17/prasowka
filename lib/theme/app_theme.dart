@@ -56,7 +56,6 @@ class AppTheme {
       case AppThemeVariant.system:
         return isDark ? _buildClassicDarkTheme() : _buildClassicLightTheme();
       case AppThemeVariant.classic:
-      default:
         return isDark ? _buildClassicDarkTheme() : _buildClassicLightTheme();
     }
   }

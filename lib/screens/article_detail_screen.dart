@@ -125,7 +125,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.share),
-                onPressed: () => Share.share('${article.title}\n\n${article.url}'),
+                onPressed: () => SharePlus.instance.share(ShareParams(text: '${article.title}\n\n${article.url}')),
               ),
               IconButton(
                 icon: const Icon(Icons.open_in_browser),
