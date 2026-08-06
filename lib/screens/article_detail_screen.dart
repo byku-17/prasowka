@@ -31,7 +31,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   DateTime? _lastSwipeUpTime;
   bool _showSwipeHint = false;
-  double _lastScrollPixels = 0;
 
   @override
   void initState() {
@@ -46,45 +45,43 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     });
   }
 
-  void _scrollListener() {
-    final pixels = _scrollController.position.pixels;
-    final maxScroll = _scrollController.position.maxScrollExtent;
+  bool get _canFetch {
+    final provider = context.read<NewsProvider>();
+    final hasFullContent = widget.article.fullContent != null && widget.article.fullContent!.trim().isNotEmpty;
+    return !hasFullContent && !provider.isFetchingFullContent && !RssService.isGoogleNewsUrl(widget.article.url);
+  }
 
-    // Mark as read when near bottom
-    if (pixels >= maxScroll - 100) {
+  void _handleSwipeUp() {
+    if (!_canFetch) return;
+    final now = DateTime.now();
+    if (_lastSwipeUpTime != null && now.difference(_lastSwipeUpTime!) < const Duration(milliseconds: 600)) {
+      setState(() {
+        _showSwipeHint = false;
+        _lastSwipeUpTime = null;
+      });
+      context.read<NewsProvider>().fetchFullArticleContent(widget.article);
+    } else {
+      _lastSwipeUpTime = now;
+      setState(() => _showSwipeHint = true);
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted && _showSwipeHint) setState(() => _showSwipeHint = false);
+      });
+    }
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
       if (!widget.article.isRead) {
         context.read<NewsProvider>().markArticleRead(widget.article);
       }
     }
+  }
 
-    // Double swipe-up at top to fetch full content
-    final provider = context.read<NewsProvider>();
-    final hasFullContent = widget.article.fullContent != null && widget.article.fullContent!.trim().isNotEmpty;
-    final isGoogleNews = RssService.isGoogleNewsUrl(widget.article.url);
-
-    if (!hasFullContent && !provider.isFetchingFullContent && !isGoogleNews) {
-      final scrollingUp = pixels < _lastScrollPixels && pixels < 30;
-      _lastScrollPixels = pixels;
-
-      if (scrollingUp) {
-        final now = DateTime.now();
-        if (_lastSwipeUpTime != null && now.difference(_lastSwipeUpTime!) < const Duration(milliseconds: 600)) {
-          // Second swipe-up — fetch
-          setState(() {
-            _showSwipeHint = false;
-            _lastSwipeUpTime = null;
-          });
-          provider.fetchFullArticleContent(widget.article);
-        } else {
-          // First swipe-up — show hint
-          _lastSwipeUpTime = now;
-          setState(() => _showSwipeHint = true);
-          Future.delayed(const Duration(seconds: 3), () {
-            if (mounted && _showSwipeHint) setState(() => _showSwipeHint = false);
-          });
-        }
-      }
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is OverscrollNotification && notification.overscroll < 0) {
+      _handleSwipeUp();
     }
+    return false;
   }
 
   @override
@@ -115,9 +112,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
           SliverAppBar(
             expandedHeight: 250,
             pinned: true,
@@ -396,6 +395,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             ),
           ),
         ],
+        ),
       ),
       floatingActionButton: Consumer<NewsProvider>(
         builder: (context, provider, child) {
