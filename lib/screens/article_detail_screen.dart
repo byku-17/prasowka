@@ -12,14 +12,11 @@ import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
 
-/// Próg czasu (w sekundach), po którym artykuł jest uznawany za "przeczytany"
 const int _kReadThresholdSeconds = 20;
 
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
-
   const ArticleDetailScreen({super.key, required this.article});
-
   @override
   State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
 }
@@ -31,15 +28,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   DateTime? _lastSwipeUpTime;
   bool _showSwipeHint = false;
+  double _pointerStartY = 0;
+  DateTime? _pointerStartTime;
 
   @override
   void initState() {
     super.initState();
     _stopwatch = Stopwatch()..start();
-    
     _scrollController.addListener(_scrollListener);
-
-    // Co 1s odśwież UI
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -54,7 +50,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   void _handleSwipeUp() {
     if (!_canFetch) return;
     final now = DateTime.now();
-    if (_lastSwipeUpTime != null && now.difference(_lastSwipeUpTime!) < const Duration(milliseconds: 600)) {
+    if (_lastSwipeUpTime != null && now.difference(_lastSwipeUpTime!) < const Duration(milliseconds: 800)) {
       setState(() {
         _showSwipeHint = false;
         _lastSwipeUpTime = null;
@@ -63,7 +59,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     } else {
       _lastSwipeUpTime = now;
       setState(() => _showSwipeHint = true);
-      Future.delayed(const Duration(seconds: 3), () {
+      Future.delayed(const Duration(seconds: 4), () {
         if (mounted && _showSwipeHint) setState(() => _showSwipeHint = false);
       });
     }
@@ -77,11 +73,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
-  bool _onScrollNotification(ScrollNotification notification) {
-    if (notification is OverscrollNotification && notification.overscroll < 0) {
+  void _onPointerDown(PointerDownEvent event) {
+    _pointerStartY = event.position.dy;
+    _pointerStartTime = DateTime.now();
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    if (_pointerStartTime == null) return;
+    final dy = event.position.dy - _pointerStartY;
+    final dt = DateTime.now().difference(_pointerStartTime!).inMilliseconds;
+    if (dt < 400 && dy < -40) {
       _handleSwipeUp();
     }
-    return false;
   }
 
   @override
@@ -97,11 +100,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   void _markReadIfEnough(int seconds) {
     final article = widget.article;
-    // Zaktualizuj czas czytania
     if (seconds > article.readTimeSeconds) {
       article.readTimeSeconds = seconds;
     }
-    // Oznacz jako przeczytany jeśli wystarczająco długo czytał
     if (seconds >= _kReadThresholdSeconds && !article.isRead) {
       context.read<NewsProvider>().markArticleRead(article);
     }
@@ -112,289 +113,201 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: NotificationListener<ScrollNotification>(
-        onNotification: _onScrollNotification,
+      body: Listener(
+        onPointerDown: _onPointerDown,
+        onPointerUp: _onPointerUp,
         child: CustomScrollView(
           controller: _scrollController,
           slivers: [
-          SliverAppBar(
-            expandedHeight: 250,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: article.imageUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: article.imageUrl!,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(color: const Color(0xFF1E2126)),
-            ),
-            actions: [
-              if (article.isRead)
-                const Padding(
-                  padding: EdgeInsets.only(right: 4),
-                  child: Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
+            SliverAppBar(
+              expandedHeight: 250,
+              pinned: true,
+              flexibleSpace: FlexibleSpaceBar(
+                background: article.imageUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: article.imageUrl!,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(color: const Color(0xFF1E2126)),
+              ),
+              actions: [
+                if (article.isRead)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 4),
+                    child: Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
+                  ),
+                Consumer<NewsProvider>(
+                  builder: (context, provider, child) {
+                    final isPolish = provider.isArticlePolish(article);
+                    final needsTranslation = !isPolish && (
+                      article.translatedTitle == null ||
+                      (article.fullContent != null && article.translatedFullContent == null)
+                    );
+                    if (!needsTranslation) return const SizedBox.shrink();
+                    return IconButton(
+                      icon: provider.isTranslating
+                          ? const SizedBox(
+                              width: 20, height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.translate, color: Colors.blueAccent),
+                      onPressed: provider.isTranslating ? null : () => provider.translateArticle(article),
+                      tooltip: 'Tłumacz na polski',
+                    );
+                  },
                 ),
-              Consumer<NewsProvider>(
-                builder: (context, provider, child) {
-                  final isPolish = provider.isArticlePolish(article);
-                  final needsTranslation = !isPolish && (
-                    article.translatedTitle == null ||
-                    (article.fullContent != null && article.translatedFullContent == null)
-                  );
+                IconButton(
+                  icon: const Icon(Icons.share),
+                  onPressed: () => SharePlus.instance.share(ShareParams(text: '${article.title}\n\n${article.url}')),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.open_in_browser),
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
+                    ));
+                  },
+                ),
+              ],
+            ),
 
-                  if (!needsTranslation) return const SizedBox.shrink();
-
-                  return IconButton(
-                    icon: provider.isTranslating
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                          )
-                        : const Icon(Icons.translate, color: Colors.blueAccent),
-                    onPressed: provider.isTranslating
-                        ? null
-                        : () => provider.translateArticle(article),
-                    tooltip: 'Tłumacz na polski',
-                  );
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.share),
-                onPressed: () => SharePlus.instance.share(ShareParams(text: '${article.title}\n\n${article.url}')),
-              ),
-              IconButton(
-                icon: const Icon(Icons.open_in_browser),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ArticleWebViewScreen(
-                        url: article.url,
-                        title: article.title,
-                      ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          article.sourceName.toUpperCase(),
+                          style: TextStyle(
+                            color: AppTheme.accentFor(context),
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          DateFormat('dd.MM.yyyy HH:mm').format(article.publishedAt),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
-            ],
-          ),
+                    const SizedBox(height: 16),
+                    Consumer<NewsProvider>(
+                      builder: (context, provider, child) {
+                        return Text(
+                          article.translatedTitle ?? article.title,
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(height: 1.2),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
 
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        article.sourceName.toUpperCase(),
-                        style: TextStyle(
-                          color: AppTheme.accentFor(context),
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        DateFormat('dd.MM.yyyy HH:mm').format(article.publishedAt),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+                    Consumer<NewsProvider>(
+                      builder: (context, provider, child) {
+                        final hasFullContent = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
 
-                  Consumer<NewsProvider>(
-                    builder: (context, provider, child) {
-                      return Text(
-                        article.translatedTitle ?? article.title,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          height: 1.2,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  const Divider(),
-                  const SizedBox(height: 16),
-
-                  Consumer<NewsProvider>(
-                    builder: (context, provider, child) {
-                      final hasFullContent = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (provider.isFetchingFullContent || provider.isTranslating)
-                            Center(
-                              child: Column(
-                                children: [
-                                  const CircularProgressIndicator(),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    provider.isTranslating ? 'Sowa tłumaczy dla Ciebie...' : 'Sowa czyta artykuł dla Ciebie...',
-                                    style: const TextStyle(fontStyle: FontStyle.italic),
-                                  ),
-                                ],
+                        if (provider.isFetchingFullContent || provider.isTranslating) {
+                          return Column(
+                            children: [
+                              if (!hasFullContent)
+                                HtmlWidget(
+                                  article.translatedDescription ?? (article.description.isNotEmpty ? article.description : ''),
+                                  textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
+                                  onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+                                ),
+                              const SizedBox(height: 32),
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 12),
+                              Text(
+                                provider.isTranslating ? 'Sowa tłumaczy dla Ciebie...' : 'Sowa czyta artykuł dla Ciebie...',
+                                style: const TextStyle(fontStyle: FontStyle.italic),
                               ),
-                            )
-                          else if (!hasFullContent)
-                            Column(
-                              children: [
-                                HtmlWidget(
-                                  article.translatedDescription ?? (article.description.isNotEmpty ? article.description : 'Brak treści artykułu.'),
-                                  textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    fontSize: 18,
-                                    height: 1.6,
-                                  ),
-                                  onTapUrl: (url) async {
-                                    await _launchUrl(context, url);
-                                    return true;
-                                  },
-                                ),
-                                if (_showSwipeHint) ...[
-                                  const SizedBox(height: 20),
-                                  Center(
-                                    child: AnimatedOpacity(
-                                      opacity: _showSwipeHint ? 1.0 : 0.0,
-                                      duration: const Duration(milliseconds: 300),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.keyboard_arrow_up, color: AppTheme.accentFor(context), size: 20),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Przesuń jeszcze raz, aby pobrać artykuł',
-                                            style: TextStyle(
-                                              color: AppTheme.accentFor(context),
-                                              fontSize: 13,
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            ],
+                          );
+                        }
+
+                        if (!hasFullContent) {
+                          return Column(
+                            children: [
+                              HtmlWidget(
+                                article.translatedDescription ?? (article.description.isNotEmpty ? article.description : 'Brak treści artykułu.'),
+                                textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
+                                onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+                              ),
+                              if (_showSwipeHint) ...[
                                 const SizedBox(height: 24),
-                                if (RssService.isGoogleNewsUrl(article.url))
-                                  Center(
-                                    child: ElevatedButton.icon(
-                                      onPressed: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => ArticleWebViewScreen(
-                                              url: article.url,
-                                              title: article.title,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      icon: const Icon(Icons.auto_stories),
-                                      label: const Text('CZYTAJ ARTYKUŁ'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppTheme.accentFor(context),
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                      ),
-                                    ),
-                                  )
-                                else ...[
-                                  Center(
-                                    child: ElevatedButton.icon(
-                                      onPressed: provider.isFetchingFullContent
-                                          ? null
-                                          : () => provider.fetchFullArticleContent(article),
-                                      icon: provider.isFetchingFullContent
-                                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                                          : const Icon(Icons.auto_stories),
-                                      label: Text(provider.fetchFailedIds.contains(article.id)
-                                          ? 'SPRÓBUJ PONOWNIE'
-                                          : 'POBIERZ PEŁNĄ TREŚĆ'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppTheme.accentFor(context),
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                      ),
-                                    ),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.accentFor(context).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppTheme.accentFor(context).withValues(alpha: 0.3)),
                                   ),
-                                  const SizedBox(height: 12),
-                                  Center(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => ArticleWebViewScreen(
-                                              url: article.url,
-                                              title: article.title,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      icon: const Icon(Icons.open_in_browser, size: 18),
-                                      label: const Text('CZYTAJ W APLIKACJI'),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppTheme.accentFor(context),
-                                        side: BorderSide(color: AppTheme.accentFor(context)),
-                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            )
-                          else
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                HtmlWidget(
-                                  article.translatedFullContent ?? article.fullContent!,
-                                  textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    fontSize: 18,
-                                    height: 1.6,
-                                  ),
-                                  onTapUrl: (url) async {
-                                    await _launchUrl(context, url);
-                                    return true;
-                                  },
-                                ),
-                                const SizedBox(height: 24),
-                                Center(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => ArticleWebViewScreen(
-                                            url: article.url,
-                                            title: article.title,
-                                          ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.keyboard_arrow_up, color: AppTheme.accentFor(context), size: 24),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Przesuń jeszcze raz, aby pobrać artykuł',
+                                        style: TextStyle(
+                                          color: AppTheme.accentFor(context),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
                                         ),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.open_in_browser, size: 18),
-                                    label: const Text('CZYTAJ W APLIKACJI'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: AppTheme.accentFor(context),
-                                      side: BorderSide(color: AppTheme.accentFor(context)),
-                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
+                              const SizedBox(height: 32),
+                              _buildActionButtons(context, provider),
+                            ],
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            HtmlWidget(
+                              article.translatedFullContent ?? article.fullContent!,
+                              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
+                              onTapUrl: (url) async { await _launchUrl(context, url); return true; },
                             ),
-                        ],
-                      );
-                    },
-                  ),
+                            const SizedBox(height: 32),
+                            Center(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
+                                  ));
+                                },
+                                icon: const Icon(Icons.open_in_browser, size: 18),
+                                label: const Text('CZYTAJ W APLIKACJI'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppTheme.accentFor(context),
+                                  side: BorderSide(color: AppTheme.accentFor(context)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
 
-
-                  const SizedBox(height: 60),
-                ],
+                    const SizedBox(height: 60),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
       floatingActionButton: Consumer<NewsProvider>(
@@ -442,6 +355,65 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context, NewsProvider provider) {
+    if (RssService.isGoogleNewsUrl(article.url)) {
+      return Center(
+        child: ElevatedButton.icon(
+          onPressed: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
+            ));
+          },
+          icon: const Icon(Icons.auto_stories),
+          label: const Text('CZYTAJ ARTYKUŁ'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.accentFor(context),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: provider.isFetchingFullContent
+                ? null
+                : () => provider.fetchFullArticleContent(article),
+            icon: provider.isFetchingFullContent
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.auto_stories),
+            label: Text(provider.fetchFailedIds.contains(article.id) ? 'SPRÓBUJ PONOWNIE' : 'PEŁNA TREŚĆ'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentFor(context),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
+              ));
+            },
+            icon: const Icon(Icons.open_in_browser, size: 18),
+            label: const Text('W APLIKACJI'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.accentFor(context),
+              side: BorderSide(color: AppTheme.accentFor(context)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
