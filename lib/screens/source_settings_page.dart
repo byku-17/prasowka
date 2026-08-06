@@ -69,7 +69,7 @@ class SourceSettingsPage extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
-              'Po zmianie miasta źródła lokalne są automatycznie włączane.',
+              'Dla wybranego miasta wyświetlamy wiadomości z Google News.',
               style: TextStyle(fontSize: 11, color: Colors.grey[600]),
             ),
           ),
@@ -100,19 +100,33 @@ class SourceSettingsPage extends StatelessWidget {
   Widget _buildCategoryTile(BuildContext context, dynamic cat, SettingsProvider settings, String city) {
     var sources = settings.allSources.where((s) => s.categoryId == cat.id).toList();
 
-    // Dla kategorii "warsaw" podmień źródła na te z wybranego miasta
+    // Dla kategorii "warsaw" pokaż informację o Google News
     if (cat.id == 'warsaw') {
-      final sourceIds = NewsSource.cityRssSourceIds[city];
-      if (sourceIds != null) {
-        sources = settings.allSources.where((s) => sourceIds.contains(s.id)).toList();
-      } else {
-        sources = settings.allSources.where((s) => s.categoryId == 'warsaw').toList();
-      }
+      final displayName = city;
+      final googleNewsUrl = NewsSource.googleNewsCityUrl(city);
+      
+      return ExpansionTile(
+        leading: Icon(cat.icon, color: AppTheme.accentFor(context), size: 20),
+        title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        subtitle: Text(
+          'Google News - automatycznie dobrane wiadomości',
+          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+        ),
+        children: [
+          ListTile(
+            dense: true,
+            leading: Icon(Icons.newspaper, color: AppTheme.accentFor(context), size: 20),
+            title: Text('Google News - $city', style: const TextStyle(fontSize: 13)),
+            subtitle: Text(googleNewsUrl, style: const TextStyle(fontSize: 10, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+            trailing: Icon(Icons.check_circle, color: AppTheme.accentFor(context), size: 20),
+          ),
+        ],
+      );
     }
 
     if (sources.isEmpty) return const SizedBox.shrink();
 
-    final displayName = cat.id == 'warsaw' ? city : cat.name;
+    final displayName = cat.name;
     final activeCount = sources.where((s) => settings.isSourceActive(s.id)).length;
 
     return ExpansionTile(

@@ -39,16 +39,11 @@ class NewsSource extends HiveObject {
     'probasket'
   ];
 
-  /// Mapowanie miast na identyfikatory źródeł RSS lokalnych
-  static const Map<String, List<String>> cityRssSourceIds = {
-    'Warszawa': ['warszawa_pl', 'warszawa_wpigulce', 'uw_news'],
-    'Kraków': ['krakow_pl', 'krknews'],
-    'Wrocław': ['wroclaw_pl'],
-    'Gdańsk': ['radiogdansk'],
-    'Poznań': ['tenpoznan'],
-    'Łódź': ['lokalna_news'],
-    'Katowice': ['24katowice'],
-  };
+  /// Generuje URL RSS Google News dla danego miasta (lokalne wiadomości)
+  static String googleNewsCityUrl(String city) {
+    final query = Uri.encodeQueryComponent('$city lokalne wiadomości');
+    return 'https://news.google.com/rss/search?q=$query&hl=pl&gl=PL&ceid=PL:pl';
+  }
 
   NewsSource({
     required this.id,
@@ -203,31 +198,6 @@ class NewsSource extends HiveObject {
     NewsSource(id: 'kultura_liberalna', name: 'Kultura Liberalna', rssUrl: 'https://kulturaliberalna.pl/feed/', categoryId: 'culture'),
     NewsSource(id: 'vogue_kultura', name: 'Vogue Polska', rssUrl: 'https://www.vogue.pl/k/kultura/feed', categoryId: 'culture'),
 
-    // --- WARSZAWA ---
-    NewsSource(id: 'warszawa_pl', name: 'Warszawa.pl', rssUrl: 'https://www.warszawa.pl/feed/', categoryId: 'warsaw', isDefault: true),
-    NewsSource(id: 'warszawa_wpigulce', name: 'Warszawa W Pigułce', rssUrl: 'https://warszawawpigulce.pl/feed/', categoryId: 'warsaw', isDefault: true),
-    NewsSource(id: 'uw_news', name: 'Uniwersytet Warszawski', rssUrl: 'https://www.uw.edu.pl/feed', categoryId: 'warsaw', isDefault: true),
-
-    // --- KRAKÓW ---
-    NewsSource(id: 'krakow_pl', name: 'Kraków.pl', rssUrl: 'https://krakow.pl/feeds/rss/komunikaty/26', categoryId: 'krakow', isDefault: true),
-    NewsSource(id: 'krknews', name: 'KRKnews', rssUrl: 'https://krknews.pl/feed', categoryId: 'krakow', isDefault: true),
-
-    // --- WROCŁAW ---
-    NewsSource(id: 'wroclaw_pl', name: 'Wrocław.pl', rssUrl: 'https://www.wroclaw.pl/dla-mieszkanca/rss', categoryId: 'wroclaw', isDefault: true),
-
-    // --- GDAŃSK ---
-    NewsSource(id: 'radiogdansk', name: 'Radio Gdańsk', rssUrl: 'https://radiogdansk.pl/feed', categoryId: 'gdansk', isDefault: true),
-
-    // --- POZNAŃ ---
-    NewsSource(id: 'tenpoznan', name: 'TenPoznań.pl', rssUrl: 'https://tenpoznan.pl/feed', categoryId: 'poznan', isDefault: true),
-
-    // --- ŁÓDŹ ---
-    NewsSource(id: 'lokalna_news', name: 'Lokalna.news', rssUrl: 'https://www.lokalna.news/rss/articles/pl', categoryId: 'lodz', isDefault: true),
-
-    // --- KATOWICE ---
-    NewsSource(id: '24katowice', name: '24KATOWICE.pl', rssUrl: 'https://24katowice.pl/feed', categoryId: 'katowice', isDefault: true),
-    NewsSource(id: 'kultura_gazetapl', name: 'Kultura Gazeta.pl', rssUrl: 'http://wiadomosci.gazeta.pl/pub/rss/kultura.xml', categoryId: 'culture'),
-    NewsSource(id: 'imponderabilia_pod', name: 'Imponderabilia', rssUrl: 'https://anchor.fm/s/18384218/podcast/rss', categoryId: 'culture'),
     NewsSource(id: 'jakbyniepaczec_pod', name: 'Jakbyniepaczec', rssUrl: 'https://anchor.fm/s/3cc71778/podcast/rss', categoryId: 'culture'),
 
     // --- PODRÓŻE ---
