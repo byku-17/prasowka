@@ -240,12 +240,12 @@ class _ScoresBarState extends State<ScoresBar> {
       icon = Icons.search_off;
       title = 'Brak meczów';
       subtitle = hasFavorites
-          ? 'Brak live/zaplanowanych meczów dla: ${settings.favoriteTeams.take(3).join(", ")}'
+          ? 'Dla: ${settings.favoriteTeams.take(2).join(", ")}'
           : 'Brak meczów dla wybranych lig';
     } else {
       icon = Icons.sports_soccer;
       title = 'Wybierz ligi sportowe';
-      subtitle = 'Kliknij, aby spersonalizować pasek';
+      subtitle = 'Kliknij, aby spersonalizować';
     }
 
     return GestureDetector(
@@ -255,6 +255,7 @@ class _ScoresBarState extends State<ScoresBar> {
         width: double.infinity,
         alignment: Alignment.center,
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
@@ -262,30 +263,25 @@ class _ScoresBarState extends State<ScoresBar> {
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 28, color: Colors.orange),
-            const SizedBox(height: 8),
+            Icon(icon, size: 22, color: Colors.orange),
+            const SizedBox(height: 4),
             Text(
               title,
-              style: const TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 subtitle,
-                style: TextStyle(fontSize: 10, color: Colors.orange.withValues(alpha: 0.7)),
+                style: TextStyle(fontSize: 9, color: Colors.orange.withValues(alpha: 0.7)),
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (settings.favoriteTeams.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Ulubione: ${settings.favoriteTeams.join(", ")}',
-                style: TextStyle(fontSize: 9, color: Colors.grey.withValues(alpha: 0.5)),
-                textAlign: TextAlign.center,
-              ),
-            ],
           ],
         ),
       ),
