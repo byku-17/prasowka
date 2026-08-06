@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:prasowka/screens/home_screen.dart';
+import 'package:prasowka/screens/today_screen.dart';
+import 'package:prasowka/screens/city_screen.dart';
+import 'package:prasowka/screens/sport_screen.dart';
 import 'package:prasowka/screens/saved_screen.dart';
-import 'package:prasowka/screens/settings_screen.dart';
+import 'package:prasowka/screens/topics_screen.dart';
 import 'package:prasowka/screens/search_bottom_sheet.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
@@ -32,9 +34,11 @@ class _MainScreenState extends State<MainScreen> {
     _currentIndex = context.read<SettingsProvider>().lastTabIndex;
     _pageController = PageController(initialPage: _currentIndex);
     _screens = [
-      const HomeScreen(),
+      const TodayScreen(),
+      const CityScreen(),
+      const SportScreen(),
       const SavedScreen(),
-      const SettingsScreen(),
+      const TopicsScreen(),
     ];
 
     // Nasłuchiwanie powiadomień
@@ -157,9 +161,11 @@ class _MainScreenState extends State<MainScreen> {
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 11),
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Główna'),
+            BottomNavigationBarItem(icon: Icon(Icons.today), label: 'Dzisiaj'),
+            BottomNavigationBarItem(icon: Icon(Icons.location_city), label: 'Miasto'),
+            BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'Sport'),
             BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Zapisane'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ustawienia'),
+            BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Tematy'),
           ],
         ),
       ),
