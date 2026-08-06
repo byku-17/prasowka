@@ -261,16 +261,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 color: const Color(0xFF2E3238),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: const Column(
                 children: [
-                  Icon(Icons.keyboard_arrow_up, color: Colors.white70, size: 24),
-                  SizedBox(width: 8),
+                  Icon(Icons.keyboard_arrow_up, color: Colors.white70, size: 28),
+                  SizedBox(height: 4),
                   Text(
-                    'Przesuń jeszcze raz, aby pobrać artykuł',
+                    'Przesuń jeszcze raz,\naby pobrać artykuł',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -294,22 +294,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           onTapUrl: (url) async { await _launchUrl(context, url); return true; },
         ),
         const SizedBox(height: 32),
-        Center(
-          child: OutlinedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
-              ));
-            },
-            icon: const Icon(Icons.open_in_browser, size: 18),
-            label: const Text('CZYTAJ W APLIKACJI'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.accentFor(context),
-              side: BorderSide(color: AppTheme.accentFor(context)),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            ),
-          ),
-        ),
+        _buildActionButtons(context, provider),
       ],
     );
   }
@@ -342,17 +327,20 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 ? null
                 : () => provider.fetchFullArticleContent(article),
             icon: provider.isFetchingFullContent
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.auto_stories),
-            label: Text(provider.fetchFailedIds.contains(article.id) ? 'SPRÓBUJ PONOWNIE' : 'PEŁNA TREŚĆ'),
+                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.auto_stories, size: 16),
+            label: Text(
+              provider.fetchFailedIds.contains(article.id) ? 'SPRÓBUJ PONOWNIE' : 'PEŁNA TREŚĆ',
+              style: const TextStyle(fontSize: 12),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accentFor(context),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 10),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: OutlinedButton.icon(
             onPressed: () {
@@ -360,29 +348,29 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
               ));
             },
-            icon: const Icon(Icons.open_in_browser, size: 18),
-            label: const Text('W APLIKACJI'),
+            icon: const Icon(Icons.open_in_browser, size: 16),
+            label: const Text('W APLIKACJI', style: TextStyle(fontSize: 12)),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.accentFor(context),
               side: BorderSide(color: AppTheme.accentFor(context)),
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 10),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         GestureDetector(
           onTap: () => provider.toggleLike(article),
           child: Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: article.isLiked ? AppTheme.accentFor(context) : Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               article.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
               color: article.isLiked ? Colors.white : Theme.of(context).colorScheme.onSurface,
-              size: 22,
+              size: 20,
             ),
           ),
         ),
@@ -409,16 +397,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             return GestureDetector(
               onTap: () => menuController.isOpen ? menuController.close() : menuController.open(),
               child: Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   Icons.more_vert,
                   color: Theme.of(context).colorScheme.onSurface,
-                  size: 22,
+                  size: 20,
                 ),
               ),
             );
