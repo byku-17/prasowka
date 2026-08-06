@@ -171,23 +171,26 @@ class RssService {
     return null;
   }
 
+  static final _imageExtensionRegExp = RegExp(
+    r'\.(jpe?g|png|webp|gif|avif|bmp|tiff?)(\?|$|#)',
+    caseSensitive: false,
+  );
+
+  static final _imageKeywordRegExp = RegExp(
+    r'(image|img|photo|pic|thumb|thumbnail|media|cdn|content)',
+    caseSensitive: false,
+  );
+
   bool _isValidImageUrl(String url) {
     final u = url.toLowerCase();
     if (_socialDomains.hasMatch(u)) return false;
-    
-    // Sprawdzamy standardowe rozszerzenia
-    if (u.contains('.jpg') || u.contains('.jpeg') || u.contains('.png') || 
-        u.contains('.webp') || u.contains('.gif')) {
-      return true;
+
+    if (u.startsWith('http://') || u.startsWith('https://')) {
+      if (_imageExtensionRegExp.hasMatch(u)) return true;
+      if (_imageKeywordRegExp.hasMatch(u) && u.contains('?')) return true;
+      if (u.contains('/image') || u.contains('/img') || u.contains('/photo')) return true;
     }
-    
-    // Obsługa dynamicznych URL-i (np. image.php?id=...)
-    if (u.contains('image') || u.contains('img') || u.contains('photo')) {
-      // Jeśli URL zawiera parametry zapytania (?), uznajemy go za potencjalny obrazek,
-      // jeśli występuje w nim słowo kluczowe związane z grafiką
-      if (u.contains('?')) return true;
-    }
-    
+
     return false;
   }
 

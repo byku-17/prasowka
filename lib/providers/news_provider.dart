@@ -228,10 +228,10 @@ class NewsProvider with ChangeNotifier {
       return;
     }
     
-    // Optymalizacja: pobieramy punkty tylko raz dla każdego tagu, zamiast liczyć od nowa
     final List<MapEntry<Article, double>> scored = allArticles.map((a) {
-      // Jeśli mamy cachedScore, używamy go. Jeśli nie, calculateScore go ustawi.
-      return MapEntry(a, a.cachedScore ?? _interestService.calculateScore(a));
+      final base = a.cachedScore ?? _interestService.calculateScore(a);
+      final withImage = base > 0 && a.imageUrl != null ? base * 1.5 : base;
+      return MapEntry(a, withImage);
     }).where((e) => e.value > 0).toList();
     
     scored.sort((a, b) => b.value.compareTo(a.value));
