@@ -117,9 +117,10 @@ class _MainScreenState extends State<MainScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text(
+              content: Text(
                 'Naciśnij ponownie, aby wyjść z aplikacji',
                 textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.accentFor(context)),
               ),
               backgroundColor: AppTheme.primaryNavy,
               duration: const Duration(seconds: 2),
