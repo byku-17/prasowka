@@ -37,8 +37,8 @@ class _MainScreenState extends State<MainScreen> {
       const TodayScreen(),
       const CityScreen(),
       const SportScreen(),
-      const SavedScreen(),
       const TopicsScreen(),
+      const SavedScreen(),
     ];
 
     // Nasłuchiwanie powiadomień
@@ -164,8 +164,8 @@ class _MainScreenState extends State<MainScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.today), label: 'Dzisiaj'),
             BottomNavigationBarItem(icon: Icon(Icons.location_city), label: 'Miasto'),
             BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'Sport'),
-            BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Zapisane'),
             BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Tematy'),
+            BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Zapisane'),
           ],
         ),
       ),
