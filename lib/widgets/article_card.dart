@@ -225,7 +225,7 @@ class ArticleCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             article.sourceName,
-                            style: TextStyle(color: AppTheme.accentFor(context), fontSize: 10, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: Colors.grey.shade500, fontSize: 10, fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
