@@ -82,7 +82,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     if (_pointerStartTime == null) return;
     final dy = event.position.dy - _pointerStartY;
     final dt = DateTime.now().difference(_pointerStartTime!).inMilliseconds;
-    if (dt < 400 && dy < -40) {
+    if (dt < 500 && dy < -25) {
       _handleSwipeUp();
     }
   }
