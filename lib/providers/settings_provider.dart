@@ -171,6 +171,14 @@ class SettingsProvider with ChangeNotifier {
       await saveEnabledSources();
     }
 
+    // 5b. Dodaj nowe domyślne źródła (np. portale miejskie), jeśli nie ma ich na liście
+    final defaultIds = _allSources.where((s) => s.isDefault).map((s) => s.id).toList();
+    final newDefaults = defaultIds.where((id) => !_enabledSourceIds.contains(id)).toList();
+    if (newDefaults.isNotEmpty) {
+      _enabledSourceIds.addAll(newDefaults);
+      await saveEnabledSources();
+    }
+
     // 6. Zainteresowania
     _favoriteTeams = List<String>.from(settingsBox.get(teamsKey, defaultValue: <String>[]));
     
