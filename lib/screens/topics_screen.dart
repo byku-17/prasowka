@@ -12,15 +12,19 @@ import 'package:prasowka/widgets/news_skeleton.dart';
 class TopicsScreen extends StatelessWidget {
   const TopicsScreen({super.key});
 
-  /// Kategorie dostępne w gridzie (te które mają osobne zakładki są pominięte)
-  static final _topicCategories = NewsCategory.defaultCategories
-      .where((c) => !['all', 'warsaw', 'sport', 'api_news'].contains(c.id))
-      .toList();
+  /// Kategorie which have their own tabs (excluded from grid)
+  static const _excludedIds = {'all', 'warsaw', 'sport', 'api_news'};
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = AppTheme.accentFor(context);
+    final settings = context.watch<SettingsProvider>();
+
+    // Filtruj wg aktywnych kategorii + wykluczone taby
+    final topicCategories = settings.allCategoriesOrdered
+        .where((c) => !_excludedIds.contains(c.id) && settings.isCategoryActive(c.id))
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -41,24 +45,25 @@ class TopicsScreen extends StatelessWidget {
       ),
       body: CustomScrollView(
         slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.6,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final cat = _topicCategories[index];
-                  return _TopicCard(category: cat);
-                },
-                childCount: _topicCategories.length,
+          if (topicCategories.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 1.6,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final cat = topicCategories[index];
+                    return _TopicCard(category: cat);
+                  },
+                  childCount: topicCategories.length,
+                ),
               ),
             ),
-          ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
             sliver: SliverToBoxAdapter(
