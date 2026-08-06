@@ -20,8 +20,10 @@ class SavedScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('ZAPISANE'),
-          bottom: const TabBar(
-            indicatorColor: AppTheme.accentGold,
+          bottom: TabBar(
+            indicatorColor: AppTheme.accentFor(context),
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 13),
             tabs: [
               Tab(text: 'ULUBIONE'),
               Tab(text: 'NA PÓŹNIEJ'),

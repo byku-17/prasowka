@@ -138,8 +138,8 @@ class _MainScreenState extends State<MainScreen> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _openSearch,
-          backgroundColor: AppTheme.accentGold,
-          foregroundColor: Colors.black,
+          backgroundColor: AppTheme.accentFor(context),
+          foregroundColor: Colors.white,
           elevation: 6,
           shape: const CircleBorder(),
           child: const Icon(Icons.search, size: 28),
@@ -149,8 +149,12 @@ class _MainScreenState extends State<MainScreen> {
           currentIndex: _currentIndex,
           onTap: _onTabTapped,
           type: BottomNavigationBarType.fixed,
-          selectedItemColor: AppTheme.accentGold,
-          unselectedItemColor: Colors.grey,
+          selectedItemColor: AppTheme.accentFor(context),
+          unselectedItemColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey
+              : AppTheme.graphite,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 11),
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Główna'),

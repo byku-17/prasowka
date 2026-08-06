@@ -35,13 +35,13 @@ class SourceSettingsPage extends StatelessWidget {
           final displayName = cat.id == 'warsaw' ? city : cat.name;
 
           return ExpansionTile(
-            leading: Icon(cat.icon, color: AppTheme.accentGold, size: 20),
+            leading: Icon(cat.icon, color: AppTheme.accentFor(context), size: 20),
             title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             children: sources.map((src) => CheckboxListTile(
               title: Text(src.name, style: const TextStyle(fontSize: 13)),
               subtitle: Text(src.rssUrl, style: const TextStyle(fontSize: 10, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
               value: settings.isSourceActive(src.id),
-              activeColor: AppTheme.accentGold,
+              activeColor: AppTheme.accentFor(context),
               onChanged: (_) => settings.toggleSource(src.id),
             )).toList(),
           );

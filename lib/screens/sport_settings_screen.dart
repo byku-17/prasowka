@@ -25,78 +25,149 @@ class SportSettingsScreen extends StatelessWidget {
       ),
       body: settings.selectedLeagueIds.isEmpty
           ? _buildEmptyState(context)
-          : _buildSelectedSummary(context, settings),
-      bottomNavigationBar: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildFavoriteTeamsSection(context, settings),
-            _buildDebugSection(context),
-            _buildInfoBar(settings),
-          ],
+          : _buildFullBody(context, settings),
+    );
+  }
+
+  // ─── PEŁNE CIAŁO (scrollowane) ───
+
+  Widget _buildFullBody(BuildContext context, SettingsProvider settings) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 32),
+      children: [
+        // Wybrane ligi
+        _buildSelectedSummary(context, settings),
+        const Divider(height: 32),
+        // Ulubione drużyny
+        _buildFavoriteTeamsSection(context, settings),
+        const SizedBox(height: 8),
+        // Pasek informacyjny
+        _buildInfoBar(context, settings),
+        // Debug (ukryty)
+        _buildDebugToggle(context),
+      ],
+    );
+  }
+
+  // ─── WYBRANE LIGI ───
+
+  Widget _buildSelectedSummary(BuildContext context, SettingsProvider settings) {
+    final selected = settings.selectedLeagueIds
+        .map((id) => SportLeague.findById(id))
+        .whereType<SportLeague>()
+        .toList();
+
+    final Map<SportDiscipline, List<SportLeague>> grouped = {};
+    for (final league in selected) {
+      grouped.putIfAbsent(league.discipline, () => []).add(league);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Center(
+            child: ElevatedButton.icon(
+              onPressed: () => _showLeaguePicker(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentFor(context).withValues(alpha: 0.15),
+                foregroundColor: AppTheme.accentFor(context),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('WYBIERZ LIGI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+          ),
         ),
+        for (final entry in grouped.entries) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+            child: Text(
+              '${entry.key.emoji}  ${entry.key.displayName.toUpperCase()}',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.accentFor(context),
+                letterSpacing: 1.0,
+              ),
+            ),
+          ),
+          ...entry.value.map((league) => _buildLeagueTile(context, league, settings)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLeagueTile(BuildContext context, SportLeague league, SettingsProvider settings) {
+    final isSelected = settings.selectedLeagueIds.contains(league.id);
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      color: Theme.of(context).cardColor,
+      child: ListTile(
+        dense: true,
+        leading: _buildCountryFlag(league.countryCode),
+        title: Text(league.name, style: const TextStyle(fontSize: 14)),
+        subtitle: Text(league.country, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+        trailing: Switch(
+          value: isSelected,
+          onChanged: (_) => settings.toggleLeague(league.id),
+          activeThumbColor: AppTheme.accentFor(context),
+        ),
+        onTap: () => settings.toggleLeague(league.id),
       ),
     );
   }
 
-  Widget _buildDebugSection(BuildContext context) {
-    return Consumer<SportsProvider>(
-      builder: (context, provider, _) {
-        if (provider.debugLogs.isEmpty) return const SizedBox.shrink();
-        return Container(
-          padding: const EdgeInsets.all(12),
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('DEBUG', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange)),
-              const SizedBox(height: 4),
-              ...provider.debugLogs.take(20).map((log) => Text(
-                log,
-                style: const TextStyle(fontSize: 10, color: Colors.orange),
-              )),
-              if (provider.events.isNotEmpty)
-                Text(
-                  'Wydruk: ${provider.events.length} meczów w pamięci',
-                  style: const TextStyle(fontSize: 10, color: Colors.green),
-                ),
-            ],
-          ),
-        );
-      },
+  Widget _buildCountryFlag(String? code) {
+    if (code == null || code == 'WORLD' || code == 'EU') {
+      return Container(
+        width: 32,
+        height: 22,
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Center(
+          child: Text(code == 'EU' ? 'EU' : '🌍', style: const TextStyle(fontSize: 12)),
+        ),
+      );
+    }
+    return Container(
+      width: 32,
+      height: 22,
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Center(
+        child: Text(code, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+      ),
     );
   }
+
+  // ─── ULUBIONE DRUŻYNY ───
 
   Widget _buildFavoriteTeamsSection(BuildContext context, SettingsProvider settings) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.accentGold.withValues(alpha: 0.05),
-        border: Border(top: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.2))),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.star, size: 16, color: AppTheme.accentGold),
+                  Icon(Icons.star, size: 16, color: AppTheme.accentFor(context)),
                   const SizedBox(width: 8),
                   Text(
                     'ULUBIONE DRUŻYNY / ZAWODNICY',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.accentGold.withValues(alpha: 0.9),
-                      letterSpacing: 1.0,
+                      color: AppTheme.accentFor(context),
+                      letterSpacing: 0.8,
                     ),
                   ),
                 ],
@@ -106,7 +177,7 @@ class SportSettingsScreen extends StatelessWidget {
                 icon: const Icon(Icons.add, size: 14),
                 label: const Text('Dodaj', style: TextStyle(fontSize: 12)),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.accentGold,
+                  foregroundColor: AppTheme.accentFor(context),
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
               ),
@@ -114,24 +185,24 @@ class SportSettingsScreen extends StatelessWidget {
           ),
           if (settings.favoriteTeams.isEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'Dodaj drużyny (np. "Wisła"), zawodników (np. "Świątek") lub kierowców F1 (np. "Verstappen") — pokażemy tylko ich mecze.',
-                style: TextStyle(fontSize: 11, color: Colors.grey.withValues(alpha: 0.7)),
+                'Dodaj drużyny (np. "Wisła"), zawodników (np. "Świątek") lub kierowców F1 (np. "Verstappen").',
+                style: TextStyle(fontSize: 12, color: Colors.grey.withValues(alpha: 0.7)),
               ),
             )
           else
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 4),
               child: Wrap(
                 spacing: 6,
                 runSpacing: 4,
                 children: settings.favoriteTeams.map((team) => Chip(
-                  label: Text(team, style: const TextStyle(fontSize: 11)),
+                  label: Text(team, style: const TextStyle(fontSize: 12)),
                   deleteIcon: const Icon(Icons.close, size: 14),
                   onDeleted: () => settings.removeFavoriteTeam(team),
-                  backgroundColor: AppTheme.accentGold.withValues(alpha: 0.15),
-                  deleteIconColor: AppTheme.accentGold.withValues(alpha: 0.7),
+                  backgroundColor: AppTheme.accentFor(context).withValues(alpha: 0.12),
+                  deleteIconColor: AppTheme.accentFor(context).withValues(alpha: 0.7),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   visualDensity: VisualDensity.compact,
                 )).toList(),
@@ -164,9 +235,7 @@ class SportSettingsScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                settings.addFavoriteTeam(name);
-              }
+              if (name.isNotEmpty) settings.addFavoriteTeam(name);
               Navigator.pop(ctx);
             },
             child: Text('Dodaj', style: TextStyle(color: AppTheme.accentFor(context))),
@@ -176,6 +245,86 @@ class SportSettingsScreen extends StatelessWidget {
     );
   }
 
+  // ─── PASEK INFORMACYJNY ───
+
+  Widget _buildInfoBar(BuildContext context, SettingsProvider settings) {
+    final count = settings.selectedLeagueIds.length;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.accentFor(context).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        count == 0
+            ? 'Wybierz ligi, aby zobaczyć wyniki na pasku sportowym'
+            : 'Wybrano $count ${count == 1 ? "ligę" : count < 5 ? "ligi" : "lig"}',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12,
+          color: count == 0 ? Colors.grey : AppTheme.accentFor(context),
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  // ─── DEBUG (UKRYTY POD PRZYCISKIEM) ───
+
+  Widget _buildDebugToggle(BuildContext context) {
+    return Consumer<SportsProvider>(
+      builder: (context, provider, _) {
+        if (provider.debugLogs.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 8),
+              leading: Icon(Icons.bug_report, size: 18, color: Colors.orange.shade700),
+              title: Text(
+                'Diagnostyka (${provider.debugLogs.length})',
+                style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
+              ),
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ...provider.debugLogs.take(30).map((log) => Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(log, style: const TextStyle(fontSize: 10, color: Colors.orange)),
+                      )),
+                      if (provider.events.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'W pamięci: ${provider.events.length} meczów',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ─── EMPTY STATE ───
+
   Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
@@ -183,10 +332,7 @@ class SportSettingsScreen extends StatelessWidget {
         children: [
           const Icon(Icons.sports_soccer, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
-          const Text(
-            'Nie wybrano żadnych lig',
-            style: TextStyle(fontSize: 18, color: Colors.grey),
-          ),
+          const Text('Nie wybrano żadnych lig', style: TextStyle(fontSize: 18, color: Colors.grey)),
           const SizedBox(height: 8),
           const Text(
             'Kliknij "Wybierz Ligi" poniżej,\naby dodać wyniki do paska sportowego.',
@@ -198,7 +344,7 @@ class SportSettingsScreen extends StatelessWidget {
             onPressed: () => _showLeaguePicker(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accentFor(context),
-              foregroundColor: Colors.black,
+              foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             icon: const Icon(Icons.add, size: 18),
@@ -209,142 +355,8 @@ class SportSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSelectedSummary(BuildContext context, SettingsProvider settings) {
-    final selected = settings.selectedLeagueIds
-        .map((id) => SportLeague.findById(id))
-        .whereType<SportLeague>()
-        .toList();
-
-    // Group by discipline
-    final Map<SportDiscipline, List<SportLeague>> grouped = {};
-    for (final league in selected) {
-      grouped.putIfAbsent(league.discipline, () => []).add(league);
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Add more button at top
-        Center(
-          child: ElevatedButton.icon(
-            onPressed: () => _showLeaguePicker(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accentGold.withValues(alpha: 0.2),
-              foregroundColor: AppTheme.accentFor(context),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            ),
-            icon: const Icon(Icons.add, size: 16),
-            label: const Text('DODAJ WIĘCEJ LIG', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Grouped leagues
-        for (final entry in grouped.entries) ...[
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8, top: 16),
-            child: Text(
-              '${entry.key.emoji} ${entry.key.displayName.toUpperCase()}',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.accentGold.withValues(alpha: 0.8),
-                letterSpacing: 1.2,
-              ),
-            ),
-          ),
-          ...entry.value.map((league) => _buildLeagueTile(context, league, settings)),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildLeagueTile(BuildContext context, SportLeague league, SettingsProvider settings) {
-    final isSelected = settings.selectedLeagueIds.contains(league.id);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 4),
-      color: Theme.of(context).cardColor,
-      child: ListTile(
-        leading: _buildCountryFlag(league.countryCode),
-        title: Text(
-          league.name,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        ),
-        subtitle: Text(
-          league.country,
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-        ),
-        trailing: Switch(
-          value: isSelected,
-          onChanged: (_) => settings.toggleLeague(league.id),
-          activeThumbColor: AppTheme.accentFor(context),
-        ),
-        onTap: () => settings.toggleLeague(league.id),
-      ),
-    );
-  }
-
-  Widget _buildCountryFlag(String? code) {
-    if (code == null || code == 'WORLD' || code == 'EU') {
-      return Container(
-        width: 32,
-        height: 22,
-        decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Center(
-          child: Text(
-            code == 'EU' ? 'EU' : '🌍',
-            style: const TextStyle(fontSize: 12),
-          ),
-        ),
-      );
-    }
-    return Container(
-      width: 32,
-      height: 22,
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Center(
-        child: Text(
-          code,
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoBar(SettingsProvider settings) {
-    final count = settings.selectedLeagueIds.length;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.accentGold.withValues(alpha: 0.1),
-        border: Border(top: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.3))),
-      ),
-      child: SafeArea(
-        child: Text(
-          count == 0
-              ? 'Wybierz ligi, aby zobaczyć wyniki na pasku sportowym'
-              : 'Wybrano $count ${count == 1 ? "ligę" : count < 5 ? "ligi" : "lig"}',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            color: count == 0 ? Colors.grey : AppTheme.accentGold,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showLeaguePicker(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const _LeaguePickerScreen()),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const _LeaguePickerScreen()));
   }
 }
 
@@ -420,10 +432,7 @@ class _LeaguePickerScreenState extends State<_LeaguePickerScreen> {
           return ExpansionTile(
             initiallyExpanded: someSelected,
             leading: Text(discipline.emoji, style: const TextStyle(fontSize: 24)),
-            title: Text(
-              discipline.displayName,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            title: Text(discipline.displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(
               '$someSelected z ${leagues.length} lig',
               style: TextStyle(
@@ -449,10 +458,7 @@ class _LeaguePickerScreenState extends State<_LeaguePickerScreen> {
                 onChanged: (_) => _toggle(league.id),
                 activeColor: AppTheme.accentFor(context),
                 title: Text(league.name, style: const TextStyle(fontSize: 14)),
-                subtitle: Text(
-                  league.country,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                ),
+                subtitle: Text(league.country, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                 secondary: selected
                     ? Icon(Icons.check_circle, color: AppTheme.accentFor(context), size: 20)
                     : Icon(Icons.circle_outlined, color: Colors.grey.withValues(alpha: 0.5), size: 20),

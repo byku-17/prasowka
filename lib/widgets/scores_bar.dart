@@ -392,7 +392,7 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isPinned ? AppTheme.accentGold.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
+              color: isPinned ? AppTheme.accentForBrightness(context).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
               width: isPinned ? 1.5 : 1,
             ),
           ),
@@ -415,7 +415,7 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
                     child: Icon(
                       isPinned ? Icons.push_pin : Icons.push_pin_outlined,
                       size: 14,
-                      color: isPinned ? AppTheme.accentGold : Colors.grey.withValues(alpha: 0.4),
+                      color: isPinned ? AppTheme.accentForBrightness(context) : Colors.grey.withValues(alpha: 0.4),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -450,7 +450,7 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
                 child: Text(event.homeTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
               ),
               if (!isScheduled)
-                Text(homeScore, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentGold)),
+                Text(homeScore, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
             ],
           ),
           const SizedBox(height: 6),
@@ -462,14 +462,14 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
                 child: Text(event.awayTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
               ),
               if (!isScheduled)
-                Text(awayScore, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentGold)),
+                Text(awayScore, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context))),
             ],
           ),
           if (isScheduled) ...[
             const Spacer(),
             Text(
               _formatTileTime(event),
-              style: const TextStyle(fontSize: 8, color: AppTheme.accentGold, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 8, color: AppTheme.accentForBrightness(context), fontWeight: FontWeight.bold),
             ),
           ],
         ],
@@ -543,7 +543,7 @@ class _RaceTile extends StatelessWidget {
             children: [
               Text(
                 event.type == SportType.wrc ? 'WRC' : 'FORMULA 1',
-                style: const TextStyle(fontSize: 9, color: AppTheme.accentGold, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 9, color: AppTheme.accentForBrightness(context), fontWeight: FontWeight.bold),
               ),
               Text(event.countryCode, style: const TextStyle(fontSize: 9, color: Colors.grey)),
             ],
@@ -579,7 +579,7 @@ class _FallbackLeagueTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.3)),
+          border: Border.all(color: AppTheme.accentForBrightness(context).withValues(alpha: 0.3)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -589,7 +589,7 @@ class _FallbackLeagueTile extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(league.discipline.emoji, style: const TextStyle(fontSize: 16)),
-                Icon(Icons.open_in_new, size: 12, color: AppTheme.accentGold.withValues(alpha: 0.6)),
+                Icon(Icons.open_in_new, size: 12, color: AppTheme.accentForBrightness(context).withValues(alpha: 0.6)),
               ],
             ),
             const Spacer(),
@@ -599,12 +599,12 @@ class _FallbackLeagueTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppTheme.accentGold.withValues(alpha: 0.15),
+                color: AppTheme.accentForBrightness(context).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 'SPRAWDŹ NA FLASHSCORE',
-                style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: AppTheme.accentGold.withValues(alpha: 0.8)),
+                style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: AppTheme.accentForBrightness(context).withValues(alpha: 0.8)),
               ),
             ),
           ],
@@ -783,7 +783,7 @@ class _MatchDetailSheetState extends State<_MatchDetailSheet> {
                   const SizedBox(width: 8),
                   Text(
                     '$homeScore - $awayScore',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.accentGold),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.accentForBrightness(context)),
                   ),
                   const SizedBox(width: 8),
                   Flexible(
@@ -851,11 +851,11 @@ class _MatchDetailSheetState extends State<_MatchDetailSheet> {
 
   Widget _buildStatsContent() {
     if (_isLoadingStats) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentGold)),
+            SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentForBrightness(context))),
             SizedBox(height: 12),
             Text('Ładowanie statystyk...', style: TextStyle(fontSize: 12, color: Colors.grey)),
           ],
@@ -928,10 +928,10 @@ class _MatchDetailSheetState extends State<_MatchDetailSheet> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
-          color: AppTheme.accentGold.withValues(alpha: 0.2),
+          color: AppTheme.accentForBrightness(context).withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Text('WKRÓTCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
+        child: Text('WKRÓTCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.accentForBrightness(context))),
       );
     }
   }

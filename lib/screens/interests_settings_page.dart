@@ -54,7 +54,7 @@ class InterestsSettingsPageState extends State<InterestsSettingsPage> {
                     label: Text(team),
                     onDeleted: () => settings.removeKeyword(team),
                     deleteIconColor: Colors.red,
-                    backgroundColor: AppTheme.accentGold.withValues(alpha: 0.1),
+                    backgroundColor: AppTheme.accentFor(context).withValues(alpha: 0.1),
                     side: BorderSide(color: AppTheme.accentFor(context)),
                   )).toList(),
                 ),
@@ -68,7 +68,9 @@ class InterestsSettingsPageState extends State<InterestsSettingsPage> {
                       onPressed: () => _submit(settings),
                     ),
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.grey.withValues(alpha: 0.1),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
                   onSubmitted: (_) => _submit(settings),

@@ -87,7 +87,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final isSport = entry.type == 'sport';
     final timeStr = _formatTime(entry.timestamp);
     final icon = isSport ? Icons.sports_soccer : Icons.article_outlined;
-    final iconColor = isSport ? Colors.green : AppTheme.accentGold;
+    final iconColor = isSport ? Colors.green : AppTheme.accentFor(context);
 
     return Dismissible(
       key: ValueKey(entry.id),

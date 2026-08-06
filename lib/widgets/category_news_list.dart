@@ -206,24 +206,25 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
   }
 
   Widget _buildEmptyState(BuildContext context, NewsProvider provider, SettingsProvider settings, String? errorMessage) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
-      color: Colors.black, 
+      color: isDark ? Colors.black : Colors.white, 
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.wifi_off, size: 80, color: Colors.redAccent),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'BRAK TREŚCI',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87, letterSpacing: 2),
           ),
           const SizedBox(height: 16),
           Text(
             errorMessage ?? 'Nie udało się pobrać artykułów. Sprawdź połączenie z internetem i spróbuj ponownie.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 14),
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
@@ -235,8 +236,8 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
               forceRefresh: true,
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accentGold,
-              foregroundColor: Colors.black,
+              backgroundColor: AppTheme.accentFor(context),
+              foregroundColor: isDark ? Colors.black : Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             ),
             icon: const Icon(Icons.bolt),
@@ -244,7 +245,7 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
           ),
           TextButton(
             onPressed: () => settings.resetToDefaultSources(),
-            child: const Text('RESETUJ BAZĘ PORTALI', style: TextStyle(color: AppTheme.accentGold)),
+            child: Text('RESETUJ BAZĘ PORTALI', style: TextStyle(color: AppTheme.accentFor(context))),
           ),
         ],
       ),
@@ -253,26 +254,27 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
 
   Widget _buildRecommendationsSection(BuildContext context, List<Article> recommended) {
     final hasRecs = recommended.isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
       key: ValueKey('recs_${hasRecs}_${recommended.length}'),
-      color: Colors.white.withValues(alpha: 0.02),
+      color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.withValues(alpha: 0.05),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasRecs) ...[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(
                 children: [
-                  Icon(Icons.auto_awesome, color: AppTheme.accentGold, size: 18),
-                  SizedBox(width: 8),
+                  Icon(Icons.auto_awesome, color: AppTheme.accentFor(context), size: 18),
+                  const SizedBox(width: 8),
                   Text(
                     'DLA CIEBIE',
                     style: TextStyle(
                       fontWeight: FontWeight.bold, 
                       letterSpacing: 1.2, 
-                      color: AppTheme.accentGold,
+                      color: AppTheme.accentFor(context),
                       fontSize: 11,
                     ),
                   ),
@@ -295,19 +297,19 @@ class _CategoryNewsListState extends State<CategoryNewsList> with AutomaticKeepA
             ),
             const SizedBox(height: 16),
           ],
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 10),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
             child: Text(
               'NAJNOWSZE WIADOMOŚCI',
               style: TextStyle(
                 fontWeight: FontWeight.bold, 
                 letterSpacing: 1.5, 
                 fontSize: 10, 
-                color: Colors.grey,
+                color: isDark ? Colors.grey : Colors.grey.shade600,
               ),
             ),
           ),
-          const Divider(height: 1, thickness: 0.5, color: Colors.white10),
+          Divider(height: 1, thickness: 0.5, color: isDark ? Colors.white10 : Colors.grey.shade300),
         ],
       ),
     );

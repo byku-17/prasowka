@@ -112,11 +112,11 @@ class _SearchBottomSheetState extends State<SearchBottomSheet> {
               controller: _searchController,
               focusNode: _focusNode,
               autofocus: true,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppTheme.graphite),
               decoration: InputDecoration(
                 hintText: 'Szukaj w Google News...',
                 hintStyle: TextStyle(color: Colors.grey.shade500),
-                prefixIcon: const Icon(Icons.search, color: AppTheme.accentGold),
+                prefixIcon: Icon(Icons.search, color: AppTheme.accentFor(context)),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, color: Colors.grey),
@@ -145,13 +145,13 @@ class _SearchBottomSheetState extends State<SearchBottomSheet> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: AppTheme.accentGold),
-            SizedBox(height: 16),
-            Text('Szukam w Google News...', style: TextStyle(color: Colors.grey)),
+            CircularProgressIndicator(color: AppTheme.accentFor(context)),
+            const SizedBox(height: 16),
+            const Text('Szukam w Google News...', style: TextStyle(color: Colors.grey)),
           ],
         ),
       );
@@ -187,7 +187,7 @@ class _SearchBottomSheetState extends State<SearchBottomSheet> {
     }
 
     return RefreshIndicator(
-      color: AppTheme.accentGold,
+      color: AppTheme.accentFor(context),
       onRefresh: () => _performSearch(_searchController.text),
       child: ListView.builder(
         padding: const EdgeInsets.only(top: 4, bottom: 100),

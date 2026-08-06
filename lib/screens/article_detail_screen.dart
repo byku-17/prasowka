@@ -153,8 +153,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     children: [
                       Text(
                         article.sourceName.toUpperCase(),
-                        style: const TextStyle(
-                          color: AppTheme.accentGold,
+                        style: TextStyle(
+                          color: AppTheme.accentFor(context),
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.2,
                         ),
@@ -234,8 +234,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                                       icon: const Icon(Icons.auto_stories),
                                       label: const Text('CZYTAJ ARTYKUŁ'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppTheme.accentGold,
-                                        foregroundColor: AppTheme.primaryNavy,
+                                        backgroundColor: AppTheme.accentFor(context),
+                                        foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                       ),
                                     ),
@@ -253,8 +253,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                                           ? 'SPRÓBUJ PONOWNIE'
                                           : 'POBIERZ PEŁNĄ TREŚĆ'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppTheme.accentGold,
-                                        foregroundColor: AppTheme.primaryNavy,
+                                        backgroundColor: AppTheme.accentFor(context),
+                                        foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                       ),
                                     ),
@@ -275,8 +275,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                                       icon: const Icon(Icons.open_in_browser, size: 18),
                                       label: const Text('CZYTAJ W APLIKACJI'),
                                       style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppTheme.accentGold,
-                                        side: const BorderSide(color: AppTheme.accentGold),
+                                        foregroundColor: AppTheme.accentFor(context),
+                                        side: BorderSide(color: AppTheme.accentFor(context)),
                                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                       ),
                                     ),
@@ -315,8 +315,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                                     icon: const Icon(Icons.open_in_browser, size: 18),
                                     label: const Text('CZYTAJ W APLIKACJI'),
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: AppTheme.accentGold,
-                                      side: const BorderSide(color: AppTheme.accentGold),
+                                      foregroundColor: AppTheme.accentFor(context),
+                                      side: BorderSide(color: AppTheme.accentFor(context)),
                                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                     ),
                                   ),
@@ -338,37 +338,40 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       ),
       floatingActionButton: Consumer<NewsProvider>(
         builder: (context, provider, child) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final inactiveBg = isDark ? Colors.white : Theme.of(context).cardColor;
+          final inactiveIcon = isDark ? Colors.grey : Colors.grey;
           return Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               FloatingActionButton.small(
                 heroTag: 'like',
                 onPressed: () => provider.toggleLike(article),
-                backgroundColor: article.isLiked ? AppTheme.accentGold : Colors.white,
-                child: Icon(article.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined, color: article.isLiked ? Colors.white : Colors.grey),
+                backgroundColor: article.isLiked ? AppTheme.accentFor(context) : inactiveBg,
+                child: Icon(article.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined, color: article.isLiked ? Colors.white : inactiveIcon),
               ),
               const SizedBox(height: 8),
               FloatingActionButton.small(
                 heroTag: 'dislike',
                 onPressed: () => provider.toggleDislike(article),
-                backgroundColor: article.isDisliked ? Colors.red : Colors.white,
-                child: Icon(article.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined, color: article.isDisliked ? Colors.white : Colors.grey),
+                backgroundColor: article.isDisliked ? Colors.red : inactiveBg,
+                child: Icon(article.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined, color: article.isDisliked ? Colors.white : inactiveIcon),
               ),
               const SizedBox(height: 8),
               FloatingActionButton.small(
                 heroTag: 'readLater',
                 onPressed: () => provider.toggleReadLater(article),
-                backgroundColor: article.readLater ? AppTheme.accentGold : Colors.white,
+                backgroundColor: article.readLater ? AppTheme.accentFor(context) : inactiveBg,
                 child: Icon(
                   article.readLater ? Icons.timer : Icons.timer_outlined,
-                  color: article.readLater ? Colors.white : AppTheme.primaryNavy,
+                  color: article.readLater ? Colors.white : AppTheme.accentFor(context),
                 ),
               ),
               const SizedBox(height: 12),
               FloatingActionButton(
                 heroTag: 'favorite',
                 onPressed: () => provider.toggleFavorite(article),
-                backgroundColor: article.isFavorite ? Colors.red : Colors.white,
+                backgroundColor: article.isFavorite ? Colors.red : inactiveBg,
                 child: Icon(
                   article.isFavorite ? Icons.favorite : Icons.favorite_border,
                   color: article.isFavorite ? Colors.white : Colors.red,

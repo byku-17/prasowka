@@ -196,14 +196,14 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
         ),
         actions: [
           if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppTheme.accentGold,
+                  color: AppTheme.accentFor(context),
                 ),
               ),
             ),
@@ -229,8 +229,8 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
         children: [
           WebViewWidget(controller: _controller),
           if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(color: AppTheme.accentGold),
+            Center(
+              child: CircularProgressIndicator(color: AppTheme.accentFor(context)),
             ),
         ],
       ),

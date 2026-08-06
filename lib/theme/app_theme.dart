@@ -6,6 +6,18 @@ class AppTheme {
   // --- KOLORY KLASYCZNE (NAVY & GOLD) ---
   static const Color primaryNavy = Color(0xFF1E2126);
   static const Color accentGold = Color(0xFFF5B942);
+  static const Color accentAmber = Color(0xFFC97B1A);  // ciemny amber na jasne tła
+
+  // --- KOLORY JASNEGO MOTYWU ---
+  static const Color lightBg = Color(0xFFF8F5EE);       // łamanie białe / ecru
+  static const Color lightCard = Color(0xFFFDFBF6);      // ciepła biel kart
+  static const Color lightBorder = Color(0xFFE8E0D0);    // ciepły szary obramowań
+  static const Color lightDivider = Color(0xFFE0D8C8);   // divider ecru
+  static const Color graphite = Color(0xFF1E2126);        // tekst na jasnym tle
+
+  // --- KOLORY TEKSTU ---
+  static const Color textDark = Color(0xFF1E2126);        // ciemny grafity (jasny motyw)
+  static const Color textInactive = Color(0xFF8A8A9A);    // nieaktywne elementy
 
   // --- KOLORY ELEGANCKIE (ECRU & SOFT GOLD) ---
   static const Color elegantEcru = Color(0xFFFCF9F2);
@@ -15,14 +27,22 @@ class AppTheme {
   static const Color royalPurple = Color(0xFF9B6DD7);
   static const Color royalPurpleDark = Color(0xFF8B5CF6);
   static const Color lightPurple = Color(0xFFE8DAFF);
+
+  // --- KOLORY MEDIUM (PURPLE) ---
   static const Color mediumPurple = Color(0xFF7C5CBF);
-  static const Color mediumBg = Color(0xFFF3EEFF);
-  static const Color mediumCard = Color(0xFFEDE5FF);
+  static const Color mediumBg = Color(0xFFD5C8F0);       // przyciemniony fiolet — medium
+  static const Color mediumCard = Color(0xFFE0D5F5);     // jaśniejszy fiolet kart
 
   /// Zwraca kolor akcentu dopasowany do aktualnego motywu
   static Color accentFor(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return scheme.primary;
+  }
+
+  /// Zwraca kolor akcentu dopasowany do jasności tła (jasne tło = ciemniejszy amber)
+  static Color accentForBrightness(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.dark ? accentGold : accentAmber;
   }
 
   static ThemeData getTheme(AppThemeVariant variant, bool isDark, {ColorScheme? dynamicScheme}) {
@@ -107,65 +127,65 @@ class AppTheme {
     );
   }
 
-  // ─── JASNY: jasne tło + ciemne teksty ───
+  // ─── JASNY: ecru tło + amber akcenty + grafity teksty ───
 
   static ThemeData _buildClassicLightTheme() {
     final base = ThemeData.light();
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      primaryColor: primaryNavy,
+      primaryColor: accentAmber,
       textTheme: GoogleFonts.syneTextTheme(base.textTheme).apply(
-        bodyColor: primaryNavy,
-        displayColor: primaryNavy,
+        bodyColor: graphite,
+        displayColor: graphite,
       ),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryNavy,
-        primary: primaryNavy,
-        secondary: accentGold,
-        surface: Colors.white,
+        seedColor: accentAmber,
+        primary: accentAmber,
+        secondary: accentAmber,
+        surface: lightBg,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF5F6F8),
+      scaffoldBackgroundColor: lightBg,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFF5F6F8),
-        foregroundColor: primaryNavy,
+        backgroundColor: lightBg,
+        foregroundColor: accentAmber,
         elevation: 0,
         centerTitle: true,
       ),
       cardTheme: CardThemeData(
-        color: Colors.white,
+        color: lightCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFE8E9EC), width: 1),
+          side: const BorderSide(color: lightBorder, width: 1),
         ),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? primaryNavy : Colors.grey),
+            states.contains(WidgetState.selected) ? accentAmber : Colors.grey),
         trackColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? primaryNavy.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3)),
+            states.contains(WidgetState.selected) ? accentAmber.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryNavy,
+          backgroundColor: accentAmber,
           foregroundColor: Colors.white,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: primaryNavy),
+        style: TextButton.styleFrom(foregroundColor: accentAmber),
       ),
       iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(foregroundColor: primaryNavy),
+        style: IconButton.styleFrom(foregroundColor: accentAmber),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryNavy,
+        backgroundColor: accentAmber,
         foregroundColor: Colors.white,
       ),
-      dividerTheme: const DividerThemeData(color: Color(0xFFE0E0E0)),
-      iconTheme: const IconThemeData(color: Color(0xFF555555)),
+      dividerTheme: const DividerThemeData(color: lightDivider),
+      iconTheme: const IconThemeData(color: graphite),
       listTileTheme: const ListTileThemeData(
-        textColor: primaryNavy,
+        textColor: graphite,
         iconColor: Color(0xFF555555),
       ),
     );
@@ -338,7 +358,7 @@ class AppTheme {
     );
   }
 
-  // ─── MEDIUM: fioletowe tło + ciemne teksty kontrastowe ───
+  // ─── MEDIUM: fioletowe tło + grafity teksty + amber akcenty ───
 
   static ThemeData _buildMediumTheme() {
     final base = ThemeData.light();
@@ -347,14 +367,14 @@ class AppTheme {
       brightness: Brightness.light,
       primaryColor: mediumPurple,
       textTheme: GoogleFonts.syneTextTheme(base.textTheme).apply(
-        bodyColor: const Color(0xFF1E1B2E),
-        displayColor: const Color(0xFF1E1B2E),
+        bodyColor: graphite,
+        displayColor: graphite,
       ),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: mediumPurple,
-        primary: mediumPurple,
+        seedColor: accentAmber,
+        primary: accentAmber,
         secondary: mediumPurple,
-        surface: Colors.white,
+        surface: mediumBg,
       ),
       scaffoldBackgroundColor: mediumBg,
       appBarTheme: const AppBarTheme(
@@ -372,30 +392,30 @@ class AppTheme {
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? mediumPurple : Colors.grey),
+            states.contains(WidgetState.selected) ? accentAmber : Colors.grey),
         trackColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? mediumPurple.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3)),
+            states.contains(WidgetState.selected) ? accentAmber.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: mediumPurple,
+          backgroundColor: accentAmber,
           foregroundColor: Colors.white,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: mediumPurple),
+        style: TextButton.styleFrom(foregroundColor: accentAmber),
       ),
       iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(foregroundColor: mediumPurple),
+        style: IconButton.styleFrom(foregroundColor: accentAmber),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: mediumPurple,
+        backgroundColor: accentAmber,
         foregroundColor: Colors.white,
       ),
       dividerTheme: DividerThemeData(color: mediumPurple.withValues(alpha: 0.2)),
       iconTheme: IconThemeData(color: mediumPurple.withValues(alpha: 0.7)),
       listTileTheme: const ListTileThemeData(
-        textColor: Color(0xFF1E1B2E),
+        textColor: graphite,
         iconColor: Color(0xFF5A4A7A),
       ),
     );

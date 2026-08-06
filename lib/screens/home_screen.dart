@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _tabController!.addListener(() {
         if (!_tabController!.indexIsChanging) {
           context.read<NewsProvider>().setCategory(_activeCategories[_tabController!.index]);
+          setState(() {});
         }
       });
     }
@@ -131,14 +132,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   isScrollable: true,
                   indicatorColor: AppTheme.accentFor(context),
                   labelColor: AppTheme.accentFor(context),
-                  unselectedLabelColor: Colors.white70,
-                  tabs: _activeCategories.map((cat) {
+                  unselectedLabelColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white54
+                      : AppTheme.graphite.withValues(alpha: 0.54),
+                  tabs: List.generate(_activeCategories.length, (i) {
+                    final cat = _activeCategories[i];
                     String label = cat.name.toUpperCase();
                     if (cat.id == 'warsaw') {
                       label = settings.preferredCity.toUpperCase();
                     }
-                    return Tab(text: label);
-                  }).toList(),
+                    final isSelected = _tabController!.index == i;
+                    return Tab(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                      ),
+                    );
+                  }),
                 ),
               const SizedBox(height: 2),
             ],

@@ -19,8 +19,14 @@ class ArticleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedText = isDark ? Colors.white.withValues(alpha: 0.5) : Colors.grey;
+    final checkIconColor = isDark ? Colors.white.withValues(alpha: 0.3) : Colors.grey;
+    final dividerColor = isDark ? Colors.white24 : Colors.grey.shade300;
+    final cardBorderColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200;
+
     if (isSmall) {
-      return _buildSmallCard(context);
+      return _buildSmallCard(context, mutedText, checkIconColor, cardBorderColor);
     }
 
     return InkWell(
@@ -85,7 +91,7 @@ class ArticleCard extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                               fontSize: 19,
                               height: 1.25,
-                              color: isRead ? Colors.white.withValues(alpha: 0.5) : null,
+                              color: isRead ? mutedText : null,
                             ),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
@@ -95,7 +101,7 @@ class ArticleCard extends StatelessWidget {
                           const SizedBox(width: 8),
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Icon(Icons.check_circle, color: Colors.white.withValues(alpha: 0.3), size: 16),
+                            child: Icon(Icons.check_circle, color: checkIconColor, size: 16),
                           ),
                         ],
                       ],
@@ -109,9 +115,7 @@ class ArticleCard extends StatelessWidget {
                     child: Text(
                       article.translatedDescription ?? article.description,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.white70 
-                            : Colors.black87,
+                        color: isDark ? Colors.white70 : Colors.black87,
                         fontSize: 14,
                         height: 1.5,
                       ),
@@ -129,15 +133,15 @@ class ArticleCard extends StatelessWidget {
                         child: Row(
                           children: [
                             if (article.sourceName.contains('Warszawa') || article.sourceName.startsWith('Wiadomości:'))
-                              const Padding(
-                                padding: EdgeInsets.only(right: 4),
-                                child: Icon(Icons.location_on, color: AppTheme.accentGold, size: 12),
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Icon(Icons.location_on, color: AppTheme.accentFor(context), size: 12),
                               ),
                             Flexible(
                               child: Text(
                                 article.sourceName.toUpperCase(),
-                                style: const TextStyle(
-                                  color: AppTheme.accentGold, 
+                                style: TextStyle(
+                                  color: AppTheme.accentFor(context), 
                                   fontWeight: FontWeight.bold, 
                                   fontSize: 11,
                                   letterSpacing: 0.5,
@@ -151,7 +155,7 @@ class ArticleCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         _formatTimeAgo(article.publishedAt),
-                        style: const TextStyle(color: Colors.grey, fontSize: 11),
+                        style: TextStyle(color: Colors.grey, fontSize: 11),
                       ),
                       const SizedBox(width: 16),
                       _buildActions(context),
@@ -161,20 +165,20 @@ class ArticleCard extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, thickness: 0.5, color: Colors.white24),
+          Divider(height: 1, thickness: 0.5, color: dividerColor),
         ],
       ),
     );
   }
 
-  Widget _buildSmallCard(BuildContext context) {
+  Widget _buildSmallCard(BuildContext context, Color mutedText, Color checkIconColor, Color borderColor) {
     return Container(
       width: 280,
       margin: const EdgeInsets.only(left: 16, right: 4, top: 8, bottom: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: borderColor),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -192,7 +196,7 @@ class ArticleCard extends StatelessWidget {
                       CachedNetworkImage(
                         imageUrl: article.imageUrl!,
                         fit: BoxFit.cover,
-                        memCacheWidth: 600, // Tylko szerokość dla zachowania proporcji
+                        memCacheWidth: 600,
                         errorWidget: (context, url, error) => const SizedBox.shrink(),
                       ),
                       _buildTranslationWatermark(),
@@ -209,7 +213,7 @@ class ArticleCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         height: 1.2,
-                        color: article.isRead ? Colors.white.withValues(alpha: 0.5) : null,
+                        color: article.isRead ? mutedText : null,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -221,12 +225,12 @@ class ArticleCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             article.sourceName,
-                            style: const TextStyle(color: AppTheme.accentGold, fontSize: 10, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: AppTheme.accentFor(context), fontSize: 10, fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (article.isRead)
-                          Icon(Icons.check_circle, color: Colors.white.withValues(alpha: 0.3), size: 14),
+                          Icon(Icons.check_circle, color: checkIconColor, size: 14),
                       ],
                     ),
                     const SizedBox(height: 6),

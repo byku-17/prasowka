@@ -107,11 +107,11 @@ class _LocalInfoBarState extends State<LocalInfoBar> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.refresh, color: Colors.white.withValues(alpha: 0.5), size: 16),
+                Icon(Icons.refresh, color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.5) : Colors.grey, size: 16),
                 const SizedBox(width: 8),
                 Text(
                   'Błąd danych — dotknij, aby ponowić',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.5) : Colors.grey, fontSize: 12),
                 ),
               ],
             ),
