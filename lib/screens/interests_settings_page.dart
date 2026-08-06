@@ -126,14 +126,28 @@ class _TopicsTabState extends State<_TopicsTab> {
               side: BorderSide(color: AppTheme.accentFor(context)),
             )).toList(),
           ),
+        Text(
+          '${settings.keywords.length}/${SettingsProvider.maxKeywords}',
+          style: TextStyle(
+            fontSize: 11,
+            color: settings.keywords.length >= SettingsProvider.maxKeywords
+                ? Colors.red
+                : Colors.grey,
+          ),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: _controller,
+          enabled: settings.keywords.length < SettingsProvider.maxKeywords,
           decoration: InputDecoration(
-            hintText: 'Dodaj nowe hasło...',
+            hintText: settings.keywords.length >= SettingsProvider.maxKeywords
+                ? 'Osiągnięto limit ${SettingsProvider.maxKeywords} haseł'
+                : 'Dodaj nowe hasło...',
             suffixIcon: IconButton(
               icon: Icon(Icons.add_circle, color: AppTheme.accentFor(context)),
-              onPressed: () => _submit(settings),
+              onPressed: settings.keywords.length < SettingsProvider.maxKeywords
+                  ? () => _submit(settings)
+                  : null,
             ),
             filled: true,
             fillColor: Theme.of(context).brightness == Brightness.dark

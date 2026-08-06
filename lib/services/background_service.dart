@@ -14,9 +14,38 @@ import 'package:prasowka/utils/text_utils.dart';
 import 'package:flutter/foundation.dart';
 
 const int _maxNotificationsPerRun = 5;
+const int _maxNotificationsPerDay = 20;
 const String _sportsNotifiedBoxName = 'sports_notified_ids';
 const String _pinnedMatchesBoxName = 'pinned_matches';
 const String _pinnedScoresBoxName = 'pinned_match_scores';
+const String _dailyCountBoxName = 'daily_notification_count';
+
+const String _groupSport = 'sowa_sport_group';
+const String _groupArticle = 'sowa_article_group';
+
+/// Dzienny licznik powiadomień — klucz: data (yyyy-MM-dd)
+String _todayKey() {
+  final now = DateTime.now();
+  return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+}
+
+Future<int> _getDailyCount() async {
+  if (!Hive.isBoxOpen(_dailyCountBoxName)) {
+    await Hive.openBox(_dailyCountBoxName);
+  }
+  final box = Hive.box(_dailyCountBoxName);
+  return (box.get(_todayKey(), defaultValue: 0) as int);
+}
+
+Future<void> _incrementDailyCount() async {
+  if (!Hive.isBoxOpen(_dailyCountBoxName)) {
+    await Hive.openBox(_dailyCountBoxName);
+  }
+  final box = Hive.box(_dailyCountBoxName);
+  final key = _todayKey();
+  final current = (box.get(key, defaultValue: 0) as int);
+  await box.put(key, current + 1);
+}
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -32,6 +61,13 @@ void callbackDispatcher() {
       await storage.init();
       await interest.init();
       await NotificationHistory().init();
+
+      // Sprawdź dzienny limit
+      final dailyCount = await _getDailyCount();
+      if (dailyCount >= _maxNotificationsPerDay) {
+        debugPrint('Sowa Wartownik: Dzienny limit $_maxNotificationsPerDay osiągnięty ($dailyCount)');
+        return Future.value(true);
+      }
 
       // --- POWIADOMIENIA RSS ---
       final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
@@ -215,6 +251,9 @@ void callbackDispatcher() {
 }
 
 Future<void> _showNotification(Article article) async {
+  final dailyCount = await _getDailyCount();
+  if (dailyCount >= _maxNotificationsPerDay) return;
+
   const AndroidNotificationDetails androidPlatformChannelSpecifics =
       AndroidNotificationDetails(
     'sowa_alerts',
@@ -223,6 +262,7 @@ Future<void> _showNotification(Article article) async {
     importance: Importance.max,
     priority: Priority.high,
     showWhen: true,
+    groupKey: _groupArticle,
   );
   
   const NotificationDetails platformChannelSpecifics =
@@ -247,9 +287,13 @@ Future<void> _showNotification(Article article) async {
     timestamp: DateTime.now(),
     type: 'article',
   ));
+  await _incrementDailyCount();
 }
 
 Future<void> _showSportNotification(MatchEvent event) async {
+  final dailyCount = await _getDailyCount();
+  if (dailyCount >= _maxNotificationsPerDay) return;
+
   const AndroidNotificationDetails androidPlatformChannelSpecifics =
       AndroidNotificationDetails(
     'sowa_sport',
@@ -258,6 +302,7 @@ Future<void> _showSportNotification(MatchEvent event) async {
     importance: Importance.max,
     priority: Priority.high,
     showWhen: true,
+    groupKey: _groupSport,
   );
 
   const NotificationDetails platformChannelSpecifics =
@@ -290,9 +335,13 @@ Future<void> _showSportNotification(MatchEvent event) async {
     timestamp: DateTime.now(),
     type: 'sport',
   ));
+  await _incrementDailyCount();
 }
 
 Future<void> _showGoalNotification(MatchEvent event, String prevScore, String newScore) async {
+  final dailyCount = await _getDailyCount();
+  if (dailyCount >= _maxNotificationsPerDay) return;
+
   const AndroidNotificationDetails androidPlatformChannelSpecifics =
       AndroidNotificationDetails(
     'sowa_sport',
@@ -301,6 +350,7 @@ Future<void> _showGoalNotification(MatchEvent event, String prevScore, String ne
     importance: Importance.max,
     priority: Priority.high,
     showWhen: true,
+    groupKey: _groupSport,
   );
 
   const NotificationDetails platformChannelSpecifics =
@@ -326,9 +376,13 @@ Future<void> _showGoalNotification(MatchEvent event, String prevScore, String ne
     timestamp: DateTime.now(),
     type: 'sport',
   ));
+  await _incrementDailyCount();
 }
 
 Future<void> _showMatchReminder(MatchEvent event) async {
+  final dailyCount = await _getDailyCount();
+  if (dailyCount >= _maxNotificationsPerDay) return;
+
   const AndroidNotificationDetails androidPlatformChannelSpecifics =
       AndroidNotificationDetails(
     'sowa_sport',
@@ -337,6 +391,7 @@ Future<void> _showMatchReminder(MatchEvent event) async {
     importance: Importance.max,
     priority: Priority.high,
     showWhen: true,
+    groupKey: _groupSport,
   );
 
   const NotificationDetails platformChannelSpecifics =
@@ -348,7 +403,6 @@ Future<void> _showMatchReminder(MatchEvent event) async {
   final title = '⏰ Za chwilę! — ${event.competition}';
   final body = '${event.homeTeam} vs ${event.awayTeam} zaczyna się za kilka minut!';
 
-  // Buduj URL Flashscore dla konkretnego meczu (fallback na główną stronę)
   final flashscoreUrl = _buildFlashscoreMatchUrl(event);
 
   await flutterLocalNotificationsPlugin.show(
@@ -367,6 +421,7 @@ Future<void> _showMatchReminder(MatchEvent event) async {
     timestamp: DateTime.now(),
     type: 'sport',
   ));
+  await _incrementDailyCount();
 }
 
 String _buildFlashscoreMatchUrl(MatchEvent event) {

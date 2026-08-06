@@ -7,6 +7,7 @@ import 'package:prasowka/screens/article_detail_screen.dart';
 import 'package:prasowka/screens/settings_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/widgets/article_card.dart';
+import 'package:prasowka/widgets/empty_state_widget.dart';
 import 'package:prasowka/widgets/news_skeleton.dart';
 import 'package:prasowka/widgets/scores_bar.dart';
 
@@ -166,47 +167,12 @@ class _SportScreenState extends State<SportScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context, NewsProvider provider) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: double.infinity,
-      color: isDark ? Colors.black : Colors.white,
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.wifi_off, size: 80, color: Colors.redAccent),
-          const SizedBox(height: 24),
-          Text(
-            'BRAK TREŚCI',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: isDark ? Colors.white : Colors.black87,
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Nie udało się pobrać artykułów sportowych.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 14),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () {
-              _hasFetched = false;
-              _fetchIfNeeded();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accentFor(context),
-              foregroundColor: isDark ? Colors.black : Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            ),
-            icon: const Icon(Icons.bolt),
-            label: const Text('POBIERZ PONOWNIE', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+    return EmptyStateWidget(
+      message: 'Nie udało się pobrać artykułów sportowych.',
+      onRetry: () {
+        _hasFetched = false;
+        _fetchIfNeeded();
+      },
     );
   }
 }

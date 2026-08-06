@@ -56,6 +56,16 @@ class AppearanceSettingsPage extends StatelessWidget {
               dense: true,
             ),
           const Divider(),
+          const SectionHeader('ŹRÓDŁA NEWSÓW'),
+          SwitchListTile(
+            secondary: const Icon(Icons.dynamic_feed_outlined),
+            title: const Text('Wszystkie źródła na "Dzisiaj"'),
+            subtitle: const Text('Pokazuje artykuły ze wszystkich aktywnych źródeł zamiast tylko wybranych portali.'),
+            value: settings.showAllSources,
+            onChanged: (val) => settings.toggleShowAllSources(val),
+            activeThumbColor: AppTheme.accentFor(context),
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.cleaning_services_outlined),
             title: const Text('Wyczyść pamięć cache'),

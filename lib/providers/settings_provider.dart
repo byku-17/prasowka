@@ -30,6 +30,7 @@ class SettingsProvider with ChangeNotifier {
   static const String cityLatKey = 'cityLatitude';
   static const String cityLonKey = 'cityLongitude';
   static const String selectedLeaguesKey = 'selectedLeagueIds';
+  static const String showAllSourcesKey = 'showAllSources';
 
   ThemeMode _themeMode = ThemeMode.system;
   AppThemeVariant _themeVariant = AppThemeVariant.classic;
@@ -44,6 +45,7 @@ class SettingsProvider with ChangeNotifier {
   bool _notificationsEnabled = false;
   bool _onboardingCompleted = false;
   bool _showSportsBar = true;
+  bool _showAllSources = false;
   int _lastTabIndex = 0;
   String _preferredCity = 'Warszawa';
   double _cityLatitude = 52.2297;
@@ -62,6 +64,7 @@ class SettingsProvider with ChangeNotifier {
   bool get notificationsEnabled => _notificationsEnabled;
   bool get onboardingCompleted => _onboardingCompleted;
   bool get showSportsBar => _showSportsBar;
+  bool get showAllSources => _showAllSources;
   int get lastTabIndex => _lastTabIndex;
   String get preferredCity => _preferredCity;
   CityCoordinates get cityCoordinates => CityCoordinates(name: _preferredCity, latitude: _cityLatitude, longitude: _cityLongitude);
@@ -125,6 +128,9 @@ class SettingsProvider with ChangeNotifier {
       selectedLeaguesKey,
       defaultValue: <String>[], 
     ));
+
+    // 4b. Pokaż wszystkie źródła (nie tylko top)
+    _showAllSources = settingsBox.get(showAllSourcesKey, defaultValue: false);
 
     // 4. Kolejność kategorii
     _categoryOrder = List<String>.from(settingsBox.get(
@@ -245,9 +251,12 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  static const int maxKeywords = 10;
+
   Future<void> addKeyword(String keyword) async {
     final t = keyword.trim();
-    if (t.isEmpty || _keywords.any((element) => element.toLowerCase() == t.toLowerCase())) return;
+    if (t.isEmpty || _keywords.length >= maxKeywords) return;
+    if (_keywords.any((element) => element.toLowerCase() == t.toLowerCase())) return;
     _keywords.add(t);
     await Hive.box(settingsBoxName).put(keywordsKey, _keywords);
     
@@ -390,6 +399,12 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setOnlyFavoriteTeams(bool val) async {
     _onlyFavoriteTeams = val;
     await Hive.box(settingsBoxName).put(onlyFavoriteTeamsKey, val);
+    notifyListeners();
+  }
+
+  Future<void> toggleShowAllSources(bool val) async {
+    _showAllSources = val;
+    await Hive.box(settingsBoxName).put(showAllSourcesKey, val);
     notifyListeners();
   }
 
