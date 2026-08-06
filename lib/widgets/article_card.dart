@@ -34,10 +34,10 @@ class ArticleCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Zdjęcie na pełną szerokość (Edge-to-Edge)
+          // Zdjęcie — mniejszy aspect ratio
           if (article.imageUrl != null)
             AspectRatio(
-              aspectRatio: 16 / 9,
+              aspectRatio: 2.2,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -72,9 +72,9 @@ class ArticleCard extends StatelessWidget {
               ),
             ),
           
-          // Treść z marginesami
+          // Treść — kompaktowa
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -87,28 +87,28 @@ class ArticleCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             article.translatedTitle ?? article.title,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              fontSize: 19,
-                              height: 1.25,
+                              fontSize: 15,
+                              height: 1.2,
                               color: isRead ? mutedText : null,
                             ),
-                            maxLines: 3,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (isRead) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Icon(Icons.check_circle, color: checkIconColor, size: 16),
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Icon(Icons.check_circle, color: checkIconColor, size: 14),
                           ),
                         ],
                       ],
                     );
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Consumer<NewsProvider>(
                   builder: (context, _, child) => Opacity(
                     opacity: article.isRead ? 0.6 : 1.0,
@@ -116,15 +116,15 @@ class ArticleCard extends StatelessWidget {
                       article.translatedDescription ?? article.description,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: isDark ? Colors.white70 : Colors.black87,
-                        fontSize: 14,
-                        height: 1.5,
+                        fontSize: 12,
+                        height: 1.3,
                       ),
-                      maxLines: 3,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
                 Opacity(
                   opacity: article.isRead ? 0.5 : 1.0,
                   child: Row(
@@ -135,7 +135,7 @@ class ArticleCard extends StatelessWidget {
                             if (article.sourceName.contains('Warszawa') || article.sourceName.startsWith('Wiadomości:'))
                               Padding(
                                 padding: const EdgeInsets.only(right: 4),
-                                child: Icon(Icons.location_on, color: AppTheme.accentFor(context), size: 12),
+                                child: Icon(Icons.location_on, color: AppTheme.accentFor(context), size: 10),
                               ),
                             Flexible(
                               child: Text(
@@ -143,7 +143,7 @@ class ArticleCard extends StatelessWidget {
                                 style: TextStyle(
                                   color: AppTheme.accentFor(context), 
                                   fontWeight: FontWeight.bold, 
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   letterSpacing: 0.5,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -155,9 +155,9 @@ class ArticleCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         _formatTimeAgo(article.publishedAt),
-                        style: TextStyle(color: Colors.grey, fontSize: 11),
+                        style: TextStyle(color: Colors.grey, fontSize: 10),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       _buildActions(context),
                     ],
                   ),
