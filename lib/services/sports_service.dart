@@ -4,6 +4,7 @@ import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/models/sport_league.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:prasowka/services/sports_request_queue.dart';
 
 class SportsService {
   String get _sportDbKey => dotenv.env['SPORTDB_API_KEY'] ?? '';
@@ -11,26 +12,33 @@ class SportsService {
 
   static const _espnUserAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15';
 
+  final queue = SportsRequestQueue(maxConcurrent: 3, minDelay: const Duration(milliseconds: 500));
+
   Future<List<SportEvent>> fetchAllEvents({List<String>? selectedLeagueIds}) async {
     final List<SportEvent> allEvents = [];
-    final List<Future<List<SportEvent>>> futures = [];
 
     final now = DateTime.now();
     final DateTime referenceNow = now.year == 2026
         ? DateTime(2024, now.month, now.day, now.hour, now.minute)
         : now;
 
-    debugPrint('Prasówka Sports V9.0: Start (Reference: $referenceNow)');
+    debugPrint('Prasówka Sports V9.1: Start (Reference: $referenceNow)');
 
     final leaguesToFetch = _getLeaguesToFetch(selectedLeagueIds);
     final dateStr = referenceNow.toIso8601String().split('T')[0].replaceAll('-', '');
 
+    // Kolejka requestów z rate limiterem (max 3 rownolegle, 500ms delay)
+    final List<Future<List<SportEvent>>> futures = [];
+
     // 1. SportDB.dev — primary source (if key available)
     if (_sportDbKey.isNotEmpty) {
-      futures.add(_fetchSportDbLive(referenceNow));
+      futures.add(queue.enqueue(
+        () => _fetchSportDbLive(referenceNow),
+        source: 'sportdb',
+      ));
     }
 
-    // 2. ESPN — fallback for mobile devices (works from residential IPs)
+    // 2. ESPN — fallback for mobile devices
     final espnLeagues = leaguesToFetch.where((l) =>
         l.espnSport != null && l.espnLeague != null).toList();
 
@@ -42,21 +50,32 @@ class SportsService {
       }
       for (final entry in groupedEspn.entries) {
         final l = entry.value.first;
-        futures.add(_fetchEspnScoreboard(l.espnSport!, l.espnLeague!, l.sportType, l.name, dateStr, referenceNow));
+        futures.add(queue.enqueue(
+          () => _fetchEspnScoreboard(l.espnSport!, l.espnLeague!, l.sportType, l.name, dateStr, referenceNow),
+          source: 'espn',
+        ));
       }
     }
 
-    // 3. TheSportsDB — dla lig z tsdbLeagueId (football + tenis)
+    // 3. TheSportsDB — per league
     final tdbLeagues = leaguesToFetch.where((l) => l.tsdbLeagueId != null).toList();
     if (tdbLeagues.isNotEmpty) {
       for (final league in tdbLeagues) {
-        futures.add(_fetchTsdLeague(league, referenceNow));
+        futures.add(queue.enqueue(
+          () => _fetchTsdLeague(league, referenceNow),
+          source: 'thesportsdb',
+        ));
       }
     }
 
-    // 4. F1 — always from OpenF1
+    // 4. F1 — OpenF1
     final hasF1 = leaguesToFetch.any((l) => l.id == 'f1');
-    if (hasF1) futures.add(_fetchF1(referenceNow));
+    if (hasF1) {
+      futures.add(queue.enqueue(
+        () => _fetchF1(referenceNow),
+        source: 'openf1',
+      ));
+    }
 
     final results = await Future.wait(futures);
     for (var list in results) {
@@ -67,7 +86,7 @@ class SportsService {
     final Map<String, SportEvent> unique = {};
     for (var e in allEvents) { unique[e.id] = e; }
 
-    debugPrint('Prasówka Sports V9.0: Zakończono. Unikalnych: ${unique.length}');
+    debugPrint('Prasówka Sports V9.1: Zakończono. Unikalnych: ${unique.length}');
     return unique.values.toList();
   }
 
