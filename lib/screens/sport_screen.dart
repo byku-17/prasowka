@@ -146,7 +146,7 @@ class _SportScreenState extends State<SportScreen> {
                     if (_showBackToTop)
                       Positioned(
                         right: 16,
-                        bottom: 16,
+                        bottom: 80,
                         child: FloatingActionButton.small(
                           onPressed: _scrollToTop,
                           backgroundColor: AppTheme.accentGold,
