@@ -25,6 +25,7 @@ class _TodayScreenState extends State<TodayScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _showBackToTop = false;
   bool _hasFetched = false;
+  final Set<String> _dismissedArticleIds = {};
 
   @override
   void initState() {
@@ -80,6 +81,20 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
+  void _dismissArticle(Article article) {
+    setState(() => _dismissedArticleIds.add(article.url));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Ukryto: ${article.title}'),
+        action: SnackBarAction(
+          label: 'Cofnij',
+          onPressed: () => setState(() => _dismissedArticleIds.remove(article.url)),
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Widget _buildNotificationBell(BuildContext context) {
     final unread = NotificationHistory().unreadCount;
     return IconButton(
@@ -125,7 +140,8 @@ class _TodayScreenState extends State<TodayScreen> {
       ),
       body: Consumer<NewsProvider>(
         builder: (context, provider, child) {
-          final articles = provider.getArticlesForCategory('all');
+          final allArticles = provider.getArticlesForCategory('all');
+          final articles = allArticles.where((a) => !_dismissedArticleIds.contains(a.url)).toList();
           final isLoading = provider.isCategoryLoading('all');
           final hasEverLoaded = provider.hasCategoryEverLoaded('all');
 
@@ -164,12 +180,15 @@ class _TodayScreenState extends State<TodayScreen> {
                       );
                     }
                     final article = articles[index - 1];
-                    return ArticleCard(
-                      article: article,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ArticleDetailScreen(article: article),
+                    return LongPressDismissible(
+                      onDismiss: () => _dismissArticle(article),
+                      child: ArticleCard(
+                        article: article,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ArticleDetailScreen(article: article),
+                          ),
                         ),
                       ),
                     );
@@ -196,43 +215,43 @@ class _TodayScreenState extends State<TodayScreen> {
   }
 
   Widget _buildRecommendationsSection(BuildContext context, List<Article> recommended) {
-    final hasRecs = recommended.isNotEmpty;
+    final filtered = recommended.where((a) => !_dismissedArticleIds.contains(a.url)).toList();
+    final hasRecs = filtered.isNotEmpty;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      key: ValueKey('recs_${hasRecs}_${recommended.length}'),
-      color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.withValues(alpha: 0.05),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (hasRecs) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                children: [
-                  Icon(Icons.auto_awesome, color: AppTheme.accentFor(context), size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'DLA CIEBIE',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: AppTheme.accentFor(context),
-                      fontSize: 11,
-                    ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasRecs) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome, color: AppTheme.accentFor(context), size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'DLA CIEBIE',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    color: AppTheme.accentFor(context),
+                    fontSize: 11,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            SizedBox(
-              height: 240,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: recommended.length,
-                itemBuilder: (context, index) {
-                  final a = recommended[index];
-                  return RepaintBoundary(
+          ),
+          SizedBox(
+            height: 240,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: filtered.length,
+              itemBuilder: (context, index) {
+                final a = filtered[index];
+                return RepaintBoundary(
+                  child: LongPressDismissible(
+                    onDismiss: () => _dismissArticle(a),
                     child: ArticleCard(
                       article: a,
                       isSmall: true,
@@ -243,27 +262,27 @@ class _TodayScreenState extends State<TodayScreen> {
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-            child: Text(
-              'NAJNOWSZE WIADOMOŚCI',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-                fontSize: 10,
-                color: isDark ? Colors.grey : Colors.grey.shade600,
-              ),
+                  ),
+                );
+              },
             ),
           ),
-          Divider(height: 1, thickness: 0.5, color: isDark ? Colors.white10 : Colors.grey.shade300),
+          const SizedBox(height: 16),
         ],
-      ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+          child: Text(
+            'NAJNOWSZE WIADOMOŚCI',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
+              fontSize: 10,
+              color: isDark ? Colors.grey : Colors.grey.shade600,
+            ),
+          ),
+        ),
+        Divider(height: 1, thickness: 0.5, color: isDark ? Colors.white10 : Colors.grey.shade300),
+      ],
     );
   }
 
@@ -309,6 +328,59 @@ class _TodayScreenState extends State<TodayScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class LongPressDismissible extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onDismiss;
+
+  const LongPressDismissible({super.key, required this.child, required this.onDismiss});
+
+  @override
+  State<LongPressDismissible> createState() => _LongPressDismissibleState();
+}
+
+class _LongPressDismissibleState extends State<LongPressDismissible> {
+  bool _isDismissing = false;
+
+  void _handleLongPress() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.visibility_off),
+              title: const Text('Ukryj ten artykuł'),
+              onTap: () {
+                Navigator.pop(ctx);
+                setState(() => _isDismissing = true);
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (mounted) widget.onDismiss();
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isDismissing) {
+      return AnimatedSize(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        child: const SizedBox.shrink(),
+      );
+    }
+    return GestureDetector(
+      onLongPress: _handleLongPress,
+      child: widget.child,
     );
   }
 }
