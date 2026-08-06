@@ -102,7 +102,7 @@ class _TodayScreenState extends State<TodayScreen> {
         isLabelVisible: unread > 0,
         label: Text(unread > 99 ? '99+' : '$unread', style: const TextStyle(fontSize: 10)),
         backgroundColor: Colors.red,
-        child: const Icon(Icons.notifications_outlined),
+        child: Icon(Icons.notifications_outlined, color: Colors.grey.shade600),
       ),
       tooltip: 'Powiadomienia',
       onPressed: () {
@@ -130,7 +130,7 @@ class _TodayScreenState extends State<TodayScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: Icon(Icons.settings, color: Colors.grey.shade600),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SettingsScreen()),

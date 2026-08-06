@@ -107,7 +107,7 @@ class _CityScreenState extends State<CityScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: Icon(Icons.settings, color: Colors.grey.shade600),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SettingsScreen()),
