@@ -97,12 +97,20 @@ class _TodayScreenState extends State<TodayScreen> {
 
   Widget _buildNotificationBell(BuildContext context) {
     final unread = NotificationHistory().unreadCount;
+    final hasUnread = unread > 0;
     return IconButton(
       icon: Badge(
-        isLabelVisible: unread > 0,
-        label: Text(unread > 99 ? '99+' : '$unread', style: const TextStyle(fontSize: 10)),
+        isLabelVisible: hasUnread,
         backgroundColor: Colors.red,
-        child: Icon(Icons.notifications_outlined, color: Colors.grey.shade600),
+        offset: const Offset(-2, -2),
+        label: Text(
+          unread > 99 ? '99+' : '$unread',
+          style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        child: Icon(
+          hasUnread ? Icons.notifications : Icons.notifications_outlined,
+          color: hasUnread ? Colors.red : Colors.grey.shade600,
+        ),
       ),
       tooltip: 'Powiadomienia',
       onPressed: () {
