@@ -197,10 +197,31 @@ class ArticleCard extends StatelessWidget {
                         imageUrl: article.imageUrl!,
                         fit: BoxFit.cover,
                         memCacheWidth: 600,
-                        errorWidget: (context, url, error) => const SizedBox.shrink(),
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey.withValues(alpha: 0.15),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.shade400, size: 28),
+                        ),
                       ),
                       _buildTranslationWatermark(),
                     ],
+                  ),
+                ),
+              if (article.imageUrl == null)
+                Container(
+                  height: 80,
+                  color: Colors.grey.withValues(alpha: 0.1),
+                  child: Center(
+                    child: Icon(Icons.article_outlined, color: Colors.grey.shade400, size: 28),
                   ),
                 ),
               Padding(
