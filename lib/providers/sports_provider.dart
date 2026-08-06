@@ -177,33 +177,10 @@ class SportsProvider with ChangeNotifier {
   Future<void> _performFetch(List<String>? selectedLeagueIds) async {
     try {
       final newEvents = await _service.fetchAllEvents(selectedLeagueIds: selectedLeagueIds);
-
-      // Cache per competition
-      for (final event in newEvents) {
-        final competition = event is MatchEvent ? event.competition : (event is RaceEvent ? 'races' : 'unknown');
-        _leagueCache[competition] = _LeagueCacheEntry(
-          events: newEvents.where((e) {
-            if (e is MatchEvent) return e.competition == competition;
-            if (e is RaceEvent) return competition == 'races';
-            return false;
-          }).toList(),
-          fetchedAt: DateTime.now(),
-          source: event.id.split('_').first,
-        );
-      }
-
-      // Usuń wygasłe wpisy
-      final allNow = _allCachedEvents();
-      final hasLive = allNow.any((e) => e.status == EventStatus.live);
-      _leagueCache.removeWhere((key, entry) => entry.isExpired(hasLive));
-
-      // Zastosuj filtry (favicon/onlyFavorites/discovery)
-      _applyFilters();
-
-      // Zapisz do cache Hive
-      _saveCacheToHive();
+      _updateCache(newEvents);
 
       _lastFetch = DateTime.now();
+      _saveCacheToHive();
       _debugLogs.add('Cache lig: ${_leagueCache.length}');
       _debugLogs.add('Pasek wyświetla: ${_filteredEvents.length} meczów');
       if (_filteredEvents.isNotEmpty) {
@@ -244,27 +221,31 @@ class SportsProvider with ChangeNotifier {
     }
   }
 
+  /// Aktualizuje cache i stosuje filtry — wspólne dla _performFetch i auto-refresh
+  void _updateCache(List<SportEvent> newEvents) {
+    for (final event in newEvents) {
+      final competition = event is MatchEvent ? event.competition : (event is RaceEvent ? 'races' : 'unknown');
+      _leagueCache[competition] = _LeagueCacheEntry(
+        events: newEvents.where((e) {
+          if (e is MatchEvent) return e.competition == competition;
+          if (e is RaceEvent) return competition == 'races';
+          return false;
+        }).toList(),
+        fetchedAt: DateTime.now(),
+        source: event.id.split('_').first,
+      );
+    }
+    final allNow = _allCachedEvents();
+    final hasLive = allNow.any((e) => e.status == EventStatus.live);
+    _leagueCache.removeWhere((key, entry) => entry.isExpired(hasLive));
+    _applyFilters();
+  }
+
   void _startAutoRefresh() {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
        final newEvents = await _service.fetchAllEvents(selectedLeagueIds: _currentSelectedLeagues);
-       for (final event in newEvents) {
-         final competition = event is MatchEvent ? event.competition : (event is RaceEvent ? 'races' : 'unknown');
-         _leagueCache[competition] = _LeagueCacheEntry(
-           events: newEvents.where((e) {
-             if (e is MatchEvent) return e.competition == competition;
-             if (e is RaceEvent) return competition == 'races';
-             return false;
-           }).toList(),
-           fetchedAt: DateTime.now(),
-           source: event.id.split('_').first,
-         );
-       }
-       // Usuń wygasłe i zastosuj filtry
-       final allNow = _allCachedEvents();
-       final hasLive = allNow.any((e) => e.status == EventStatus.live);
-       _leagueCache.removeWhere((key, entry) => entry.isExpired(hasLive));
-       _applyFilters();
+       _updateCache(newEvents);
        _lastFetch = DateTime.now();
        notifyListeners();
        if (!_filteredEvents.any((e) => e.status == EventStatus.live)) _stopAutoRefresh();
