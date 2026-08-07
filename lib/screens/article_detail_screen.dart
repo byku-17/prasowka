@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/services/reading_history.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
@@ -57,6 +58,43 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final provider = context.read<NewsProvider>();
     final hasFullContent = widget.article.fullContent != null && widget.article.fullContent!.trim().isNotEmpty;
     return !hasFullContent && !provider.isFetchingFullContent && !RssService.isGoogleNewsUrl(widget.article.url);
+  }
+
+  void _showFontSizePicker(BuildContext context) {
+    final settings = context.read<SettingsProvider>();
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Rozmiar czcionki', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            _buildFontSizeOption(context, settings, 'Mały', 14),
+            _buildFontSizeOption(context, settings, 'Średni', 16),
+            _buildFontSizeOption(context, settings, 'Duży', 18),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFontSizeOption(BuildContext context, SettingsProvider settings, String label, int size) {
+    final isSelected = settings.readingFontSize == size;
+    return ListTile(
+      leading: Icon(
+        isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+        color: isSelected ? AppTheme.accentFor(context) : Colors.grey,
+      ),
+      title: Text(label, style: TextStyle(fontSize: size.toDouble() - 2, fontWeight: FontWeight.w500)),
+      onTap: () {
+        settings.setReadingFontSize(size);
+        Navigator.pop(context);
+      },
+    );
   }
 
   void _handleSwipeUp() {
@@ -166,6 +204,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   },
                 ),
                 IconButton(
+                  icon: const Icon(Icons.text_fields),
+                  onPressed: () => _showFontSizePicker(context),
+                  tooltip: 'Rozmiar czcionki',
+                ),
+                IconButton(
                   icon: const Icon(Icons.share),
                   onPressed: () => SharePlus.instance.share(ShareParams(text: '${article.title}\n\n${article.url}')),
                 ),
@@ -244,7 +287,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           if (!hasFullContent)
             HtmlWidget(
               article.translatedDescription ?? (article.description.isNotEmpty ? article.description : ''),
-              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
+              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
               onTapUrl: (url) async { await _launchUrl(context, url); return true; },
             ),
           const SizedBox(height: 32),
@@ -264,7 +307,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         children: [
           HtmlWidget(
             article.translatedDescription ?? (article.description.isNotEmpty ? article.description : 'Brak treści artykułu.'),
-            textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
+            textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
             onTapUrl: (url) async { await _launchUrl(context, url); return true; },
           ),
           if (_showSwipeHint) ...[
@@ -305,7 +348,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       children: [
         HtmlWidget(
           article.translatedFullContent ?? article.fullContent!,
-          textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, height: 1.6),
+          textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
           onTapUrl: (url) async { await _launchUrl(context, url); return true; },
         ),
         const SizedBox(height: 32),

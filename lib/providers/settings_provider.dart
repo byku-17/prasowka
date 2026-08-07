@@ -31,6 +31,7 @@ class SettingsProvider with ChangeNotifier {
   static const String cityLonKey = 'cityLongitude';
   static const String selectedLeaguesKey = 'selectedLeagueIds';
   static const String showAllSourcesKey = 'showAllSources';
+  static const String readingFontSizeKey = 'readingFontSize';
 
   ThemeMode _themeMode = ThemeMode.system;
   AppThemeVariant _themeVariant = AppThemeVariant.classic;
@@ -46,6 +47,7 @@ class SettingsProvider with ChangeNotifier {
   bool _onboardingCompleted = false;
   bool _showSportsBar = true;
   bool _showAllSources = false;
+  int _readingFontSize = 16;
   int _lastTabIndex = 0;
   String _preferredCity = 'Warszawa';
   double _cityLatitude = 52.2297;
@@ -65,6 +67,7 @@ class SettingsProvider with ChangeNotifier {
   bool get onboardingCompleted => _onboardingCompleted;
   bool get showSportsBar => _showSportsBar;
   bool get showAllSources => _showAllSources;
+  int get readingFontSize => _readingFontSize;
   int get lastTabIndex => _lastTabIndex;
   String get preferredCity => _preferredCity;
   CityCoordinates get cityCoordinates => CityCoordinates(name: _preferredCity, latitude: _cityLatitude, longitude: _cityLongitude);
@@ -131,6 +134,9 @@ class SettingsProvider with ChangeNotifier {
 
     // 4b. Pokaż wszystkie źródła (nie tylko top)
     _showAllSources = settingsBox.get(showAllSourcesKey, defaultValue: false);
+
+    // 4c. Rozmiar czcionki do czytania
+    _readingFontSize = settingsBox.get(readingFontSizeKey, defaultValue: 16);
 
     // 4. Kolejność kategorii
     _categoryOrder = List<String>.from(settingsBox.get(
@@ -460,6 +466,12 @@ class SettingsProvider with ChangeNotifier {
   Future<void> completeOnboarding() async {
     _onboardingCompleted = true;
     await Hive.box(settingsBoxName).put(onboardingKey, true);
+    notifyListeners();
+  }
+
+  Future<void> setReadingFontSize(int size) async {
+    _readingFontSize = size;
+    await Hive.box(settingsBoxName).put(readingFontSizeKey, size);
     notifyListeners();
   }
 }
