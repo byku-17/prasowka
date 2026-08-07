@@ -116,7 +116,9 @@ class SyncService extends ChangeNotifier {
     final data = doc.data()!;
     final box = Hive.box('settings');
     for (final entry in data.entries) {
-      await box.put(entry.key, entry.value);
+      if (!box.containsKey(entry.key) || box.get(entry.key) == null) {
+        await box.put(entry.key, entry.value);
+      }
     }
   }
 
