@@ -149,12 +149,16 @@ class SyncService extends ChangeNotifier {
       if (!doc.exists) return;
       final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
       for (final entry in decrypted.entries) {
-        await box.put(entry.key, entry.value);
+        if (!box.containsKey(entry.key)) {
+          await box.put(entry.key, entry.value);
+        }
       }
     } else {
       final snapshot = await _userDoc('tags').get();
       for (final doc in snapshot.docs) {
-        await box.put(doc.id, doc.data());
+        if (!box.containsKey(doc.id)) {
+          await box.put(doc.id, doc.data());
+        }
       }
     }
   }
@@ -247,7 +251,7 @@ class SyncService extends ChangeNotifier {
       if (!doc.exists) return;
       final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
       for (final entry in decrypted.entries) {
-        if (entry.value is num) {
+        if (entry.value is num && !box.containsKey(entry.key)) {
           await box.put(entry.key, (entry.value as num).toDouble());
         }
       }
@@ -256,7 +260,7 @@ class SyncService extends ChangeNotifier {
       if (!doc.exists) return;
       final data = doc.data()!;
       for (final entry in data.entries) {
-        if (entry.value is num) {
+        if (entry.value is num && !box.containsKey(entry.key)) {
           await box.put(entry.key, (entry.value as num).toDouble());
         }
       }
@@ -380,7 +384,9 @@ class SyncService extends ChangeNotifier {
     final data = doc.data()!;
     final box = Hive.box('pinned_matches');
     for (final entry in data.entries) {
-      await box.put(entry.key, entry.value);
+      if (!box.containsKey(entry.key)) {
+        await box.put(entry.key, entry.value);
+      }
     }
   }
 }
