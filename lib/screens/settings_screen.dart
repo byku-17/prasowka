@@ -8,6 +8,7 @@ import 'package:prasowka/screens/appearance_settings_page.dart';
 import 'package:prasowka/screens/category_settings_page.dart';
 import 'package:prasowka/screens/source_settings_page.dart';
 import 'package:prasowka/screens/interests_settings_page.dart';
+import 'package:prasowka/screens/tag_settings_page.dart';
 
 class _SettingsItem {
   final IconData icon;
@@ -59,7 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _SettingsItem(
         icon: Icons.category_outlined,
         title: 'Kategorie',
-        subtitle: 'Aktywne zakładki, kolejność wyświetlania',
+        subtitle: 'Zakładki główne, kolejność w Tematach',
         section: 'Personalizacja',
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategorySettingsPage())),
       ),
@@ -71,6 +72,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InterestsSettingsPage())),
       ),
       _SettingsItem(
+        icon: Icons.label_outlined,
+        title: 'Tagi',
+        subtitle: 'Twórz i zarządzaj tagami artykułów',
+        section: 'Personalizacja',
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TagSettingsPage())),
+      ),
+      _SettingsItem(
         icon: Icons.sports_soccer,
         title: 'Sport',
         subtitle: 'Drużyny, ligi, pasek wyników',
@@ -80,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _SettingsItem(
         icon: Icons.rss_feed,
         title: 'Źródła RSS',
-        subtitle: 'Miasto, lokalne i portale',
+        subtitle: 'Lokalne źródła i portale',
         section: 'Treści',
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SourceSettingsPage())),
       ),

@@ -32,6 +32,8 @@ class SettingsProvider with ChangeNotifier {
   static const String selectedLeaguesKey = 'selectedLeagueIds';
   static const String showAllSourcesKey = 'showAllSources';
   static const String readingFontSizeKey = 'readingFontSize';
+  static const String mainTabSlot1Key = 'mainTabSlot1';
+  static const String mainTabSlot2Key = 'mainTabSlot2';
 
   ThemeMode _themeMode = ThemeMode.system;
   AppThemeVariant _themeVariant = AppThemeVariant.classic;
@@ -49,6 +51,8 @@ class SettingsProvider with ChangeNotifier {
   bool _showAllSources = false;
   int _readingFontSize = 16;
   int _lastTabIndex = 0;
+  String _mainTabSlot1 = 'warsaw';
+  String _mainTabSlot2 = 'sport';
   String _preferredCity = 'Warszawa';
   double _cityLatitude = 52.2297;
   double _cityLongitude = 21.0122;
@@ -69,6 +73,8 @@ class SettingsProvider with ChangeNotifier {
   bool get showAllSources => _showAllSources;
   int get readingFontSize => _readingFontSize;
   int get lastTabIndex => _lastTabIndex;
+  String get mainTabSlot1 => _mainTabSlot1;
+  String get mainTabSlot2 => _mainTabSlot2;
   String get preferredCity => _preferredCity;
   CityCoordinates get cityCoordinates => CityCoordinates(name: _preferredCity, latitude: _cityLatitude, longitude: _cityLongitude);
   List<String> get selectedLeagueIds => List.unmodifiable(_selectedLeagueIds);
@@ -137,6 +143,14 @@ class SettingsProvider with ChangeNotifier {
 
     // 4c. Rozmiar czcionki do czytania
     _readingFontSize = settingsBox.get(readingFontSizeKey, defaultValue: 16);
+
+    // 4d. Zakładki główne (2 sloty)
+    _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
+    _mainTabSlot2 = settingsBox.get(mainTabSlot2Key, defaultValue: 'sport');
+    // Walidacja: upewnij się, że sloty nie są 'all' ani powtórzone
+    if (_mainTabSlot1 == 'all' || _mainTabSlot1 == 'api_news') _mainTabSlot1 = 'warsaw';
+    if (_mainTabSlot2 == 'all' || _mainTabSlot2 == 'api_news') _mainTabSlot2 = 'sport';
+    if (_mainTabSlot1 == _mainTabSlot2) _mainTabSlot2 = 'lifestyle';
 
     // 4. Kolejność kategorii
     _categoryOrder = List<String>.from(settingsBox.get(
@@ -473,5 +487,53 @@ class SettingsProvider with ChangeNotifier {
     _readingFontSize = size;
     await Hive.box(settingsBoxName).put(readingFontSizeKey, size);
     notifyListeners();
+  }
+
+  Future<void> setMainTabSlot(int slot, String categoryId) async {
+    final key = slot == 1 ? mainTabSlot1Key : mainTabSlot2Key;
+    if (slot == 1) {
+      _mainTabSlot1 = categoryId;
+    } else {
+      _mainTabSlot2 = categoryId;
+    }
+    await Hive.box(settingsBoxName).put(key, categoryId);
+    notifyListeners();
+  }
+
+  NewsCategory? getCategoryById(String id) {
+    try {
+      return _allCategories.firstWhere((c) => c.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Kategorie niewykorzystane w zakładkach głównych (do wyboru w slotach)
+  List<NewsCategory> get availableCategoriesForSlots {
+    final locked = {'all', 'api_news', _mainTabSlot1, _mainTabSlot2};
+    return _allCategories.where((c) => !locked.contains(c.id)).toList();
+  }
+
+  /// Kategorie do zakładki "Tematy" (wszystkie oprócz głównych zakładek)
+  Future<void> reorderTopicCategories(int oldIndex, int newIndex) async {
+    final topics = topicCategories;
+    if (oldIndex < 0 || oldIndex >= topics.length) return;
+    if (newIndex < 0 || newIndex >= topics.length) return;
+    final catId = topics[oldIndex].id;
+    final targetId = topics[newIndex].id;
+    final oldOrderIdx = _categoryOrder.indexOf(catId);
+    final newOrderIdx = _categoryOrder.indexOf(targetId);
+    if (oldOrderIdx == -1 || newOrderIdx == -1) return;
+    _categoryOrder.removeAt(oldOrderIdx);
+    _categoryOrder.insert(newOrderIdx, catId);
+    await Hive.box(settingsBoxName).put(categoryOrderKey, _categoryOrder);
+    notifyListeners();
+  }
+
+  List<NewsCategory> get topicCategories {
+    final excluded = {'all', 'api_news', _mainTabSlot1, _mainTabSlot2};
+    return allCategoriesOrdered
+        .where((c) => !excluded.contains(c.id) && _activeCategoryIds.contains(c.id))
+        .toList();
   }
 }

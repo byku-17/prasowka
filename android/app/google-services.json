@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "22082383120",
+    "project_id": "prasowka-a1b2f",
+    "storage_bucket": "prasowka-a1b2f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:22082383120:android:1a1b86d2a055e98b464995",
+        "android_client_info": {
+          "package_name": "com.prasowka.prasowka"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD58Nc33EHcwFUiSPiRV5vGcJKz29e1rs8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

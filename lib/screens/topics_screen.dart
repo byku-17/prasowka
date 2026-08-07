@@ -13,19 +13,14 @@ import 'package:prasowka/widgets/news_skeleton.dart';
 class TopicsScreen extends StatelessWidget {
   const TopicsScreen({super.key});
 
-  /// Kategorie which have their own tabs (excluded from grid)
-  static const _excludedIds = {'all', 'warsaw', 'sport', 'api_news'};
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = AppTheme.accentFor(context);
     final settings = context.watch<SettingsProvider>();
 
-    // Filtruj wg aktywnych kategorii + wykluczone taby
-    final topicCategories = settings.allCategoriesOrdered
-        .where((c) => !_excludedIds.contains(c.id) && settings.isCategoryActive(c.id))
-        .toList();
+    // Kategorie z wyłączeniem głównych zakładek (dynamiczne)
+    final topicCategories = settings.topicCategories;
 
     return Scaffold(
       appBar: AppBar(

@@ -34,7 +34,15 @@ dependencies:
   # Zarządzanie stanem
   provider: ^6.1.2
   flutter_dotenv: ^5.2.1
-  dynamic_color: ^1.7.0
+  dynamic_color: ^1.9.0
+
+  # Firebase
+  firebase_core: ^3.12.1
+  firebase_crashlytics: ^4.3.1
+  firebase_remote_config: ^5.4.0
+  firebase_auth: ^5.5.1
+  cloud_firestore: ^5.6.5
+  google_sign_in: ^6.2.2
 
   # Baza lokalna
   hive: ^2.2.3
@@ -58,7 +66,7 @@ dependencies:
   share_plus: ^13.3.0
   intl: ^0.19.0
   flutter_local_notifications: ^22.2.0
-  workmanager: ^0.10.6
+  workmanager: ^0.10.7
   shimmer: ^3.0.0
 
 dev_dependencies:
@@ -83,9 +91,6 @@ flutter:
   assets:
     - .env
     - assets/logo.png
-    - assets/Pra.png
-    - assets/sówka.png
-    - assets/sówka 2.png
 
 flutter_launcher_icons:
   android: "launcher_icon"

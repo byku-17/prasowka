@@ -5,6 +5,7 @@ import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/services/image_cache_manager.dart';
 import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/providers/tag_provider.dart';
 
 class ArticleCard extends StatelessWidget {
   final Article article;
@@ -79,7 +80,7 @@ class ArticleCard extends StatelessWidget {
           else
             AspectRatio(
               aspectRatio: 2.2,
-              child: _buildSourcePlaceholder(),
+              child: _buildSourcePlaceholder(context),
             ),
           
           // Treść — kompaktowa
@@ -168,8 +169,49 @@ class ArticleCard extends StatelessWidget {
               ],
             ),
           ),
+          if (article.tagIds.isNotEmpty) _buildTagChips(context),
           Divider(height: 1, thickness: 0.5, color: dividerColor),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTagChips(BuildContext context) {
+    final tagProvider = context.read<TagProvider>();
+    final tags = article.tagIds
+        .map((id) => tagProvider.getById(id))
+        .where((t) => t != null)
+        .toList();
+    if (tags.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 0,
+        children: tags.map((tag) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: tag!.color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(tag.icon, size: 12, color: tag.color),
+                const SizedBox(width: 3),
+                Text(
+                  tag.name,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: tag.color,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -295,53 +337,42 @@ class ArticleCard extends StatelessWidget {
     );
   }
 
-  Widget _buildSourcePlaceholder() {
+  Widget _buildSourcePlaceholder(BuildContext context) {
     final source = article.sourceName;
     final initial = source.isNotEmpty ? source[0].toUpperCase() : '?';
-    final hash = source.hashCode;
-    final colors = [
-      const Color(0xFF1E88E5),
-      const Color(0xFF43A047),
-      const Color(0xFFE53935),
-      const Color(0xFF8E24AA),
-      const Color(0xFFFF8F00),
-      const Color(0xFF00897B),
-      const Color(0xFF5C6BC0),
-      const Color(0xFFD81B60),
-    ];
-    final bgColor = colors[hash.abs() % colors.length];
+    final accent = AppTheme.accentFor(context);
 
     return Container(
-      color: bgColor.withValues(alpha: 0.15),
+      color: accent.withValues(alpha: 0.08),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
-                color: bgColor.withValues(alpha: 0.25),
+                color: accent.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Center(
                 child: Text(
                   initial,
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 44,
                     fontWeight: FontWeight.bold,
-                    color: bgColor,
+                    color: accent,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               source,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: bgColor.withValues(alpha: 0.8),
+                color: accent.withValues(alpha: 0.7),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -373,14 +404,8 @@ class ArticleCard extends StatelessWidget {
           _ReactionButton(
             iconBuilder: (isActive) => isActive ? Icons.bookmark : Icons.bookmark_border,
             colorBuilder: (isActive) => isActive ? Colors.blue : Colors.grey,
-            selector: (p) => article.readLater,
-            onPressed: () => context.read<NewsProvider>().toggleReadLater(article),
-          ),
-          _ReactionButton(
-            iconBuilder: (isActive) => isActive ? Icons.favorite : Icons.favorite_border,
-            colorBuilder: (isActive) => isActive ? Colors.red : Colors.grey,
-            selector: (p) => article.isFavorite,
-            onPressed: () => context.read<NewsProvider>().toggleFavorite(article),
+            selector: (p) => article.isSaved,
+            onPressed: () => context.read<NewsProvider>().toggleSaved(article),
           ),
         ],
       ),
@@ -399,17 +424,17 @@ class ArticleCard extends StatelessWidget {
           small: true,
         ),
         _ReactionButton(
-          iconBuilder: (isActive) => isActive ? Icons.favorite : Icons.favorite_border,
+          iconBuilder: (isActive) => isActive ? Icons.thumb_down : Icons.thumb_down_outlined,
           colorBuilder: (isActive) => isActive ? Colors.red : Colors.grey,
-          selector: (p) => article.isFavorite,
-          onPressed: () => context.read<NewsProvider>().toggleFavorite(article),
+          selector: (p) => article.isDisliked,
+          onPressed: () => context.read<NewsProvider>().toggleDislike(article),
           small: true,
         ),
         _ReactionButton(
           iconBuilder: (isActive) => isActive ? Icons.bookmark : Icons.bookmark_border,
           colorBuilder: (isActive) => isActive ? Colors.blue : Colors.grey,
-          selector: (p) => article.readLater,
-          onPressed: () => context.read<NewsProvider>().toggleReadLater(article),
+          selector: (p) => article.isSaved,
+          onPressed: () => context.read<NewsProvider>().toggleSaved(article),
           small: true,
         ),
       ],

@@ -12,7 +12,9 @@ import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/services/reading_history.dart';
+import 'package:prasowka/services/image_cache_manager.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
+import 'package:prasowka/widgets/tag_picker_bottom_sheet.dart';
 
 const int _kReadThresholdSeconds = 20;
 
@@ -220,7 +222,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 background: art.imageUrl != null
                     ? Hero(
                         tag: 'article-image-${art.id}',
-                        child: CachedNetworkImage(imageUrl: art.imageUrl!, fit: BoxFit.cover),
+                        child: CachedNetworkImage(imageUrl: art.imageUrl!, fit: BoxFit.cover, cacheManager: AppImageCacheManager.instance),
                       )
                     : Container(color: const Color(0xFF1E2126)),
               ),
@@ -476,42 +478,51 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             ),
           ),
           const SizedBox(width: 6),
-          MenuAnchor(
-            menuChildren: [
-              MenuItemButton(
-                onPressed: () => provider.toggleDislike(art),
-                leadingIcon: Icon(art.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined),
-                child: Text(art.isDisliked ? 'Cofnij ocenę' : 'Nie podoba mi się'),
+          GestureDetector(
+            onTap: () => provider.toggleDislike(art),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: art.isDisliked ? Colors.red : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(10),
               ),
-              MenuItemButton(
-                onPressed: () => provider.toggleReadLater(art),
-                leadingIcon: Icon(art.readLater ? Icons.timer : Icons.timer_outlined),
-                child: Text(art.readLater ? 'Usuń z "Na później"' : 'Na później'),
+              child: Icon(
+                art.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
+                color: art.isDisliked ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                size: 20,
               ),
-              MenuItemButton(
-                onPressed: () => provider.toggleFavorite(art),
-                leadingIcon: Icon(art.isFavorite ? Icons.favorite : Icons.favorite_border),
-                child: Text(art.isFavorite ? 'Usuń z ulubionych' : 'Ulubione'),
-              ),
-            ],
-            builder: (context, menuController, child) {
-              return GestureDetector(
-                onTap: () => menuController.isOpen ? menuController.close() : menuController.open(),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.more_vert,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    size: 20,
-                  ),
-                ),
-              );
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () async {
+              if (!art.isSaved) {
+                await provider.toggleSaved(art);
+                if (context.mounted) {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => TagPickerBottomSheet(article: art),
+                  );
+                }
+              } else {
+                await provider.toggleSaved(art);
+              }
             },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: art.isSaved ? Colors.blue : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                art.isSaved ? Icons.bookmark : Icons.bookmark_border,
+                color: art.isSaved ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                size: 20,
+              ),
+            ),
           ),
         ],
       ),

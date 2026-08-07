@@ -36,7 +36,7 @@ class SourceSettingsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('ZARZĄDZANIE ŹRÓDŁAMI')),
       body: ListView(
         children: [
-          // ─── SEKCJA: Miasto ───
+          // ─── SEKCJA: Lokalnie ───
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Text(

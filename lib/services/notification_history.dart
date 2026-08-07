@@ -83,14 +83,33 @@ class NotificationHistory {
   }
 
   List<NotificationEntry> get all {
+    _ensureBoxOpen();
     if (_box == null || !_box!.isOpen) return [];
     final entries = _box!.values.map((m) => NotificationEntry.fromMap(m)).toList();
     entries.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return entries;
   }
 
-  int get unreadCount {
-    return all.where((e) => !e.isRead).length;
+  int get unreadCount => all.where((e) => !e.isRead).length;
+
+  void _ensureBoxOpen() {
+    try {
+      if (_box == null || !_box!.isOpen) {
+        _box = Hive.box<Map>(_boxName);
+      }
+    } catch (_) {}
+  }
+
+  /// Wymuś ponowne otwarcie boxa (po zmianach z innego izolatu Workmanager)
+  Future<void> refreshBox() async {
+    try {
+      if (_box != null && _box!.isOpen) {
+        await _box!.close();
+      }
+      _box = await Hive.openBox<Map>(_boxName);
+    } catch (e) {
+      debugPrint('Sowa Notyfikacje: Błąd odświeżania boxa: $e');
+    }
   }
 
   Future<void> markAllRead() async {
@@ -110,6 +129,17 @@ class NotificationHistory {
     if (map != null) {
       map['isRead'] = true;
       await _box!.put(id, map);
+    }
+  }
+
+  Future<void> markReadByUrl(String url) async {
+    if (_box == null || !_box!.isOpen) return;
+    for (var key in _box!.keys) {
+      final map = _box!.get(key);
+      if (map != null && map['url'] == url && map['isRead'] == false) {
+        map['isRead'] = true;
+        await _box!.put(key, map);
+      }
     }
   }
 

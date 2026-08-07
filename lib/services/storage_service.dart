@@ -13,28 +13,23 @@ class StorageService {
   static const String cacheBoxName = 'news_cache';
   static const String notifiedBoxName = 'notified_ids';
 
-  /// Inicjalizacja Hive i otwarcie boxów (z bezpiecznym mechanizmem ratunkowym)
   Future<void> init() async {
     try {
       _registerAdapters();
-
       await _openSafe(articlesBoxName);
       await _openSafe(cacheBoxName);
       await _openSafe(notifiedBoxName);
-      
     } catch (e) {
       debugPrint('Sowa Storage: Krytyczny błąd inicjalizacji ($e)');
     }
   }
 
-  /// Rejestruje wszystkie adaptery Hive w jednym miejscu
   void _registerAdapters() {
     if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(ArticleAdapter());
     if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(NewsSourceAdapter());
     if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(NewsCategoryAdapter());
   }
 
-  /// Próbuje otworzyć box, a w razie błędu czyści go (migracja/uszkodzenie)
   Future<void> _openSafe(String name) async {
     try {
       if (!Hive.isBoxOpen(name)) {
@@ -43,7 +38,6 @@ class StorageService {
     } catch (e) {
       debugPrint('Sowa Storage: Problem z boxem $name ($e). Próba naprawy...');
       try {
-        // Usuwamy uszkodzony plik z dysku, dopiero potem otwieramy na nowo
         await Hive.deleteBoxFromDisk(name);
         await Hive.openBox(name);
         debugPrint('Sowa Storage: Box $name został usunięty i odtworzony.');
@@ -53,14 +47,12 @@ class StorageService {
     }
   }
 
-  /// Sprawdza czy artykuł został już powiadomiony
   bool wasNotified(String id) {
     if (!Hive.isBoxOpen(notifiedBoxName)) return false;
     final box = Hive.box(notifiedBoxName);
     return box.get(id, defaultValue: false) == true;
   }
 
-  /// Markuje artykuł jako powiadomiony
   Future<void> markAsNotified(String id) async {
     if (!Hive.isBoxOpen(notifiedBoxName)) return;
     final box = Hive.box(notifiedBoxName);
@@ -72,13 +64,10 @@ class StorageService {
     final box = Hive.box(cacheBoxName);
     final currentCache = getCategoryCache(categoryId);
     final Map<String, Article> uniqueArticles = {};
-    
     for (var a in currentCache) { uniqueArticles[a.id] = a; }
     for (var a in newArticles) { uniqueArticles[a.id] = a; }
-    
     final List<Article> combinedList = uniqueArticles.values.toList();
     combinedList.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
-    
     final limitedList = combinedList.take(200).toList();
     await box.put(categoryId, limitedList);
   }
@@ -99,24 +88,11 @@ class StorageService {
     }
   }
 
-  Future<void> toggleFavorite(Article article) async {
+  Future<void> toggleSaved(Article article) async {
     if (!Hive.isBoxOpen(articlesBoxName)) return;
     final box = Hive.box(articlesBoxName);
-    article.isFavorite = !article.isFavorite;
-    
-    if (article.isFavorite || article.readLater) {
-      await box.put(article.id, article);
-    } else {
-      await box.delete(article.id);
-    }
-  }
-
-  Future<void> toggleReadLater(Article article) async {
-    if (!Hive.isBoxOpen(articlesBoxName)) return;
-    final box = Hive.box(articlesBoxName);
-    article.readLater = !article.readLater;
-    
-    if (article.isFavorite || article.readLater) {
+    article.isSaved = !article.isSaved;
+    if (article.isSaved || article.tagIds.isNotEmpty) {
       await box.put(article.id, article);
     } else {
       await box.delete(article.id);
@@ -126,11 +102,26 @@ class StorageService {
   List<Article> getSavedArticles() {
     if (!Hive.isBoxOpen(articlesBoxName)) return [];
     final box = Hive.box(articlesBoxName);
-    return box.values.cast<Article>().toList();
+    return box.values.cast<Article>().where((a) => a.isSaved).toList();
   }
 
-  List<Article> getFavorites() => getSavedArticles().where((a) => a.isFavorite).toList();
-  List<Article> getReadLater() => getSavedArticles().where((a) => a.readLater).toList();
+  List<Article> getArticlesWithTag(String tagId) =>
+      getSavedArticles().where((a) => a.tagIds.contains(tagId)).toList();
+
+  Future<void> toggleArticleTag(Article article, String tagId) async {
+    if (!Hive.isBoxOpen(articlesBoxName)) return;
+    final box = Hive.box(articlesBoxName);
+    if (article.tagIds.contains(tagId)) {
+      article.tagIds.remove(tagId);
+    } else {
+      article.tagIds.add(tagId);
+    }
+    if (article.isSaved || article.tagIds.isNotEmpty) {
+      await box.put(article.id, article);
+    } else {
+      await box.delete(article.id);
+    }
+  }
 
   Article? getStoredArticle(String id) {
     if (!Hive.isBoxOpen(articlesBoxName)) return null;

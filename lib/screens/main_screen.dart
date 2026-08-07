@@ -3,16 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/screens/today_screen.dart';
-import 'package:prasowka/screens/city_screen.dart';
-import 'package:prasowka/screens/sport_screen.dart';
-import 'package:prasowka/screens/saved_screen.dart';
+import 'package:prasowka/screens/category_tab_screen.dart';
 import 'package:prasowka/screens/topics_screen.dart';
-import 'package:prasowka/screens/history_screen.dart';
+import 'package:prasowka/screens/saved_screen.dart';
 import 'package:prasowka/screens/search_bottom_sheet.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/services/background_service.dart';
+import 'package:prasowka/services/notification_history.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -27,21 +26,18 @@ class _MainScreenState extends State<MainScreen> {
   DateTime? _lastBackPressTime;
   StreamSubscription? _notificationSubscription;
 
-  late final List<Widget> _screens;
+  List<Widget> _screens = [];
+  List<_TabDef> _tabs = [];
+  String _lastCityName = '';
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = context.read<SettingsProvider>().lastTabIndex;
+    _rebuildTabs();
+    final settings = context.read<SettingsProvider>();
+    _currentIndex = settings.lastTabIndex;
+    if (_currentIndex >= _tabs.length) _currentIndex = 0;
     _pageController = PageController(initialPage: _currentIndex);
-    _screens = [
-      const TodayScreen(),
-      const CityScreen(),
-      const SportScreen(),
-      const TopicsScreen(),
-      const SavedScreen(),
-      const HistoryScreen(),
-    ];
 
     // Nasłuchiwanie powiadomień
     _notificationSubscription = BackgroundService().notificationStream.listen((url) {
@@ -58,8 +54,44 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  void _rebuildTabs() {
+    final settings = context.read<SettingsProvider>();
+    final slot1Cat = settings.getCategoryById(settings.mainTabSlot1);
+    final slot2Cat = settings.getCategoryById(settings.mainTabSlot2);
+    final slot1Label = settings.mainTabSlot1 == 'warsaw'
+        ? settings.preferredCity
+        : (slot1Cat?.name ?? 'Slot 1');
+    final String slot2Label = slot2Cat?.name ?? 'Slot 2';
+    _lastCityName = settings.preferredCity;
+
+    _tabs = [
+      _TabDef(label: 'Dzisiaj', icon: Icons.today, id: 'dzisiaj'),
+      _TabDef(
+        label: slot1Label,
+        icon: slot1Cat?.icon ?? Icons.category,
+        id: settings.mainTabSlot1,
+      ),
+      _TabDef(
+        label: slot2Label,
+        icon: slot2Cat?.icon ?? Icons.category,
+        id: settings.mainTabSlot2,
+      ),
+      _TabDef(label: 'Tematy', icon: Icons.category, id: 'tematy'),
+      _TabDef(label: 'Zapisane', icon: Icons.bookmark, id: 'zapisane'),
+    ];
+
+    _screens = [
+      const TodayScreen(),
+      CategoryTabScreen(categoryId: settings.mainTabSlot1),
+      CategoryTabScreen(categoryId: settings.mainTabSlot2),
+      const TopicsScreen(),
+      const SavedScreen(),
+    ];
+  }
+
   void _handleNotificationUrl(String url) {
     if (!mounted) return;
+    NotificationHistory().markReadByUrl(url);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ArticleWebViewScreen(
@@ -102,6 +134,20 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Only rebuild when the 3 tab-defining fields change (not on every settings change)
+    final slotKey = context.select<SettingsProvider, ({String s1, String s2, String city})>(
+      (s) => (s1: s.mainTabSlot1, s2: s.mainTabSlot2, city: s.preferredCity),
+    );
+    final newSlot1 = slotKey.s1;
+    final newSlot2 = slotKey.s2;
+    final newCity = slotKey.city;
+    final slotsChanged = _tabs.length >= 3 && (_tabs[1].id != newSlot1 || _tabs[2].id != newSlot2);
+    final cityChanged = newSlot1 == 'warsaw' && _lastCityName != newCity;
+    if (slotsChanged || cityChanged) {
+      _rebuildTabs();
+      if (_currentIndex >= _tabs.length) _currentIndex = 0;
+    }
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -163,16 +209,19 @@ class _MainScreenState extends State<MainScreen> {
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 11),
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.today), label: 'Dzisiaj'),
-            BottomNavigationBarItem(icon: Icon(Icons.location_city), label: 'Miasto'),
-            BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'Sport'),
-            BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Tematy'),
-            BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Zapisane'),
-            BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Historia'),
-          ],
+          items: _tabs.map((tab) => BottomNavigationBarItem(
+            icon: Icon(tab.icon),
+            label: tab.label,
+          )).toList(),
         ),
       ),
     );
   }
+}
+
+class _TabDef {
+  final String label;
+  final IconData icon;
+  final String id;
+  const _TabDef({required this.label, required this.icon, required this.id});
 }

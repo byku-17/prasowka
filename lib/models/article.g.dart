@@ -25,8 +25,7 @@ class ArticleAdapter extends TypeAdapter<Article> {
       publishedAt: fields[6] as DateTime,
       sourceName: fields[7] as String,
       imageUrl: fields[5] as String?,
-      isFavorite: fields[8] as bool,
-      readLater: fields[9] as bool,
+      isSaved: (fields[8] as bool) || (fields[9] as bool? ?? false),
       fullContent: fields[10] as String?,
       isLiked: fields[11] as bool,
       isDisliked: fields[12] as bool,
@@ -35,13 +34,14 @@ class ArticleAdapter extends TypeAdapter<Article> {
       translatedFullContent: fields[15] as String?,
       readTimeSeconds: fields[16] as int,
       isRead: fields[17] as bool,
+      tagIds: fields[18] == null ? const [] : (fields[18] as List).cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Article obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,9 +59,9 @@ class ArticleAdapter extends TypeAdapter<Article> {
       ..writeByte(7)
       ..write(obj.sourceName)
       ..writeByte(8)
-      ..write(obj.isFavorite)
+      ..write(obj.isSaved)
       ..writeByte(9)
-      ..write(obj.readLater)
+      ..write(false)
       ..writeByte(10)
       ..write(obj.fullContent)
       ..writeByte(11)
@@ -77,7 +77,9 @@ class ArticleAdapter extends TypeAdapter<Article> {
       ..writeByte(16)
       ..write(obj.readTimeSeconds)
       ..writeByte(17)
-      ..write(obj.isRead);
+      ..write(obj.isRead)
+      ..writeByte(18)
+      ..write(obj.tagIds);
   }
 
   @override

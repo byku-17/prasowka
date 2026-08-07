@@ -33,7 +33,6 @@ class NewsProvider with ChangeNotifier {
   final Map<String, DateTime> _lastFetchTimes = {};
   final Map<String, String> _requestIds = {};
 
-  // Getters
   List<Article> get articles => _articlesMap[_selectedCategory.id] ?? [];
   List<Article> get recommendedArticles => _recommendedArticles;
   bool get isLoading => _loadingMap[_selectedCategory.id] ?? false;
@@ -97,11 +96,11 @@ class NewsProvider with ChangeNotifier {
         for (var article in articles) {
           final stored = _storageService.getStoredArticle(article.id);
           if (stored != null) {
-            article.isFavorite = stored.isFavorite;
-            article.readLater = stored.readLater;
+            article.isSaved = stored.isSaved;
             article.isLiked = stored.isLiked;
             article.isDisliked = stored.isDisliked;
             article.fullContent = stored.fullContent;
+            article.tagIds = stored.tagIds;
           }
           _interestService.calculateScore(article);
         }
@@ -123,9 +122,6 @@ class NewsProvider with ChangeNotifier {
       if (categoryId == 'all') {
         sourcesToFetch = baseSources.where((s) => NewsSource.topSourceIds.contains(s.id) || s.id.startsWith('custom_')).toList();
       } else if (categoryId == 'warsaw') {
-        // Dla kategorii "warsaw" użyj wszystkich źródeł z listy (źródła miejskie
-        // mają różne categoryId: 'krakow', 'wroclaw', itd. - zostały już przefiltrowane
-        // przez _getSourcesForCategory w widget)
         sourcesToFetch = baseSources;
       } else {
         sourcesToFetch = baseSources.where((s) => s.categoryId == categoryId).toList();
@@ -166,11 +162,11 @@ class NewsProvider with ChangeNotifier {
             for (var article in fetched) {
               final stored = _storageService.getStoredArticle(article.id);
               if (stored != null) {
-                article.isFavorite = stored.isFavorite;
-                article.readLater = stored.readLater;
+                article.isSaved = stored.isSaved;
                 article.isLiked = stored.isLiked;
                 article.isDisliked = stored.isDisliked;
                 article.fullContent = stored.fullContent;
+                article.tagIds = stored.tagIds;
               }
               _interestService.calculateScore(article);
             }
@@ -181,7 +177,6 @@ class NewsProvider with ChangeNotifier {
         if (hasNew) {
           _hasEverLoadedMap[categoryId] = true;
           if (accumulated.length % 200 == 0) _calculateRecommendations();
-          // Progressive loading — aktualizuj UI po każdym batchu
           _articlesMap[categoryId] = List.from(accumulated);
           notifyListeners();
         }
@@ -192,7 +187,6 @@ class NewsProvider with ChangeNotifier {
       
       List<Article> finalList;
       if (accumulated.length > 50) {
-        // Konwertuj do Map przed compute (bezpieczne dla isolate boundaries z Article/HiveObject)
         final transferList = accumulated.map((a) => a.toTransferMap()).toList();
         final mixed = await compute(_sortAndMixArticlesStatic, {
           'list': transferList,
@@ -290,7 +284,6 @@ class NewsProvider with ChangeNotifier {
   }
 
   void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId) {
-    // Reużywamy logiki statycznej dla małych list
     final result = _sortAndMixArticlesStatic({
       'list': list,
       'teams': teams,
@@ -321,7 +314,6 @@ class NewsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Oznacza artykuł jako przeczytany (zapisuje w Hive i odświeża UI)
   void markArticleRead(Article article) {
     if (article.isRead) return;
     article.isRead = true;
@@ -334,16 +326,19 @@ class NewsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> toggleFavorite(Article article) async {
-    await _storageService.toggleFavorite(article);
-    await _interestService.processInteraction(article, article.isFavorite ? 2.0 : -2.0);
+  Future<void> toggleSaved(Article article) async {
+    await _storageService.toggleSaved(article);
+    if (article.isSaved) {
+      await _interestService.processInteraction(article, 2.0);
+      if (article.tagIds.isEmpty) {
+        await _storageService.toggleArticleTag(article, 'to_read');
+      }
+    } else {
+      await _interestService.processInteraction(article, -2.0);
+    }
     _clearCachedScores();
     _calculateRecommendations();
-    notifyListeners();
-  }
-
-  Future<void> toggleReadLater(Article article) async {
-    await _storageService.toggleReadLater(article);
+    _invalidateSavedCache();
     notifyListeners();
   }
 
@@ -364,7 +359,6 @@ class NewsProvider with ChangeNotifier {
     if (_selectedCategory.id == category.id) return;
     _selectedCategory = category;
     notifyListeners();
-    // Nie fetchuj tu — widget CategoryNewsList zrobi to przez _fetchIfNeeded z właściwymi źródłami
   }
 
   Future<void> fetchFullArticleContent(Article article) async {
@@ -439,6 +433,21 @@ class NewsProvider with ChangeNotifier {
     debugPrint('Sowa NewsProvider Error [$categoryId]: $e');
   }
 
-  List<Article> get favoriteArticles => _storageService.getFavorites();
-  List<Article> get readLaterArticles => _storageService.getReadLater();
+  List<Article>? _cachedSavedArticles;
+
+  List<Article> get savedArticles {
+    return _cachedSavedArticles ??= _storageService.getSavedArticles();
+  }
+
+  void _invalidateSavedCache() {
+    _cachedSavedArticles = null;
+  }
+
+  List<Article> getArticlesWithTag(String tagId) => _storageService.getArticlesWithTag(tagId);
+
+  Future<void> toggleArticleTag(Article article, String tagId) async {
+    await _storageService.toggleArticleTag(article, tagId);
+    _invalidateSavedCache();
+    notifyListeners();
+  }
 }

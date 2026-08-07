@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:prasowka/models/article.dart';
+import 'package:prasowka/services/remote_config_service.dart';
 
 class NewsApiService {
   static const _baseUrl = 'https://newsapi.org/v2';
 
-  String? get _apiKey => dotenv.env['NEWSAPI_KEY'];
+  String? get _apiKey => RemoteConfigService().newsApiKey;
 
   bool get isConfigured => _apiKey != null && _apiKey!.isNotEmpty;
 

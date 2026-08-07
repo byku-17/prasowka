@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:prasowka/services/notification_history.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/screens/article_detail_screen.dart';
+import 'package:prasowka/screens/article_webview_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -15,10 +15,26 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  List<NotificationEntry> _entries = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEntries();
+  }
+
+  Future<void> _loadEntries() async {
+    await NotificationHistory().refreshBox();
+    if (mounted) {
+      setState(() {
+        _entries = NotificationHistory().all;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final history = NotificationHistory();
-    final entries = history.all;
+    final entries = _entries;
 
     return Scaffold(
       appBar: AppBar(
@@ -46,8 +62,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                 );
                 if (confirm == true) {
-                  await history.clear();
-                  setState(() {});
+                  await NotificationHistory().clear();
+                  _loadEntries();
                 }
               },
             ),
@@ -103,7 +119,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       onDismissed: (_) async {
         await NotificationHistory().delete(entry.id);
-        setState(() {});
+        _loadEntries();
       },
       child: ListTile(
         leading: CircleAvatar(
@@ -140,7 +156,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           } else {
             await history.markRead(entry.id);
           }
-          setState(() {});
+          _loadEntries();
         },
       ),
     );
@@ -152,8 +168,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.dispose();
   }
 
-  void _openArticle(BuildContext context, NotificationEntry entry) {
+  void _openArticle(BuildContext context, NotificationEntry entry) async {
     if (entry.url == null) return;
+
+    await NotificationHistory().markRead(entry.id);
+    if (!mounted) return;
 
     final provider = context.read<NewsProvider>();
     final cachedArticle = provider.allLoadedArticles
@@ -161,7 +180,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         .toList();
 
     if (cachedArticle.isNotEmpty) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) =>
@@ -169,9 +188,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
       );
     } else {
-      launchUrl(Uri.parse(entry.url!),
-          mode: LaunchMode.externalApplication);
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ArticleWebViewScreen(
+            url: entry.url!,
+            title: entry.title,
+          ),
+        ),
+      );
     }
+    if (mounted) _loadEntries();
   }
 
   String _formatTime(DateTime dt) {

@@ -4,12 +4,12 @@ import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/models/sport_league.dart';
 import 'package:prasowka/utils/canonical_key.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:prasowka/services/sports_request_queue.dart';
+import 'package:prasowka/services/remote_config_service.dart';
 
 class SportsService {
-  String get _sportDbKey => dotenv.env['SPORTDB_API_KEY'] ?? '';
-  String get _theSportsDbKey => dotenv.env['THESPORTSDB_API_KEY'] ?? '3';
+  String get _sportDbKey => RemoteConfigService().sportDbKey;
+  String get _theSportsDbKey => RemoteConfigService().theSportsDbKey;
 
   static const _espnUserAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15';
 

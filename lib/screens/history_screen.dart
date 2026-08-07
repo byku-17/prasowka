@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:prasowka/services/reading_history.dart';
+import 'package:prasowka/services/image_cache_manager.dart';
 import 'package:prasowka/screens/article_detail_screen.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
@@ -63,8 +64,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       imageUrl: entry.imageUrl,
       sourceName: entry.sourceName,
       publishedAt: entry.publishedAt,
-      isFavorite: false,
-      readLater: false,
+      isSaved: false,
     );
     Navigator.push(
       context,
@@ -186,6 +186,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 width: 80,
                 height: 80,
                 fit: BoxFit.cover,
+                cacheManager: AppImageCacheManager.instance,
                 errorWidget: (_, __, ___) => Container(
                   width: 80,
                   height: 80,

@@ -29,9 +29,10 @@ class Article extends HiveObject {
   final String sourceName;
 
   @HiveField(8)
-  bool isFavorite;
+  bool isSaved;
 
   @HiveField(9)
+  @Deprecated('Use isSaved instead')
   bool readLater;
 
   @HiveField(10)
@@ -58,7 +59,9 @@ class Article extends HiveObject {
   @HiveField(17)
   bool isRead;
 
-  // Pola pomocnicze (niezapisywane w Hive)
+  @HiveField(18)
+  List<String> tagIds;
+
   List<String>? _cachedTags;
   double? cachedScore;
 
@@ -84,8 +87,8 @@ class Article extends HiveObject {
     required this.publishedAt,
     required this.sourceName,
     this.imageUrl,
-    this.isFavorite = false,
-    this.readLater = false,
+    this.isSaved = false,
+    @Deprecated('Use isSaved instead') this.readLater = false,
     this.fullContent,
     this.isLiked = false,
     this.isDisliked = false,
@@ -94,16 +97,15 @@ class Article extends HiveObject {
     this.translatedFullContent,
     this.readTimeSeconds = 0,
     this.isRead = false,
-  });
+    List<String>? tagIds,
+  }) : tagIds = tagIds ?? [];
 
-  /// Oblicza przybliżony czas czytania (zakładając średnio 200 słów na minutę)
   int get estimatedReadingTime {
     final words = (content.isNotEmpty ? content : description).split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
     final minutes = (words / 200).ceil();
     return minutes > 0 ? minutes : 1;
   }
 
-  /// Konwersja do Map (bezpieczna dla isolate boundaries)
   Map<String, dynamic> toTransferMap() => {
     'id': id,
     'title': title,
@@ -113,8 +115,7 @@ class Article extends HiveObject {
     'imageUrl': imageUrl,
     'publishedAt': publishedAt.millisecondsSinceEpoch,
     'sourceName': sourceName,
-    'isFavorite': isFavorite,
-    'readLater': readLater,
+    'isSaved': isSaved,
     'fullContent': fullContent,
     'isLiked': isLiked,
     'isDisliked': isDisliked,
@@ -123,9 +124,9 @@ class Article extends HiveObject {
     'translatedFullContent': translatedFullContent,
     'readTimeSeconds': readTimeSeconds,
     'isRead': isRead,
+    'tagIds': tagIds,
   };
 
-  /// Odtworzenie z Map (bezpieczna dla isolate boundaries)
   factory Article.fromTransferMap(Map<String, dynamic> m) => Article(
     id: m['id'] ?? '',
     title: m['title'] ?? '',
@@ -135,8 +136,7 @@ class Article extends HiveObject {
     imageUrl: m['imageUrl'],
     publishedAt: DateTime.fromMillisecondsSinceEpoch(m['publishedAt'] ?? 0),
     sourceName: m['sourceName'] ?? '',
-    isFavorite: m['isFavorite'] ?? false,
-    readLater: m['readLater'] ?? false,
+    isSaved: m['isSaved'] ?? m['isFavorite'] ?? m['readLater'] ?? false,
     fullContent: m['fullContent'],
     isLiked: m['isLiked'] ?? false,
     isDisliked: m['isDisliked'] ?? false,
@@ -145,5 +145,6 @@ class Article extends HiveObject {
     translatedFullContent: m['translatedFullContent'],
     readTimeSeconds: m['readTimeSeconds'] ?? 0,
     isRead: m['isRead'] ?? false,
+    tagIds: m['tagIds'] != null ? List<String>.from(m['tagIds']) : const [],
   );
 }

@@ -30,10 +30,12 @@ class _TodayScreenState extends State<TodayScreen> {
   static const int _initialLoad = 20;
   static const int _loadMoreStep = 20;
   int _visibleCount = _initialLoad;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
+    _refreshUnread();
     _scrollController.addListener(() {
       if (_scrollController.offset > 600 && !_showBackToTop) {
         setState(() => _showBackToTop = true);
@@ -48,6 +50,11 @@ class _TodayScreenState extends State<TodayScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _refreshUnread() async {
+    await NotificationHistory().refreshBox();
+    if (mounted) setState(() => _unreadCount = NotificationHistory().unreadCount);
   }
 
   void _fetchIfNeeded() {
@@ -102,15 +109,14 @@ class _TodayScreenState extends State<TodayScreen> {
   }
 
   Widget _buildNotificationBell(BuildContext context) {
-    final unread = NotificationHistory().unreadCount;
-    final hasUnread = unread > 0;
+    final hasUnread = _unreadCount > 0;
     return IconButton(
       icon: Badge(
         isLabelVisible: hasUnread,
         backgroundColor: Colors.red,
         offset: const Offset(6, -6),
         label: Text(
-          unread > 99 ? '99+' : '$unread',
+          _unreadCount > 99 ? '99+' : '$_unreadCount',
           style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
         ),
         child: Icon(
@@ -123,7 +129,7 @@ class _TodayScreenState extends State<TodayScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-        ).then((_) => setState(() {}));
+        ).then((_) => _refreshUnread());
       },
     );
   }
