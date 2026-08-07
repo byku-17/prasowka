@@ -75,6 +75,11 @@ class ArticleCard extends StatelessWidget {
                   _buildTranslationWatermark(),
                 ],
               ),
+            )
+          else
+            AspectRatio(
+              aspectRatio: 2.2,
+              child: _buildSourcePlaceholder(),
             ),
           
           // Treść — kompaktowa
@@ -287,6 +292,63 @@ class ArticleCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSourcePlaceholder() {
+    final source = article.sourceName;
+    final initial = source.isNotEmpty ? source[0].toUpperCase() : '?';
+    final hash = source.hashCode;
+    final colors = [
+      const Color(0xFF1E88E5),
+      const Color(0xFF43A047),
+      const Color(0xFFE53935),
+      const Color(0xFF8E24AA),
+      const Color(0xFFFF8F00),
+      const Color(0xFF00897B),
+      const Color(0xFF5C6BC0),
+      const Color(0xFFD81B60),
+    ];
+    final bgColor = colors[hash.abs() % colors.length];
+
+    return Container(
+      color: bgColor.withValues(alpha: 0.15),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: bgColor.withValues(alpha: 0.25),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  initial,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: bgColor,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              source,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: bgColor.withValues(alpha: 0.8),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
