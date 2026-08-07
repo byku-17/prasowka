@@ -8,6 +8,8 @@ import 'package:prasowka/screens/settings_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/widgets/article_card.dart';
 import 'package:prasowka/widgets/empty_state_widget.dart';
+import 'package:prasowka/widgets/scores_bar.dart';
+import 'package:prasowka/widgets/local_info_bar.dart';
 import 'package:prasowka/widgets/news_skeleton.dart';
 
 /// Generic screen for a single category tab.
@@ -132,49 +134,60 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
             );
           }
 
-          return Stack(
+          final isSport = widget.categoryId == 'sport';
+          final isWarsaw = widget.categoryId == 'warsaw';
+
+          return Column(
             children: [
-              RefreshIndicator(
-                color: AppTheme.accentGold,
-                onRefresh: () async {
-                  _hasFetched = false;
-                  _fetchIfNeeded();
-                },
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: EdgeInsets.zero,
-                  addRepaintBoundaries: true,
-                  itemCount: articles.length,
-                  itemBuilder: (context, index) {
-                    final article = articles[index];
-                    return ArticleCard(
-                      article: article,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ArticleDetailScreen(
+              if (isSport) const ScoresBar(),
+              if (isWarsaw) const LocalInfoBar(),
+              Expanded(
+                child: Stack(
+                  children: [
+                    RefreshIndicator(
+                      color: AppTheme.accentGold,
+                      onRefresh: () async {
+                        _hasFetched = false;
+                        _fetchIfNeeded();
+                      },
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: EdgeInsets.zero,
+                        addRepaintBoundaries: true,
+                        itemCount: articles.length,
+                        itemBuilder: (context, index) {
+                          final article = articles[index];
+                          return ArticleCard(
                             article: article,
-                            articles: articles,
-                            currentIndex: index,
-                          ),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ArticleDetailScreen(
+                                  article: article,
+                                  articles: articles,
+                                  currentIndex: index,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    if (_showBackToTop)
+                      Positioned(
+                        right: 16,
+                        bottom: 80,
+                        child: FloatingActionButton.small(
+                          onPressed: _scrollToTop,
+                          backgroundColor: AppTheme.accentGold,
+                          foregroundColor: Colors.black,
+                          elevation: 4,
+                          child: const Icon(Icons.arrow_upward),
                         ),
                       ),
-                    );
-                  },
+                  ],
                 ),
               ),
-              if (_showBackToTop)
-                Positioned(
-                  right: 16,
-                  bottom: 80,
-                  child: FloatingActionButton.small(
-                    onPressed: _scrollToTop,
-                    backgroundColor: AppTheme.accentGold,
-                    foregroundColor: Colors.black,
-                    elevation: 4,
-                    child: const Icon(Icons.arrow_upward),
-                  ),
-                ),
             ],
           );
         },
