@@ -68,6 +68,8 @@ dependencies:
   flutter_local_notifications: ^22.2.0
   workmanager: ^0.10.7
   shimmer: ^3.0.0
+  encrypt: ^5.0.3
+  flutter_secure_storage: ^11.0.0
 
 dev_dependencies:
   flutter_test:

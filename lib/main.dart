@@ -57,6 +57,7 @@ void main() async {
       }
 
       if (auth.isLoggedIn) {
+        sync.setEncryptionPassword(auth.user?.uid ?? '');
         sync.mergeFirstLogin();
       }
     } catch (e, stack) {

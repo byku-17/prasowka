@@ -3,17 +3,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:prasowka/services/auth_service.dart';
+import 'package:prasowka/services/encryption_service.dart';
 
 class SyncService extends ChangeNotifier {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final AuthService _auth;
+  final EncryptionService _encryption = EncryptionService();
   
   bool _syncing = false;
   bool get syncing => _syncing;
   DateTime? _lastSync;
   DateTime? get lastSync => _lastSync;
+  String? _encryptionPassword;
+  bool get isEncrypted => _encryptionPassword != null;
 
   SyncService(this._auth);
+
+  void setEncryptionPassword(String password) {
+    _encryptionPassword = password;
+  }
 
   String? get _uid => _auth.user?.uid;
 
@@ -112,35 +120,52 @@ class SyncService extends ChangeNotifier {
     }
   }
 
-  // ─── TAGS ───
+  // ─── TAGS (encrypted) ───
 
   Future<void> _pushTags() async {
     final box = Hive.box('user_tags');
-    final batch = _db.batch();
+    final data = <String, dynamic>{};
     for (final key in box.keys) {
-      final value = box.get(key);
-      batch.set(_userDoc('tags').doc(key.toString()), Map<String, dynamic>.from(value is Map ? value : {'value': value}));
+      data[key.toString()] = box.get(key);
     }
-    await batch.commit();
+    if (_encryptionPassword != null && data.isNotEmpty) {
+      final encrypted = await _encryption.encryptMap(data, _uid!, _encryptionPassword!);
+      await _userDoc('tags_encrypted').doc('data').set({'payload': encrypted});
+    } else if (data.isNotEmpty) {
+      final batch = _db.batch();
+      for (final entry in data.entries) {
+        batch.set(_userDoc('tags').doc(entry.key), Map<String, dynamic>.from(entry.value is Map ? entry.value : {'value': entry.value}));
+      }
+      await batch.commit();
+    }
   }
 
   Future<void> _pullTags() async {
-    final snapshot = await _userDoc('tags').get();
     final box = Hive.box('user_tags');
-    for (final doc in snapshot.docs) {
-      await box.put(doc.id, doc.data());
+    if (_encryptionPassword != null) {
+      final doc = await _userDoc('tags_encrypted').doc('data').get();
+      if (!doc.exists) return;
+      final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
+      for (final entry in decrypted.entries) {
+        await box.put(entry.key, entry.value);
+      }
+    } else {
+      final snapshot = await _userDoc('tags').get();
+      for (final doc in snapshot.docs) {
+        await box.put(doc.id, doc.data());
+      }
     }
   }
 
-  // ─── ARTICLES ───
+  // ─── ARTICLES (encrypted) ───
 
   Future<void> _pushArticles() async {
     final box = Hive.box('articles');
-    final batch = _db.batch();
+    final data = <String, dynamic>{};
     for (final key in box.keys) {
       final article = box.get(key);
       if (article == null) continue;
-      final data = {
+      data[key.toString()] = {
         'id': article.id,
         'title': article.title,
         'description': article.description,
@@ -156,17 +181,37 @@ class SyncService extends ChangeNotifier {
         'readTimeSeconds': article.readTimeSeconds,
         'isRead': article.isRead,
       };
-      batch.set(_userDoc('articles').doc(key.toString()), data);
     }
-    await batch.commit();
+    if (_encryptionPassword != null && data.isNotEmpty) {
+      final encrypted = await _encryption.encryptMap(data, _uid!, _encryptionPassword!);
+      await _userDoc('articles_encrypted').doc('data').set({'payload': encrypted});
+    } else if (data.isNotEmpty) {
+      final batch = _db.batch();
+      for (final entry in data.entries) {
+        batch.set(_userDoc('articles').doc(entry.key), entry.value);
+      }
+      await batch.commit();
+    }
   }
 
   Future<void> _pullArticles() async {
-    final snapshot = await _userDoc('articles').get();
     final box = Hive.box('articles');
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      final existing = box.get(doc.id);
+    Map<String, dynamic> dataMap = {};
+
+    if (_encryptionPassword != null) {
+      final doc = await _userDoc('articles_encrypted').doc('data').get();
+      if (!doc.exists) return;
+      dataMap = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
+    } else {
+      final snapshot = await _userDoc('articles').get();
+      for (final doc in snapshot.docs) {
+        dataMap[doc.id] = doc.data();
+      }
+    }
+
+    for (final entry in dataMap.entries) {
+      final data = entry.value;
+      final existing = box.get(entry.key);
       if (existing != null) {
         existing.isSaved = data['isSaved'] ?? existing.isSaved;
         existing.isLiked = data['isLiked'] ?? existing.isLiked;
@@ -175,27 +220,43 @@ class SyncService extends ChangeNotifier {
         existing.isRead = data['isRead'] ?? existing.isRead;
         await existing.save();
       } else {
-        debugPrint('Sync: article ${doc.id} not in local cache, skipping');
+        debugPrint('Sync: article ${entry.key} not in local cache, skipping');
       }
     }
   }
 
-  // ─── INTERESTS ───
+  // ─── INTERESTS (encrypted) ───
 
   Future<void> _pushInterests() async {
     final box = Hive.box('user_interests');
     final data = Map<String, dynamic>.from(box.toMap());
-    await _userDoc('interests').doc('scores').set(data, SetOptions(merge: true));
+    if (_encryptionPassword != null && data.isNotEmpty) {
+      final encrypted = await _encryption.encryptMap(data, _uid!, _encryptionPassword!);
+      await _userDoc('interests_encrypted').doc('data').set({'payload': encrypted});
+    } else if (data.isNotEmpty) {
+      await _userDoc('interests').doc('scores').set(data, SetOptions(merge: true));
+    }
   }
 
   Future<void> _pullInterests() async {
-    final doc = await _userDoc('interests').doc('scores').get();
-    if (!doc.exists) return;
-    final data = doc.data()!;
     final box = Hive.box('user_interests');
-    for (final entry in data.entries) {
-      if (entry.value is num) {
-        await box.put(entry.key, (entry.value as num).toDouble());
+    if (_encryptionPassword != null) {
+      final doc = await _userDoc('interests_encrypted').doc('data').get();
+      if (!doc.exists) return;
+      final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
+      for (final entry in decrypted.entries) {
+        if (entry.value is num) {
+          await box.put(entry.key, (entry.value as num).toDouble());
+        }
+      }
+    } else {
+      final doc = await _userDoc('interests').doc('scores').get();
+      if (!doc.exists) return;
+      final data = doc.data()!;
+      for (final entry in data.entries) {
+        if (entry.value is num) {
+          await box.put(entry.key, (entry.value as num).toDouble());
+        }
       }
     }
   }
@@ -259,25 +320,46 @@ class SyncService extends ChangeNotifier {
     }
   }
 
-  // ─── READING HISTORY ───
+  // ─── READING HISTORY (encrypted) ───
 
   Future<void> _pushReadingHistory() async {
     final box = Hive.box('reading_history');
-    final batch = _db.batch();
+    final data = <String, dynamic>{};
     for (final key in box.keys) {
       final entry = box.get(key);
-      if (entry == null) continue;
-      batch.set(_userDoc('reading_history').doc(key.toString()), Map<String, dynamic>.from(entry is Map ? entry : {'value': entry}));
+      if (entry != null) {
+        data[key.toString()] = entry;
+      }
     }
-    await batch.commit();
+    if (_encryptionPassword != null && data.isNotEmpty) {
+      final encrypted = await _encryption.encryptMap(data, _uid!, _encryptionPassword!);
+      await _userDoc('reading_history_encrypted').doc('data').set({'payload': encrypted});
+    } else if (data.isNotEmpty) {
+      final batch = _db.batch();
+      for (final entry in data.entries) {
+        batch.set(_userDoc('reading_history').doc(entry.key), entry.value);
+      }
+      await batch.commit();
+    }
   }
 
   Future<void> _pullReadingHistory() async {
-    final snapshot = await _userDoc('reading_history').get();
     final box = Hive.box('reading_history');
-    for (final doc in snapshot.docs) {
-      if (!box.containsKey(doc.id)) {
-        await box.put(doc.id, doc.data());
+    if (_encryptionPassword != null) {
+      final doc = await _userDoc('reading_history_encrypted').doc('data').get();
+      if (!doc.exists) return;
+      final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
+      for (final entry in decrypted.entries) {
+        if (!box.containsKey(entry.key)) {
+          await box.put(entry.key, entry.value);
+        }
+      }
+    } else {
+      final snapshot = await _userDoc('reading_history').get();
+      for (final doc in snapshot.docs) {
+        if (!box.containsKey(doc.id)) {
+          await box.put(doc.id, doc.data());
+        }
       }
     }
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/services/auth_service.dart';
+import 'package:prasowka/services/sync_service.dart';
 import 'package:prasowka/theme/app_theme.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -30,24 +31,40 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() { _loading = true; _error = null; });
 
     final auth = context.read<AuthService>();
+    final sync = context.read<SyncService>();
     String? error;
 
     if (_isLogin) {
       error = await auth.signInWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
+      if (error == null) {
+        sync.setEncryptionPassword(_passwordCtrl.text);
+        sync.mergeFirstLogin();
+      }
     } else {
       error = await auth.registerWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
+      if (error == null) {
+        sync.setEncryptionPassword(_passwordCtrl.text);
+      }
     }
 
     if (!mounted) return;
     setState(() { _loading = false; _error = error; });
+    if (error == null && mounted) Navigator.of(context).pop();
   }
 
   Future<void> _googleSignIn() async {
     setState(() { _loading = true; _error = null; });
     final auth = context.read<AuthService>();
+    final sync = context.read<SyncService>();
     final error = await auth.signInWithGoogle();
+    if (error == null) {
+      // Google sign-in: use UID as encryption key (no password available)
+      sync.setEncryptionPassword(auth.user?.uid ?? 'fallback');
+      sync.mergeFirstLogin();
+    }
     if (!mounted) return;
     setState(() { _loading = false; _error = error; });
+    if (error == null && mounted) Navigator.of(context).pop();
   }
 
   @override
