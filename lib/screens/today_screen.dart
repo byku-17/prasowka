@@ -27,6 +27,9 @@ class _TodayScreenState extends State<TodayScreen> {
   bool _showBackToTop = false;
   bool _hasFetched = false;
   final Set<String> _dismissedArticleIds = {};
+  static const int _initialLoad = 20;
+  static const int _loadMoreStep = 20;
+  int _visibleCount = _initialLoad;
 
   @override
   void initState() {
@@ -176,13 +179,14 @@ class _TodayScreenState extends State<TodayScreen> {
                 color: AppTheme.accentGold,
                 onRefresh: () async {
                   _hasFetched = false;
+                  setState(() => _visibleCount = _initialLoad);
                   _fetchIfNeeded();
                 },
                 child: ListView.builder(
                   controller: _scrollController,
                   padding: EdgeInsets.zero,
                   addRepaintBoundaries: true,
-                  itemCount: articles.length + 1, // +1 na rekomendacje
+                  itemCount: (articles.length < _visibleCount ? articles.length : _visibleCount) + 1 + (articles.length > _visibleCount ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return _buildRecommendationsSection(
@@ -190,19 +194,39 @@ class _TodayScreenState extends State<TodayScreen> {
                         provider.recommendedArticles,
                       );
                     }
-                    final article = articles[index - 1];
-                    return LongPressDismissible(
-                      onDismiss: () => _dismissArticle(article),
-                      child: ArticleCard(
-                        article: article,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ArticleDetailScreen(
-                              article: article,
-                              articles: articles,
-                              currentIndex: index - 1,
+                    final visibleArticles = articles.take(_visibleCount).toList();
+                    if (index <= visibleArticles.length) {
+                      final article = visibleArticles[index - 1];
+                      return LongPressDismissible(
+                        onDismiss: () => _dismissArticle(article),
+                        child: ArticleCard(
+                          article: article,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ArticleDetailScreen(
+                                article: article,
+                                articles: visibleArticles,
+                                currentIndex: index - 1,
+                              ),
                             ),
+                          ),
+                        ),
+                      );
+                    }
+                    // Load more button
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() => _visibleCount += _loadMoreStep);
+                          },
+                          icon: const Icon(Icons.expand_more, size: 18),
+                          label: Text('Pokaż więcej (${articles.length - _visibleCount})'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accentFor(context),
+                            foregroundColor: Colors.white,
                           ),
                         ),
                       ),
