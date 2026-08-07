@@ -108,7 +108,7 @@ class _TodayScreenState extends State<TodayScreen> {
       icon: Badge(
         isLabelVisible: hasUnread,
         backgroundColor: Colors.red,
-        offset: const Offset(-2, -2),
+        offset: const Offset(6, -6),
         label: Text(
           unread > 99 ? '99+' : '$unread',
           style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),

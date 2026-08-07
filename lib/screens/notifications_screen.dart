@@ -92,30 +92,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Dismissible(
       key: ValueKey(entry.id),
       direction: DismissDirection.endToStart,
+      dismissThresholds: const {
+        DismissDirection.endToStart: 0.7,
+      },
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         color: Colors.red,
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
-      confirmDismiss: (_) async {
-        return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Usunąć powiadomienie?'),
-            content: const Text('Tej operacji nie można cofnąć.'),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('ANULUJ')),
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child:
-                      const Text('USUŃ', style: TextStyle(color: Colors.red))),
-            ],
-          ),
-        );
-      },
       onDismissed: (_) async {
         await NotificationHistory().delete(entry.id);
         setState(() {});
