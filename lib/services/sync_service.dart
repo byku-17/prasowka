@@ -111,15 +111,10 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<void> _pullSettings() async {
-    final doc = await _userDoc('settings').doc('main').get();
-    if (!doc.exists) return;
-    final data = doc.data()!;
-    final box = Hive.box('settings');
-    for (final entry in data.entries) {
-      if (!box.containsKey(entry.key) || box.get(entry.key) == null) {
-        await box.put(entry.key, entry.value);
-      }
-    }
+    // NIE nadpisujemy localnych ustawień z Firestore
+    // Ustawienia są zawsze local-first
+    debugPrint('Sync: _pullSettings skipped (local-first mode)');
+    return;
   }
 
   // ─── TAGS (encrypted) ───

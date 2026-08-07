@@ -235,9 +235,9 @@ class SettingsProvider with ChangeNotifier {
   /// Naprawia ustawienia nadpisane przez sync z pustymi danymi Firestore
   Future<void> _fixCorruptedSettings() async {
     final box = Hive.box(settingsBoxName);
-    bool changed = false;
 
-    final defaults = {
+    // Napraw klucze które są null lub puste
+    final repairDefaults = {
       sportsBarKey: true,
       onlyFavoriteTeamsKey: true,
       preferredCityKey: 'Warszawa',
@@ -250,11 +250,10 @@ class SettingsProvider with ChangeNotifier {
       readingFontSizeKey: 16,
     };
 
-    for (final entry in defaults.entries) {
+    for (final entry in repairDefaults.entries) {
       final current = box.get(entry.key);
       if (current == null || current == '') {
         await box.put(entry.key, entry.value);
-        changed = true;
         debugPrint('Settings: repaired ${entry.key} → ${entry.value}');
       }
     }
@@ -262,23 +261,10 @@ class SettingsProvider with ChangeNotifier {
     if (_mainTabSlot1 == 'all' || _mainTabSlot1 == 'api_news') {
       _mainTabSlot1 = 'warsaw';
       await box.put(mainTabSlot1Key, 'warsaw');
-      changed = true;
     }
     if (_mainTabSlot2 == 'all' || _mainTabSlot2 == 'api_news') {
       _mainTabSlot2 = 'sport';
       await box.put(mainTabSlot2Key, 'sport');
-      changed = true;
-    }
-
-    if (changed) {
-      _showSportsBar = box.get(sportsBarKey, defaultValue: true);
-      _onlyFavoriteTeams = box.get(onlyFavoriteTeamsKey, defaultValue: true);
-      _preferredCity = box.get(preferredCityKey, defaultValue: 'Warszawa');
-      _cityLatitude = (box.get(cityLatKey, defaultValue: 52.2297) as num).toDouble();
-      _cityLongitude = (box.get(cityLonKey, defaultValue: 21.0122) as num).toDouble();
-      _mainTabSlot1 = box.get(mainTabSlot1Key, defaultValue: 'warsaw');
-      _mainTabSlot2 = box.get(mainTabSlot2Key, defaultValue: 'sport');
-      _onboardingCompleted = box.get(onboardingKey, defaultValue: true);
     }
   }
 
