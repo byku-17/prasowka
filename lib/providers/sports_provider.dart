@@ -259,9 +259,16 @@ class SportsProvider with ChangeNotifier {
   }
 
   void _detectScoreChanges(List<SportEvent> events) {
-    for (final event in events) {
+    if (_currentFavorites == null || _currentFavorites!.isEmpty) return;
+    final normalizedFavs = _currentFavorites!.map((f) => TextUtils.normalize(f)).toList();
+
+    for (var event in events) {
       if (event is! MatchEvent) continue;
       if (event.status != EventStatus.live) continue;
+
+      // Sprawdź czy to mecz mojej drużyny
+      final searchable = TextUtils.normalize("${event.homeTeam} ${event.awayTeam} ${event.competition}");
+      if (!normalizedFavs.any((f) => TextUtils.fuzzyMatch(searchable, f))) continue;
 
       final prevScore = _previousScores[event.id];
       if (prevScore != null && prevScore != event.score && prevScore.isNotEmpty) {
