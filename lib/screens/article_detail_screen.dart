@@ -10,6 +10,7 @@ import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/services/rss_service.dart';
+import 'package:prasowka/services/reading_history.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
 
 const int _kReadThresholdSeconds = 20;
@@ -39,6 +40,17 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
+
+    // Zapisz w historii przeglądania
+    ReadingHistory().add(
+      id: widget.article.id,
+      title: widget.article.title,
+      description: widget.article.description,
+      url: widget.article.url,
+      imageUrl: widget.article.imageUrl,
+      sourceName: widget.article.sourceName,
+      publishedAt: widget.article.publishedAt,
+    );
   }
 
   bool get _canFetch {

@@ -11,6 +11,7 @@ import 'package:prasowka/screens/main_screen.dart';
 import 'package:prasowka/screens/onboarding_screen.dart';
 import 'package:prasowka/services/background_service.dart';
 import 'package:prasowka/services/notification_history.dart';
+import 'package:prasowka/services/reading_history.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 
 void main() async {
@@ -33,6 +34,7 @@ void main() async {
     await settings.init();
     await news.init();
     await NotificationHistory().init();
+    await ReadingHistory().init();
     await BackgroundService().init();
     await sports.loadCacheFromHive();
 

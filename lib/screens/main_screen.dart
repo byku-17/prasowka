@@ -7,6 +7,7 @@ import 'package:prasowka/screens/city_screen.dart';
 import 'package:prasowka/screens/sport_screen.dart';
 import 'package:prasowka/screens/saved_screen.dart';
 import 'package:prasowka/screens/topics_screen.dart';
+import 'package:prasowka/screens/history_screen.dart';
 import 'package:prasowka/screens/search_bottom_sheet.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
@@ -39,6 +40,7 @@ class _MainScreenState extends State<MainScreen> {
       const SportScreen(),
       const TopicsScreen(),
       const SavedScreen(),
+      const HistoryScreen(),
     ];
 
     // Nasłuchiwanie powiadomień
@@ -167,6 +169,7 @@ class _MainScreenState extends State<MainScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.sports_soccer), label: 'Sport'),
             BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Tematy'),
             BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Zapisane'),
+            BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Historia'),
           ],
         ),
       ),
