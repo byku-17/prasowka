@@ -95,24 +95,34 @@ void callbackDispatcher() {
         }
       }
 
-      // --- POWIADOMIENIA SPORTOWE ---
+      // --- POWIADOMIENIA SPORTOWE (WSPÓLNY FETCH) ---
+      List<SportEvent> sportEvents = [];
+      try {
+        const settingsBoxName = 'settings';
+        if (Hive.isBoxOpen(settingsBoxName)) {
+          final sportsService = SportsService();
+          sportEvents = await sportsService.fetchAllEvents();
+        }
+      } catch (e) {
+        debugPrint('Sowa Wartownik: Błąd pobierania danych sportowych: $e');
+      }
+
+      // --- POWIADOMIENIA DLA FAVORITÓW ---
       try {
         const settingsBoxName = 'settings';
         if (Hive.isBoxOpen(settingsBoxName)) {
           final settingsBox = Hive.box(settingsBoxName);
           final favoriteTeams = List<String>.from(settingsBox.get('favoriteTeams', defaultValue: <String>[]));
 
-          if (favoriteTeams.isNotEmpty) {
+          if (favoriteTeams.isNotEmpty && sportEvents.isNotEmpty) {
             if (!Hive.isBoxOpen(_sportsNotifiedBoxName)) {
               await Hive.openBox(_sportsNotifiedBoxName);
             }
             final sportsBox = Hive.box(_sportsNotifiedBoxName);
-            final sportsService = SportsService();
-            final events = await sportsService.fetchAllEvents();
             final normalizedFavs = favoriteTeams.map((f) => TextUtils.normalize(f)).toList();
             final now = DateTime.now();
 
-            for (var event in events) {
+            for (var event in sportEvents) {
               if (event is! MatchEvent) continue;
               final searchable = TextUtils.normalize("${event.homeTeam} ${event.awayTeam} ${event.competition}");
               if (!normalizedFavs.any((f) => searchable.contains(f))) continue;
@@ -158,15 +168,13 @@ void callbackDispatcher() {
         final pinnedBox = Hive.box(_pinnedMatchesBoxName);
         final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toList();
 
-        if (pinnedIds.isNotEmpty) {
+        if (pinnedIds.isNotEmpty && sportEvents.isNotEmpty) {
           if (!Hive.isBoxOpen(_pinnedScoresBoxName)) {
             await Hive.openBox(_pinnedScoresBoxName);
           }
           final scoresBox = Hive.box(_pinnedScoresBoxName);
-          final sportsService = SportsService();
-          final events = await sportsService.fetchAllEvents();
 
-          for (var event in events) {
+          for (var event in sportEvents) {
             if (event is! MatchEvent) continue;
             if (!pinnedIds.contains(event.id)) continue;
             if (event.status != EventStatus.live) continue;
@@ -204,12 +212,10 @@ void callbackDispatcher() {
         final pinnedBox = Hive.box(_pinnedMatchesBoxName);
         final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toSet();
 
-        if (pinnedIds.isNotEmpty) {
-          final sportsService = SportsService();
-          final events = await sportsService.fetchAllEvents();
+        if (pinnedIds.isNotEmpty && sportEvents.isNotEmpty) {
           final now = DateTime.now();
 
-          for (var event in events) {
+          for (var event in sportEvents) {
             if (event is! MatchEvent) continue;
             if (!pinnedIds.contains(event.id)) continue;
             if (event.status != EventStatus.scheduled) continue;

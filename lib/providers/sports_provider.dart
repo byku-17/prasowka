@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hive/hive.dart';
 import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/services/sports_service.dart';
+import 'package:prasowka/services/notification_history.dart';
 import 'package:prasowka/utils/text_utils.dart';
 
 const String _pinnedBoxName = 'pinned_matches';
@@ -51,6 +53,8 @@ class SportsProvider with ChangeNotifier {
   List<String>? _currentFavorites;
   bool _currentOnlyFavorites = true;
   List<String>? _currentSelectedLeagues;
+  final Map<String, String> _previousScores = {};
+  bool _initialScoreLoad = true;
 
   List<SportEvent> get events => _filteredEvents;
   List<String> get debugLogs => _debugLogs;
@@ -239,6 +243,64 @@ class SportsProvider with ChangeNotifier {
     final hasLive = allNow.any((e) => e.status == EventStatus.live);
     _leagueCache.removeWhere((key, entry) => entry.isExpired(hasLive));
     _applyFilters();
+
+    // Wykrywanie zmiany wyniku (foreground goal detection)
+    if (!_initialScoreLoad) {
+      _detectScoreChanges(allNow);
+    }
+    _initialScoreLoad = false;
+
+    // Zapisz aktualne wyniki
+    for (final event in allNow) {
+      if (event is MatchEvent && event.status == EventStatus.live) {
+        _previousScores[event.id] = event.score;
+      }
+    }
+  }
+
+  void _detectScoreChanges(List<SportEvent> events) {
+    for (final event in events) {
+      if (event is! MatchEvent) continue;
+      if (event.status != EventStatus.live) continue;
+
+      final prevScore = _previousScores[event.id];
+      if (prevScore != null && prevScore != event.score && prevScore.isNotEmpty) {
+        _showForegroundGoalNotification(event, prevScore, event.score);
+      }
+    }
+  }
+
+  void _showForegroundGoalNotification(MatchEvent event, String prevScore, String newScore) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'sowa_sport',
+        'Sowa Sport',
+        channelDescription: 'Powiadomienia o meczach Twoich drużyn',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+        groupKey: 'sowa_sport_group',
+      );
+      const details = NotificationDetails(android: androidDetails);
+      final plugin = FlutterLocalNotificationsPlugin();
+
+      await plugin.show(
+        id: event.id.hashCode.abs(),
+        title: '⚽ GOL! — ${event.competition}',
+        body: '${event.homeTeam} $newScore ${event.awayTeam}',
+        notificationDetails: details,
+      );
+
+      await NotificationHistory().add(NotificationEntry(
+        id: 'sport_fg_${event.id}',
+        title: '⚽ GOL! — ${event.competition}',
+        body: '${event.homeTeam} $newScore ${event.awayTeam}',
+        timestamp: DateTime.now(),
+        type: 'sport',
+      ));
+    } catch (e) {
+      debugPrint('Sowa SportsProvider: Błąd powiadomienia o golu: $e');
+    }
   }
 
   void _startAutoRefresh() {
