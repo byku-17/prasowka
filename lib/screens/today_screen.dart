@@ -199,26 +199,22 @@ class _TodayScreenState extends State<TodayScreen> {
                   addRepaintBoundaries: true,
                   itemCount: (articles.length < _visibleCount ? articles.length : _visibleCount) + 1 + (articles.length > _visibleCount ? 1 : 0),
                   itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return _buildRecommendationsSection(
-                        context,
-                        data.recommended,
-                      );
-                    }
                     final visibleArticles = articles.take(_visibleCount).toList();
-                    if (index <= visibleArticles.length) {
-                      final article = visibleArticles[index - 1];
+                    if (index < visibleArticles.length) {
+                      final article = visibleArticles[index];
+                      final isRec = data.recommended.any((r) => r.url == article.url);
                       return LongPressDismissible(
                         onDismiss: () => _dismissArticle(article),
                         child: ArticleCard(
                           article: article,
+                          isRecommended: isRec,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ArticleDetailScreen(
                                 article: article,
                                 articles: visibleArticles,
-                                currentIndex: index - 1,
+                                currentIndex: index,
                               ),
                             ),
                           ),
@@ -226,22 +222,25 @@ class _TodayScreenState extends State<TodayScreen> {
                       );
                     }
                     // Load more button
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() => _visibleCount += _loadMoreStep);
-                          },
-                          icon: const Icon(Icons.expand_more, size: 18),
-                          label: Text('Pokaż więcej (${articles.length - _visibleCount})'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.accentFor(context),
-                            foregroundColor: Colors.white,
+                    if (articles.length > _visibleCount) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() => _visibleCount += _loadMoreStep);
+                            },
+                            icon: const Icon(Icons.expand_more, size: 18),
+                            label: Text('Pokaż więcej (${articles.length - _visibleCount})'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.accentFor(context),
+                              foregroundColor: Colors.white,
+                            ),
                           ),
                         ),
-                      ),
-                    );
+                      );
+                    }
+                    return const SizedBox.shrink();
                   },
                 ),
               ),
@@ -261,78 +260,6 @@ class _TodayScreenState extends State<TodayScreen> {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildRecommendationsSection(BuildContext context, List<Article> recommended) {
-    final filtered = recommended.where((a) => !_dismissedArticleIds.contains(a.url)).toList();
-    final hasRecs = filtered.isNotEmpty;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (hasRecs) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Icon(Icons.auto_awesome, color: AppTheme.accentFor(context), size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'DLA CIEBIE',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                    color: AppTheme.accentFor(context),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 240,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final a = filtered[index];
-                return RepaintBoundary(
-                  child: LongPressDismissible(
-                    onDismiss: () => _dismissArticle(a),
-                    child: ArticleCard(
-                      article: a,
-                      isSmall: true,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ArticleDetailScreen(article: a),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-          child: Text(
-            'NAJNOWSZE WIADOMOŚCI',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
-              fontSize: 10,
-              color: isDark ? Colors.grey : Colors.grey.shade600,
-            ),
-          ),
-        ),
-        Divider(height: 1, thickness: 0.5, color: isDark ? Colors.white10 : Colors.grey.shade300),
-      ],
     );
   }
 

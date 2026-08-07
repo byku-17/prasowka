@@ -11,12 +11,14 @@ class ArticleCard extends StatelessWidget {
   final Article article;
   final VoidCallback onTap;
   final bool isSmall;
+  final bool isRecommended;
 
   const ArticleCard({
     super.key,
     required this.article,
     required this.onTap,
     this.isSmall = false,
+    this.isRecommended = false,
   });
 
   @override
@@ -31,148 +33,175 @@ class ArticleCard extends StatelessWidget {
       return _buildSmallCard(context, mutedText, checkIconColor, cardBorderColor);
     }
 
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Zdjęcie — mniejszy aspect ratio
-          if (article.imageUrl != null)
-            AspectRatio(
-              aspectRatio: 2.2,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Hero(
-                    tag: 'article-image-${article.id}',
-                    child: ColorFiltered(
-                      colorFilter: ColorFilter.mode(
-                        article.isRead ? Colors.black.withValues(alpha: 0.4) : Colors.transparent,
-                        BlendMode.darken,
-                      ),
-                      child: CachedNetworkImage(
-                        imageUrl: article.imageUrl!,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.center,
-                        memCacheWidth: 1080,
-                        cacheManager: AppImageCacheManager.instance,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey.withValues(alpha: 0.1),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey.withValues(alpha: 0.05),
-                          child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
-                        ),
-                      ),
-                    ),
-                  ),
-                  _buildTranslationWatermark(),
-                ],
-              ),
-            )
-          else
-            AspectRatio(
-              aspectRatio: 2.2,
-              child: _buildSourcePlaceholder(context),
-            ),
-          
-          // Treść — kompaktowa
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+    return Stack(
+      children: [
+        Container(
+          decoration: isRecommended ? BoxDecoration(
+            color: isDark
+                ? const Color(0xFF2A2510).withValues(alpha: 0.6)
+                : const Color(0xFFFFF8E1).withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(2),
+          ) : null,
+          child: InkWell(
+            onTap: onTap,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        article.translatedTitle ?? article.title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          height: 1.2,
-                          color: article.isRead ? mutedText : null,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (article.isRead) ...[
-                      const SizedBox(width: 6),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Icon(Icons.check_circle, color: checkIconColor, size: 14),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Opacity(
-                  opacity: article.isRead ? 0.6 : 1.0,
-                  child: Text(
-                      article.translatedDescription ?? article.description,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: isDark ? Colors.white70 : Colors.black87,
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ),
-                const SizedBox(height: 6),
-                Opacity(
-                  opacity: article.isRead ? 0.5 : 1.0,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            if (article.sourceName.contains('Warszawa') || article.sourceName.startsWith('Wiadomości:'))
-                              Padding(
-                                padding: const EdgeInsets.only(right: 4),
-                                child: Icon(Icons.location_on, color: AppTheme.accentFor(context), size: 10),
-                              ),
-                            Flexible(
-                              child: Text(
-                                article.sourceName.toUpperCase(),
-                                style: TextStyle(
-                                  color: AppTheme.accentFor(context), 
-                                  fontWeight: FontWeight.bold, 
-                                  fontSize: 10,
-                                  letterSpacing: 0.5,
+                // Zdjęcie — mniejszy aspect ratio
+                if (article.imageUrl != null)
+                  AspectRatio(
+                    aspectRatio: 2.2,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Hero(
+                          tag: 'article-image-${article.id}',
+                          child: ColorFiltered(
+                            colorFilter: ColorFilter.mode(
+                              article.isRead ? Colors.black.withValues(alpha: 0.4) : Colors.transparent,
+                              BlendMode.darken,
+                            ),
+                            child: CachedNetworkImage(
+                              imageUrl: article.imageUrl!,
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                              memCacheWidth: 1080,
+                              cacheManager: AppImageCacheManager.instance,
+                              placeholder: (context, url) => Container(
+                                color: Colors.grey.withValues(alpha: 0.1),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey.withValues(alpha: 0.05),
+                                child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
                               ),
                             ),
+                          ),
+                        ),
+                        _buildTranslationWatermark(),
+                      ],
+                    ),
+                  )
+                else
+                  AspectRatio(
+                    aspectRatio: 2.2,
+                    child: _buildSourcePlaceholder(context),
+                  ),
+                
+                // Treść — kompaktowa
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              article.translatedTitle ?? article.title,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                height: 1.2,
+                                color: article.isRead ? mutedText : null,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (article.isRead) ...[
+                            const SizedBox(width: 6),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Icon(Icons.check_circle, color: checkIconColor, size: 14),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Opacity(
+                        opacity: article.isRead ? 0.6 : 1.0,
+                        child: Text(
+                            article.translatedDescription ?? article.description,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: isDark ? Colors.white70 : Colors.black87,
+                              fontSize: 12,
+                              height: 1.3,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ),
+                      const SizedBox(height: 6),
+                      Opacity(
+                        opacity: article.isRead ? 0.5 : 1.0,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  if (article.sourceName.contains('Warszawa') || article.sourceName.startsWith('Wiadomości:'))
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 4),
+                                      child: Icon(Icons.location_on, color: AppTheme.accentFor(context), size: 10),
+                                    ),
+                                  Flexible(
+                                    child: Text(
+                                      article.sourceName.toUpperCase(),
+                                      style: TextStyle(
+                                        color: AppTheme.accentFor(context), 
+                                        fontWeight: FontWeight.bold, 
+                                        fontSize: 10,
+                                        letterSpacing: 0.5,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _formatTimeAgo(article.publishedAt),
+                              style: const TextStyle(color: Colors.grey, fontSize: 10),
+                            ),
+                            const SizedBox(width: 12),
+                            _buildActions(context),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatTimeAgo(article.publishedAt),
-                        style: const TextStyle(color: Colors.grey, fontSize: 10),
-                      ),
-                      const SizedBox(width: 12),
-                      _buildActions(context),
                     ],
                   ),
                 ),
+                if (article.tagIds.isNotEmpty) _buildTagChips(context),
+                Divider(height: 1, thickness: 0.5, color: dividerColor),
               ],
             ),
           ),
-          if (article.tagIds.isNotEmpty) _buildTagChips(context),
-          Divider(height: 1, thickness: 0.5, color: dividerColor),
-        ],
-      ),
+        ),
+        if (isRecommended)
+          Positioned(
+            top: 8,
+            left: 8,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFFF5B942).withValues(alpha: 0.9)
+                    : const Color(0xFFC97B1A).withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.star, color: Colors.white, size: 14),
+            ),
+          ),
+      ],
     );
   }
 

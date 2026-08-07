@@ -106,11 +106,12 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
           ),
         ],
       ),
-      body: Selector<NewsProvider, ({List<Article> articles, bool isLoading, bool hasEverLoaded})>(
+      body: Selector<NewsProvider, ({List<Article> articles, bool isLoading, bool hasEverLoaded, List<Article> recommended})>(
         selector: (_, provider) => (
           articles: provider.getArticlesForCategory(widget.categoryId),
           isLoading: provider.isCategoryLoading(widget.categoryId),
           hasEverLoaded: provider.hasCategoryEverLoaded(widget.categoryId),
+          recommended: provider.recommendedArticles,
         ),
         builder: (context, data, child) {
           final articles = data.articles;
@@ -157,8 +158,10 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
                         itemCount: articles.length,
                         itemBuilder: (context, index) {
                           final article = articles[index];
+                          final isRec = data.recommended.any((r) => r.url == article.url);
                           return ArticleCard(
                             article: article,
+                            isRecommended: isRec,
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
