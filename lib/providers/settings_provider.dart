@@ -114,6 +114,9 @@ class SettingsProvider with ChangeNotifier {
       }
     }
 
+    // 2b. Napraw zepsute ustawienia (PRZED odczytem)
+    await _fixCorruptedSettings();
+
     // 3. Ustawienia ogólne
     final themeIndex = settingsBox.get(themeKey, defaultValue: ThemeMode.system.index);
     _themeMode = (themeIndex is int && themeIndex >= 0 && themeIndex < ThemeMode.values.length)
@@ -225,7 +228,6 @@ class SettingsProvider with ChangeNotifier {
     }
 
     await _ensureNewSourcesRegistered();
-    await _fixCorruptedSettings();
     notifyListeners();
     debugPrint('Sowa Settings: Gotowe (V4.5 Clean)');
   }
@@ -250,7 +252,7 @@ class SettingsProvider with ChangeNotifier {
 
     for (final entry in defaults.entries) {
       final current = box.get(entry.key);
-      if (current == null) {
+      if (current == null || current == '') {
         await box.put(entry.key, entry.value);
         changed = true;
         debugPrint('Settings: repaired ${entry.key} → ${entry.value}');
@@ -276,6 +278,7 @@ class SettingsProvider with ChangeNotifier {
       _cityLongitude = (box.get(cityLonKey, defaultValue: 21.0122) as num).toDouble();
       _mainTabSlot1 = box.get(mainTabSlot1Key, defaultValue: 'warsaw');
       _mainTabSlot2 = box.get(mainTabSlot2Key, defaultValue: 'sport');
+      _onboardingCompleted = box.get(onboardingKey, defaultValue: true);
     }
   }
 
