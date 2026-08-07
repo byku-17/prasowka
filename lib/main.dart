@@ -18,6 +18,8 @@ import 'package:prasowka/services/notification_history.dart';
 import 'package:prasowka/services/reading_history.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:prasowka/services/remote_config_service.dart';
+import 'package:prasowka/services/auth_service.dart';
+import 'package:prasowka/services/sync_service.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +39,8 @@ void main() async {
     final news = NewsProvider();
     final sports = SportsProvider();
     final tags = TagProvider();
+    final auth = AuthService();
+    final sync = SyncService(auth);
 
     try {
       await settings.init();
@@ -50,6 +54,10 @@ void main() async {
       if (settings.notificationsEnabled) {
         await BackgroundService().registerPeriodicTask();
         await BackgroundService().checkNotificationLaunch();
+      }
+
+      if (auth.isLoggedIn) {
+        sync.mergeFirstLogin();
       }
     } catch (e, stack) {
       debugPrint('Sowa Init Error: $e');
@@ -65,6 +73,8 @@ void main() async {
           ChangeNotifierProvider.value(value: news),
           ChangeNotifierProvider.value(value: sports),
           ChangeNotifierProvider.value(value: tags),
+          ChangeNotifierProvider.value(value: auth),
+          ChangeNotifierProvider.value(value: sync),
         ],
         child: const PrasowkaApp(),
       ),

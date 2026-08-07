@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/screens/appearance_settings_page.dart';
@@ -9,6 +10,9 @@ import 'package:prasowka/screens/category_settings_page.dart';
 import 'package:prasowka/screens/source_settings_page.dart';
 import 'package:prasowka/screens/interests_settings_page.dart';
 import 'package:prasowka/screens/tag_settings_page.dart';
+import 'package:prasowka/screens/auth_screen.dart';
+import 'package:prasowka/services/auth_service.dart';
+import 'package:prasowka/services/sync_service.dart';
 
 class _SettingsItem {
   final IconData icon;
@@ -115,24 +119,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  List<_SettingsItem> get _filteredItems {
-    if (_searchQuery.isEmpty) return _allItems;
-    final q = _searchQuery.toLowerCase();
-    return _allItems.where((item) =>
-      item.title.toLowerCase().contains(q) ||
-      item.subtitle.toLowerCase().contains(q)
-    ).toList();
-  }
-
-  List<String> get _sections {
-    final seen = <String>{};
-    return _filteredItems.where((item) => seen.add(item.section)).map((item) => item.section).toList();
-  }
-
-  List<_SettingsItem> _itemsForSection(String section) {
-    return _filteredItems.where((item) => item.section == section).toList();
-  }
-
   Future<void> _exportSettings() async {
     try {
       final settingsBox = Hive.box('settings');
@@ -214,6 +200,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final sync = context.watch<SyncService>();
+
+    // Build account items based on auth state
+    final accountItems = <_SettingsItem>[];
+    if (auth.isLoggedIn) {
+      accountItems.add(_SettingsItem(
+        icon: Icons.sync,
+        title: 'Synchronizuj dane',
+        subtitle: sync.lastSync != null ? 'Ostatni sync: ${_formatTime(sync.lastSync!)}' : 'Nigdy nie synchronizowano',
+        section: 'Konto',
+        onTap: () async {
+          await sync.pushAll();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Dane wysłane do chmury')),
+            );
+          }
+        },
+      ));
+      accountItems.add(_SettingsItem(
+        icon: Icons.cloud_download,
+        title: 'Pobierz z chmury',
+        subtitle: 'Przywróć dane z innego urządzenia',
+        section: 'Konto',
+        onTap: () async {
+          await sync.pullAll();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Dane pobrane z chmury — uruchom ponownie')),
+            );
+          }
+        },
+      ));
+      accountItems.add(_SettingsItem(
+        icon: Icons.logout,
+        title: 'Wyloguj się',
+        subtitle: auth.user?.email ?? 'Konto Google',
+        section: 'Konto',
+        onTap: () async {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Wylogować się?'),
+              content: const Text('Dane lokalne pozostaną na urządzeniu.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
+                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Wyloguj')),
+              ],
+            ),
+          );
+          if (confirmed == true && context.mounted) {
+            await auth.signOut();
+          }
+        },
+      ));
+    } else {
+      accountItems.add(_SettingsItem(
+        icon: Icons.login,
+        title: 'Zaloguj się / Zarejestruj',
+        subtitle: 'Sync danych między urządzeniami',
+        section: 'Konto',
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AuthScreen())),
+      ));
+    }
+
+    final allItems = [...accountItems, ..._allItems];
+
+    final filteredItems = _searchQuery.isEmpty ? allItems : allItems.where((item) =>
+      item.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+      item.subtitle.toLowerCase().contains(_searchQuery.toLowerCase())
+    ).toList();
+
+    final seen = <String>{};
+    final sections = filteredItems.where((item) => seen.add(item.section)).map((item) => item.section).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('USTAWIENIA'),
@@ -253,7 +315,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           // Lista
           Expanded(
-            child: _filteredItems.isEmpty
+            child: filteredItems.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -269,11 +331,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.only(bottom: 80),
-                    itemCount: _sections.length * 2,
+                    itemCount: sections.length * 2,
                     itemBuilder: (context, index) {
                       if (index.isOdd) {
-                        // Section header
-                        final section = _sections[index ~/ 2];
+                        final section = sections[index ~/ 2];
                         return Padding(
                           padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
                           child: Text(
@@ -287,9 +348,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         );
                       } else {
-                        // Section items
-                        final section = _sections[index ~/ 2];
-                        final items = _itemsForSection(section);
+                        final section = sections[index ~/ 2];
+                        final items = filteredItems.where((item) => item.section == section).toList();
                         return Column(
                           children: items.map((item) => _buildTile(item)).toList(),
                         );
@@ -300,6 +360,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  String _formatTime(DateTime dt) {
+    return '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _buildTile(_SettingsItem item) {
