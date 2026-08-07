@@ -256,7 +256,11 @@ class _SearchBottomSheetState extends State<SearchBottomSheet> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ArticleDetailScreen(article: article),
+                  builder: (context) => ArticleDetailScreen(
+                    article: article,
+                    articles: _results,
+                    currentIndex: index,
+                  ),
                 ),
               );
             },

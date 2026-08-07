@@ -305,7 +305,11 @@ class _CategoryArticlesScreenState extends State<_CategoryArticlesScreen> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ArticleDetailScreen(article: article),
+                      builder: (_) => ArticleDetailScreen(
+                        article: article,
+                        articles: articles,
+                        currentIndex: index,
+                      ),
                     ),
                   ),
                 );

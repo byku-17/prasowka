@@ -18,7 +18,9 @@ const int _kReadThresholdSeconds = 20;
 
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
-  const ArticleDetailScreen({super.key, required this.article});
+  final List<Article>? articles;
+  final int? currentIndex;
+  const ArticleDetailScreen({super.key, required this.article, this.articles, this.currentIndex});
   @override
   State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
 }
@@ -27,6 +29,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   late final Stopwatch _stopwatch;
   Timer? _tickTimer;
   final ScrollController _scrollController = ScrollController();
+  late int _currentIndex;
+  late final PageController _pageController;
 
   DateTime? _lastSwipeUpTime;
   bool _showSwipeHint = false;
@@ -36,28 +40,42 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.currentIndex ?? 0;
+    _pageController = PageController(initialPage: _currentIndex);
     _stopwatch = Stopwatch()..start();
     _scrollController.addListener(_scrollListener);
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
 
-    // Zapisz w historii przeglądania
+    _recordHistory(widget.article);
+  }
+
+  Article get _currentArticle {
+    final articles = widget.articles;
+    if (articles == null || articles.isEmpty) return widget.article;
+    return articles[_currentIndex.clamp(0, articles.length - 1)];
+  }
+
+  bool get _hasNavigation => widget.articles != null && widget.articles!.length > 1;
+
+  void _recordHistory(Article article) {
     ReadingHistory().add(
-      id: widget.article.id,
-      title: widget.article.title,
-      description: widget.article.description,
-      url: widget.article.url,
-      imageUrl: widget.article.imageUrl,
-      sourceName: widget.article.sourceName,
-      publishedAt: widget.article.publishedAt,
+      id: article.id,
+      title: article.title,
+      description: article.description,
+      url: article.url,
+      imageUrl: article.imageUrl,
+      sourceName: article.sourceName,
+      publishedAt: article.publishedAt,
     );
   }
 
   bool get _canFetch {
     final provider = context.read<NewsProvider>();
-    final hasFullContent = widget.article.fullContent != null && widget.article.fullContent!.trim().isNotEmpty;
-    return !hasFullContent && !provider.isFetchingFullContent && !RssService.isGoogleNewsUrl(widget.article.url);
+    final article = _currentArticle;
+    final hasFullContent = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
+    return !hasFullContent && !provider.isFetchingFullContent && !RssService.isGoogleNewsUrl(article.url);
   }
 
   void _showFontSizePicker(BuildContext context) {
@@ -105,7 +123,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         _showSwipeHint = false;
         _lastSwipeUpTime = null;
       });
-      context.read<NewsProvider>().fetchFullArticleContent(widget.article);
+      context.read<NewsProvider>().fetchFullArticleContent(_currentArticle);
     } else {
       _lastSwipeUpTime = now;
       setState(() => _showSwipeHint = true);
@@ -141,6 +159,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   void dispose() {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
+    _pageController.dispose();
     _tickTimer?.cancel();
     _stopwatch.stop();
     final elapsed = _stopwatch.elapsed.inSeconds;
@@ -149,7 +168,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   }
 
   void _markReadIfEnough(int seconds) {
-    final article = widget.article;
+    final article = _currentArticle;
     if (seconds > article.readTimeSeconds) {
       article.readTimeSeconds = seconds;
     }
@@ -158,10 +177,35 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
-  Article get article => widget.article;
+  Article get article => _currentArticle;
 
   @override
   Widget build(BuildContext context) {
+    if (_hasNavigation) {
+      return PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          _stopwatch.stop();
+          _markReadIfEnough(_stopwatch.elapsed.inSeconds);
+          setState(() {
+            _currentIndex = index;
+            _showSwipeHint = false;
+            _lastSwipeUpTime = null;
+          });
+          _stopwatch.reset();
+          _stopwatch.start();
+          _recordHistory(_currentArticle);
+        },
+        children: [
+          for (int i = 0; i < widget.articles!.length; i++)
+            _buildArticlePage(context, widget.articles![i]),
+        ],
+      );
+    }
+    return _buildArticlePage(context, widget.article);
+  }
+
+  Widget _buildArticlePage(BuildContext context, Article art) {
     return Scaffold(
       body: Listener(
         onPointerDown: _onPointerDown,
@@ -173,32 +217,32 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               expandedHeight: 250,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
-                background: article.imageUrl != null
+                background: art.imageUrl != null
                     ? Hero(
-                        tag: 'article-image-${article.id}',
-                        child: CachedNetworkImage(imageUrl: article.imageUrl!, fit: BoxFit.cover),
+                        tag: 'article-image-${art.id}',
+                        child: CachedNetworkImage(imageUrl: art.imageUrl!, fit: BoxFit.cover),
                       )
                     : Container(color: const Color(0xFF1E2126)),
               ),
               actions: [
-                if (article.isRead)
+                if (art.isRead)
                   const Padding(
                     padding: EdgeInsets.only(right: 4),
                     child: Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
                   ),
                 Consumer<NewsProvider>(
                   builder: (context, provider, child) {
-                    final isPolish = provider.isArticlePolish(article);
+                    final isPolish = provider.isArticlePolish(art);
                     final needsTranslation = !isPolish && (
-                      article.translatedTitle == null ||
-                      (article.fullContent != null && article.translatedFullContent == null)
+                      art.translatedTitle == null ||
+                      (art.fullContent != null && art.translatedFullContent == null)
                     );
                     if (!needsTranslation) return const SizedBox.shrink();
                     return IconButton(
                       icon: provider.isTranslating
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.translate, color: Colors.blueAccent),
-                      onPressed: provider.isTranslating ? null : () => provider.translateArticle(article),
+                      onPressed: provider.isTranslating ? null : () => provider.translateArticle(art),
                       tooltip: 'Tłumacz na polski',
                     );
                   },
@@ -210,13 +254,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.share),
-                  onPressed: () => SharePlus.instance.share(ShareParams(text: '${article.title}\n\n${article.url}')),
+                  onPressed: () => SharePlus.instance.share(ShareParams(text: '${art.title}\n\n${art.url}')),
                 ),
                 IconButton(
                   icon: const Icon(Icons.open_in_browser),
                   onPressed: () {
                     Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
+                      builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
                     ));
                   },
                 ),
@@ -232,7 +276,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     Row(
                       children: [
                         Text(
-                          article.sourceName.toUpperCase(),
+                          art.sourceName.toUpperCase(),
                           style: TextStyle(
                             color: AppTheme.accentFor(context),
                             fontWeight: FontWeight.bold,
@@ -241,14 +285,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          DateFormat('dd.MM.yyyy HH:mm').format(article.publishedAt),
+                          DateFormat('dd.MM.yyyy HH:mm').format(art.publishedAt),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      article.translatedTitle ?? article.title,
+                      art.translatedTitle ?? art.title,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(height: 1.2),
                     ),
                     const SizedBox(height: 24),
@@ -257,13 +301,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
                     Consumer<NewsProvider>(
                       builder: (context, provider, child) {
-                        final hasFullContent = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
+                        final hasFullContent = art.fullContent != null && art.fullContent!.trim().isNotEmpty;
 
                         return AnimatedSwitcher(
                           duration: const Duration(milliseconds: 400),
                           switchInCurve: Curves.easeIn,
                           switchOutCurve: Curves.easeOut,
-                          child: _buildContentBody(context, provider, hasFullContent),
+                          child: _buildContentBody(context, provider, hasFullContent, art),
                         );
                       },
                     ),
@@ -279,14 +323,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     );
   }
 
-  Widget _buildContentBody(BuildContext context, NewsProvider provider, bool hasFullContent) {
+  Widget _buildContentBody(BuildContext context, NewsProvider provider, bool hasFullContent, Article art) {
     if (provider.isFetchingFullContent || provider.isTranslating) {
       return Column(
         key: const ValueKey('loading'),
         children: [
           if (!hasFullContent)
             HtmlWidget(
-              article.translatedDescription ?? (article.description.isNotEmpty ? article.description : ''),
+              art.translatedDescription ?? (art.description.isNotEmpty ? art.description : ''),
               textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
               onTapUrl: (url) async { await _launchUrl(context, url); return true; },
             ),
@@ -306,7 +350,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         key: const ValueKey('snippet'),
         children: [
           HtmlWidget(
-            article.translatedDescription ?? (article.description.isNotEmpty ? article.description : 'Brak treści artykułu.'),
+            art.translatedDescription ?? (art.description.isNotEmpty ? art.description : 'Brak treści artykułu.'),
             textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
             onTapUrl: (url) async { await _launchUrl(context, url); return true; },
           ),
@@ -337,7 +381,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             ),
           ],
           const SizedBox(height: 32),
-          _buildActionButtons(context, provider),
+          _buildActionButtons(context, provider, art),
         ],
       );
     }
@@ -347,23 +391,23 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         HtmlWidget(
-          article.translatedFullContent ?? article.fullContent!,
+          art.translatedFullContent ?? art.fullContent!,
           textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
           onTapUrl: (url) async { await _launchUrl(context, url); return true; },
         ),
         const SizedBox(height: 32),
-        _buildActionButtons(context, provider),
+        _buildActionButtons(context, provider, art),
       ],
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, NewsProvider provider) {
-    if (RssService.isGoogleNewsUrl(article.url)) {
+  Widget _buildActionButtons(BuildContext context, NewsProvider provider, Article art) {
+    if (RssService.isGoogleNewsUrl(art.url)) {
       return Center(
         child: ElevatedButton.icon(
           onPressed: () {
             Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
+              builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
             ));
           },
           icon: const Icon(Icons.auto_stories),
@@ -385,12 +429,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           ElevatedButton.icon(
             onPressed: provider.isFetchingFullContent
                 ? null
-                : () => provider.fetchFullArticleContent(article),
+                : () => provider.fetchFullArticleContent(art),
             icon: provider.isFetchingFullContent
                 ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.auto_stories, size: 16),
             label: Text(
-              provider.fetchFailedIds.contains(article.id) ? 'SPRÓBUJ PONOWNIE' : 'PEŁNA TREŚĆ',
+              provider.fetchFailedIds.contains(art.id) ? 'SPRÓBUJ PONOWNIE' : 'PEŁNA TREŚĆ',
               style: const TextStyle(fontSize: 12),
             ),
             style: ElevatedButton.styleFrom(
@@ -403,7 +447,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           OutlinedButton.icon(
             onPressed: () {
               Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ArticleWebViewScreen(url: article.url, title: article.title),
+                builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
               ));
             },
             icon: const Icon(Icons.open_in_browser, size: 16),
@@ -416,17 +460,17 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           ),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: () => provider.toggleLike(article),
+            onTap: () => provider.toggleLike(art),
             child: Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: article.isLiked ? AppTheme.accentFor(context) : Theme.of(context).colorScheme.surfaceContainerHighest,
+                color: art.isLiked ? AppTheme.accentFor(context) : Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                article.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                color: article.isLiked ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                art.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                color: art.isLiked ? Colors.white : Theme.of(context).colorScheme.onSurface,
                 size: 20,
               ),
             ),
@@ -435,19 +479,19 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           MenuAnchor(
             menuChildren: [
               MenuItemButton(
-                onPressed: () => provider.toggleDislike(article),
-                leadingIcon: Icon(article.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined),
-                child: Text(article.isDisliked ? 'Cofnij ocenę' : 'Nie podoba mi się'),
+                onPressed: () => provider.toggleDislike(art),
+                leadingIcon: Icon(art.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined),
+                child: Text(art.isDisliked ? 'Cofnij ocenę' : 'Nie podoba mi się'),
               ),
               MenuItemButton(
-                onPressed: () => provider.toggleReadLater(article),
-                leadingIcon: Icon(article.readLater ? Icons.timer : Icons.timer_outlined),
-                child: Text(article.readLater ? 'Usuń z "Na później"' : 'Na później'),
+                onPressed: () => provider.toggleReadLater(art),
+                leadingIcon: Icon(art.readLater ? Icons.timer : Icons.timer_outlined),
+                child: Text(art.readLater ? 'Usuń z "Na później"' : 'Na później'),
               ),
               MenuItemButton(
-                onPressed: () => provider.toggleFavorite(article),
-                leadingIcon: Icon(article.isFavorite ? Icons.favorite : Icons.favorite_border),
-                child: Text(article.isFavorite ? 'Usuń z ulubionych' : 'Ulubione'),
+                onPressed: () => provider.toggleFavorite(art),
+                leadingIcon: Icon(art.isFavorite ? Icons.favorite : Icons.favorite_border),
+                child: Text(art.isFavorite ? 'Usuń z ulubionych' : 'Ulubione'),
               ),
             ],
             builder: (context, menuController, child) {

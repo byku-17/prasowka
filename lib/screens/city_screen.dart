@@ -160,7 +160,11 @@ class _CityScreenState extends State<CityScreen> {
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => ArticleDetailScreen(article: article),
+                                builder: (_) => ArticleDetailScreen(
+                                  article: article,
+                                  articles: articles,
+                                  currentIndex: index,
+                                ),
                               ),
                             ),
                           );
