@@ -169,6 +169,8 @@ class _TodayScreenState extends State<TodayScreen> {
           final articles = data.articles.where((a) => !_dismissedArticleIds.contains(a.url)).toList();
           final isLoading = data.isLoading;
           final hasEverLoaded = data.hasEverLoaded;
+          final provider = context.read<NewsProvider>();
+          final recommendedIds = provider.getRecommendedFrom(articles).map((a) => a.id).toSet();
 
           // Shimmer
           if (articles.isEmpty && (isLoading || !hasEverLoaded)) {
@@ -202,7 +204,7 @@ class _TodayScreenState extends State<TodayScreen> {
                     final visibleArticles = articles.take(_visibleCount).toList();
                     if (index < visibleArticles.length) {
                       final article = visibleArticles[index];
-                      final isRec = data.recommended.any((r) => r.url == article.url);
+                      final isRec = recommendedIds.contains(article.id);
                       return LongPressDismissible(
                         onDismiss: () => _dismissArticle(article),
                         child: ArticleCard(

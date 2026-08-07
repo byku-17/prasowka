@@ -215,6 +215,20 @@ class NewsProvider with ChangeNotifier {
     }
   }
 
+  List<Article> getRecommendedFrom(List<Article> candidates) {
+    final filtered = candidates.where((a) => !a.isDisliked).toList();
+    if (filtered.isEmpty) return [];
+    
+    final List<MapEntry<Article, double>> scored = filtered.map((a) {
+      final base = a.cachedScore ?? _interestService.calculateScore(a);
+      final withImage = base > 0 && a.imageUrl != null ? base * 1.5 : base;
+      return MapEntry(a, withImage);
+    }).where((e) => e.value > 0).toList();
+    
+    scored.sort((a, b) => b.value.compareTo(a.value));
+    return scored.map((e) => e.key).take(3).toList();
+  }
+
   void _calculateRecommendations() {
     final allArticles = allLoadedArticles.where((a) => !a.isDisliked).toList();
     if (allArticles.isEmpty) {

@@ -117,6 +117,8 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
           final articles = data.articles;
           final isLoading = data.isLoading;
           final hasEverLoaded = data.hasEverLoaded;
+          final provider = context.read<NewsProvider>();
+          final recommendedIds = provider.getRecommendedFrom(articles).map((a) => a.id).toSet();
 
           if (articles.isEmpty && (isLoading || !hasEverLoaded)) {
             return ListView.builder(
@@ -158,7 +160,7 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
                         itemCount: articles.length,
                         itemBuilder: (context, index) {
                           final article = articles[index];
-                          final isRec = data.recommended.any((r) => r.url == article.url);
+                          final isRec = recommendedIds.contains(article.id);
                           return ArticleCard(
                             article: article,
                             isRecommended: isRec,
