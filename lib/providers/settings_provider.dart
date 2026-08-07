@@ -232,38 +232,31 @@ class SettingsProvider with ChangeNotifier {
     debugPrint('Sowa Settings: Gotowe (V4.5 Clean)');
   }
 
-  /// Naprawia ustawienia nadpisane przez sync z pustymi danymi Firestore
+  /// Naprawia ustawienia nadpisane przez sync
   Future<void> _fixCorruptedSettings() async {
     final box = Hive.box(settingsBoxName);
 
-    // Napraw klucze które są null lub puste
-    final repairDefaults = {
-      sportsBarKey: true,
-      onlyFavoriteTeamsKey: true,
-      preferredCityKey: 'Warszawa',
-      cityLatKey: 52.2297,
-      cityLonKey: 21.0122,
-      mainTabSlot1Key: 'warsaw',
-      mainTabSlot2Key: 'sport',
-      onboardingKey: true,
-      showAllSourcesKey: false,
-      readingFontSizeKey: 16,
-    };
-
-    for (final entry in repairDefaults.entries) {
-      final current = box.get(entry.key);
-      if (current == null || current == '') {
-        await box.put(entry.key, entry.value);
-        debugPrint('Settings: repaired ${entry.key} → ${entry.value}');
-      }
+    // Zawsze wymuś poprawne wartości dla krytycznych kluczy
+    if (box.get(sportsBarKey) != true) {
+      await box.put(sportsBarKey, true);
+      debugPrint('Settings: force-set showSportsBar = true');
     }
-
-    if (_mainTabSlot1 == 'all' || _mainTabSlot1 == 'api_news') {
-      _mainTabSlot1 = 'warsaw';
+    if (box.get(onlyFavoriteTeamsKey) != true) {
+      await box.put(onlyFavoriteTeamsKey, true);
+    }
+    if (box.get(onboardingKey) != true) {
+      await box.put(onboardingKey, true);
+    }
+    final city = box.get(preferredCityKey);
+    if (city == null || city == '' || city is! String) {
+      await box.put(preferredCityKey, 'Warszawa');
+    }
+    final slot1 = box.get(mainTabSlot1Key);
+    if (slot1 == null || slot1 == '' || slot1 == 'all' || slot1 == 'api_news') {
       await box.put(mainTabSlot1Key, 'warsaw');
     }
-    if (_mainTabSlot2 == 'all' || _mainTabSlot2 == 'api_news') {
-      _mainTabSlot2 = 'sport';
+    final slot2 = box.get(mainTabSlot2Key);
+    if (slot2 == null || slot2 == '' || slot2 == 'all' || slot2 == 'api_news') {
       await box.put(mainTabSlot2Key, 'sport');
     }
   }
