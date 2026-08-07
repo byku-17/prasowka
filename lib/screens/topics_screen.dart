@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
@@ -236,11 +237,16 @@ class _CategoryArticlesScreenState extends State<_CategoryArticlesScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 16),
         ),
       ),
-      body: Consumer<NewsProvider>(
-        builder: (context, provider, child) {
-          final articles = provider.getArticlesForCategory(widget.category.id);
-          final isLoading = provider.isCategoryLoading(widget.category.id);
-          final hasEverLoaded = provider.hasCategoryEverLoaded(widget.category.id);
+      body: Selector<NewsProvider, ({List<Article> articles, bool isLoading, bool hasEverLoaded})>(
+        selector: (_, provider) => (
+          articles: provider.getArticlesForCategory(widget.category.id),
+          isLoading: provider.isCategoryLoading(widget.category.id),
+          hasEverLoaded: provider.hasCategoryEverLoaded(widget.category.id),
+        ),
+        builder: (context, data, child) {
+          final articles = data.articles;
+          final isLoading = data.isLoading;
+          final hasEverLoaded = data.hasEverLoaded;
 
           if (articles.isEmpty && (isLoading || !hasEverLoaded)) {
             return ListView.builder(

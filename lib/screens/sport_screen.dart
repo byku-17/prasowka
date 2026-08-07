@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
@@ -97,11 +98,16 @@ class _SportScreenState extends State<SportScreen> {
         children: [
           const ScoresBar(),
           Expanded(
-            child: Consumer<NewsProvider>(
-              builder: (context, provider, child) {
-                final articles = provider.getArticlesForCategory('sport');
-                final isLoading = provider.isCategoryLoading('sport');
-                final hasEverLoaded = provider.hasCategoryEverLoaded('sport');
+            child: Selector<NewsProvider, ({List<Article> articles, bool isLoading, bool hasEverLoaded})>(
+              selector: (_, provider) => (
+                articles: provider.getArticlesForCategory('sport'),
+                isLoading: provider.isCategoryLoading('sport'),
+                hasEverLoaded: provider.hasCategoryEverLoaded('sport'),
+              ),
+              builder: (context, data, child) {
+                final articles = data.articles;
+                final isLoading = data.isLoading;
+                final hasEverLoaded = data.hasEverLoaded;
 
                 // Shimmer
                 if (articles.isEmpty && (isLoading || !hasEverLoaded)) {
@@ -113,7 +119,7 @@ class _SportScreenState extends State<SportScreen> {
 
                 // Empty state
                 if (articles.isEmpty && hasEverLoaded) {
-                  return _buildEmptyState(context, provider);
+                  return _buildEmptyState(context, context.read<NewsProvider>());
                 }
 
                 // Lista artykułów

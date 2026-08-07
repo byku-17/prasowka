@@ -152,12 +152,17 @@ class _TodayScreenState extends State<TodayScreen> {
           ),
         ],
       ),
-      body: Consumer<NewsProvider>(
-        builder: (context, provider, child) {
-          final allArticles = provider.getArticlesForCategory('all');
-          final articles = allArticles.where((a) => !_dismissedArticleIds.contains(a.url)).toList();
-          final isLoading = provider.isCategoryLoading('all');
-          final hasEverLoaded = provider.hasCategoryEverLoaded('all');
+      body: Selector<NewsProvider, ({List<Article> articles, bool isLoading, bool hasEverLoaded, List<Article> recommended})>(
+        selector: (_, provider) => (
+          articles: provider.getArticlesForCategory('all'),
+          isLoading: provider.isCategoryLoading('all'),
+          hasEverLoaded: provider.hasCategoryEverLoaded('all'),
+          recommended: provider.recommendedArticles,
+        ),
+        builder: (context, data, child) {
+          final articles = data.articles.where((a) => !_dismissedArticleIds.contains(a.url)).toList();
+          final isLoading = data.isLoading;
+          final hasEverLoaded = data.hasEverLoaded;
 
           // Shimmer
           if (articles.isEmpty && (isLoading || !hasEverLoaded)) {
@@ -169,7 +174,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
           // Empty state
           if (articles.isEmpty && hasEverLoaded) {
-            return _buildEmptyState(context, provider);
+            return _buildEmptyState(context, context.read<NewsProvider>());
           }
 
           // Lista z rekomendacjami
@@ -191,7 +196,7 @@ class _TodayScreenState extends State<TodayScreen> {
                     if (index == 0) {
                       return _buildRecommendationsSection(
                         context,
-                        provider.recommendedArticles,
+                        data.recommended,
                       );
                     }
                     final visibleArticles = articles.take(_visibleCount).toList();

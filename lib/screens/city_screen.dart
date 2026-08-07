@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/models/news_source.dart';
 import 'package:prasowka/providers/news_provider.dart';
@@ -120,11 +121,16 @@ class _CityScreenState extends State<CityScreen> {
         children: [
           const LocalInfoBar(),
           Expanded(
-            child: Consumer<NewsProvider>(
-              builder: (context, provider, child) {
-                final articles = provider.getArticlesForCategory('warsaw');
-                final isLoading = provider.isCategoryLoading('warsaw');
-                final hasEverLoaded = provider.hasCategoryEverLoaded('warsaw');
+            child: Selector<NewsProvider, ({List<Article> articles, bool isLoading, bool hasEverLoaded})>(
+              selector: (_, provider) => (
+                articles: provider.getArticlesForCategory('warsaw'),
+                isLoading: provider.isCategoryLoading('warsaw'),
+                hasEverLoaded: provider.hasCategoryEverLoaded('warsaw'),
+              ),
+              builder: (context, data, child) {
+                final articles = data.articles;
+                final isLoading = data.isLoading;
+                final hasEverLoaded = data.hasEverLoaded;
 
                 // Shimmer
                 if (articles.isEmpty && (isLoading || !hasEverLoaded)) {
@@ -136,7 +142,7 @@ class _CityScreenState extends State<CityScreen> {
 
                 // Empty state
                 if (articles.isEmpty && hasEverLoaded) {
-                  return _buildEmptyState(context, provider);
+                  return _buildEmptyState(context, context.read<NewsProvider>());
                 }
 
                 // Lista artykułów

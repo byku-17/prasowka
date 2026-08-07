@@ -67,14 +67,15 @@ class _ScoresBarState extends State<ScoresBar> {
 
     if (!settings.showSportsBar) return const SizedBox.shrink();
 
-    return Consumer<SportsProvider>(
-      builder: (context, provider, child) {
-        if (provider.isLoading && provider.events.isEmpty) {
+    return Selector<SportsProvider, List<SportEvent>>(
+      selector: (_, provider) => provider.events,
+      builder: (context, events, child) {
+        if (context.read<SportsProvider>().isLoading && events.isEmpty) {
           return _buildLoading();
         }
 
         // Buduj kafelki: eventy z API + fallback dla lig bez danych
-        final tiles = _buildTiles(provider, settings);
+        final tiles = _buildTiles(context.read<SportsProvider>(), settings);
 
         if (tiles.isEmpty) {
           return _buildEmptyState(context, settings);
@@ -92,7 +93,7 @@ class _ScoresBarState extends State<ScoresBar> {
                 itemBuilder: (context, index) => tiles[index],
               ),
             ),
-            if (provider.lastFetch != null)
+            if (context.read<SportsProvider>().lastFetch != null)
               Padding(
                 padding: const EdgeInsets.only(right: 12, bottom: 2),
                 child: Row(
@@ -101,7 +102,7 @@ class _ScoresBarState extends State<ScoresBar> {
                     Icon(Icons.update, size: 10, color: Colors.grey.withValues(alpha: 0.5)),
                     const SizedBox(width: 4),
                     Text(
-                      _formatLastUpdate(provider.lastFetch!),
+                      _formatLastUpdate(context.read<SportsProvider>().lastFetch!),
                       style: TextStyle(fontSize: 9, color: Colors.grey.withValues(alpha: 0.5)),
                     ),
                   ],
@@ -375,9 +376,9 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
     String awayScore = scoreParts.length > 1 ? scoreParts[1] : '';
     bool isScheduled = event.score.toLowerCase() == 'v' || event.status == EventStatus.scheduled;
 
-    return Consumer<SportsProvider>(
-      builder: (context, sports, _) {
-        final isPinned = sports.isMatchPinned(event.id);
+    return Selector<SportsProvider, bool>(
+      selector: (_, sports) => sports.isMatchPinned(event.id),
+      builder: (context, isPinned, _) {
         return GestureDetector(
           onTap: widget.onTap,
           child: Container(
@@ -409,7 +410,7 @@ class _MatchScoreTileState extends State<_MatchScoreTile> with SingleTickerProvi
                   ),
                   GestureDetector(
                     behavior: HitTestBehavior.deferToChild,
-                    onTap: () => sports.togglePinMatch(event.id),
+                    onTap: () => context.read<SportsProvider>().togglePinMatch(event.id),
                     child: Icon(
                       isPinned ? Icons.push_pin : Icons.push_pin_outlined,
                       size: 12,

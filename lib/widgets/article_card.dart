@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
+import 'package:prasowka/services/image_cache_manager.dart';
 import 'package:prasowka/providers/news_provider.dart';
 
 class ArticleCard extends StatelessWidget {
@@ -53,6 +54,7 @@ class ArticleCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         alignment: Alignment.center,
                         memCacheWidth: 1080,
+                        cacheManager: AppImageCacheManager.instance,
                         placeholder: (context, url) => Container(
                           color: Colors.grey.withValues(alpha: 0.1),
                           child: const Center(
@@ -81,41 +83,35 @@ class ArticleCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Consumer<NewsProvider>(
-                  builder: (context, _, child) {
-                    final isRead = article.isRead;
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            article.translatedTitle ?? article.title,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              height: 1.2,
-                              color: isRead ? mutedText : null,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        article.translatedTitle ?? article.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          height: 1.2,
+                          color: article.isRead ? mutedText : null,
                         ),
-                        if (isRead) ...[
-                          const SizedBox(width: 6),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Icon(Icons.check_circle, color: checkIconColor, size: 14),
-                          ),
-                        ],
-                      ],
-                    );
-                  },
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (article.isRead) ...[
+                      const SizedBox(width: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Icon(Icons.check_circle, color: checkIconColor, size: 14),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 4),
-                Consumer<NewsProvider>(
-                  builder: (context, _, child) => Opacity(
-                    opacity: article.isRead ? 0.6 : 1.0,
-                    child: Text(
+                Opacity(
+                  opacity: article.isRead ? 0.6 : 1.0,
+                  child: Text(
                       article.translatedDescription ?? article.description,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: isDark ? Colors.white70 : Colors.black87,
@@ -125,7 +121,6 @@ class ArticleCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
                 ),
                 const SizedBox(height: 6),
                 Opacity(
@@ -202,6 +197,7 @@ class ArticleCard extends StatelessWidget {
                           imageUrl: article.imageUrl!,
                           fit: BoxFit.cover,
                           memCacheWidth: 600,
+                          cacheManager: AppImageCacheManager.instance,
                           placeholder: (context, url) => Container(
                             color: Colors.grey.withValues(alpha: 0.15),
                             child: const Center(
