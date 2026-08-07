@@ -136,7 +136,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
                 background: article.imageUrl != null
-                    ? CachedNetworkImage(imageUrl: article.imageUrl!, fit: BoxFit.cover)
+                    ? Hero(
+                        tag: 'article-image-${article.id}',
+                        child: CachedNetworkImage(imageUrl: article.imageUrl!, fit: BoxFit.cover),
+                      )
                     : Container(color: const Color(0xFF1E2126)),
               ),
               actions: [

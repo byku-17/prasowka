@@ -41,29 +41,32 @@ class ArticleCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  ColorFiltered(
-                    colorFilter: ColorFilter.mode(
-                      article.isRead ? Colors.black.withValues(alpha: 0.4) : Colors.transparent,
-                      BlendMode.darken,
-                    ),
-                    child: CachedNetworkImage(
-                      imageUrl: article.imageUrl!,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.center,
-                      memCacheWidth: 1080,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey.withValues(alpha: 0.1),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                  Hero(
+                    tag: 'article-image-${article.id}',
+                    child: ColorFiltered(
+                      colorFilter: ColorFilter.mode(
+                        article.isRead ? Colors.black.withValues(alpha: 0.4) : Colors.transparent,
+                        BlendMode.darken,
+                      ),
+                      child: CachedNetworkImage(
+                        imageUrl: article.imageUrl!,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.center,
+                        memCacheWidth: 1080,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
                           ),
                         ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey.withValues(alpha: 0.05),
-                        child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey.withValues(alpha: 0.05),
+                          child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                        ),
                       ),
                     ),
                   ),
@@ -193,23 +196,26 @@ class ArticleCard extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      CachedNetworkImage(
-                        imageUrl: article.imageUrl!,
-                        fit: BoxFit.cover,
-                        memCacheWidth: 600,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey.withValues(alpha: 0.15),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                      Hero(
+                        tag: 'article-image-${article.id}',
+                        child: CachedNetworkImage(
+                          imageUrl: article.imageUrl!,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 600,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey.withValues(alpha: 0.15),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
                             ),
                           ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey.withValues(alpha: 0.1),
-                          child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.shade400, size: 28),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey.withValues(alpha: 0.1),
+                            child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.shade400, size: 28),
+                          ),
                         ),
                       ),
                       _buildTranslationWatermark(),
