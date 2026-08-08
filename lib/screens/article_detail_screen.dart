@@ -298,7 +298,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 IconButton(
                   icon: Icon(_isSpeaking ? Icons.stop_circle : Icons.volume_up),
                   onPressed: _canTts ? _toggleTts : null,
-                  tooltip: _canTts ? (_isSpeaking ? 'Zatrzymaj' : 'Czytaj artykuł') : 'Najpierw odkryj artykuł',
+                  tooltip: _canTts ? (_isSpeaking ? 'Zatrzymaj' : 'Czytaj artykuł') : 'Pobierz artykuł, żeby odtworzyć',
                   color: _canTts ? Colors.red : Colors.grey,
                 ),
                 IconButton(
@@ -324,12 +324,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          art.sourceName.toUpperCase(),
-                          style: TextStyle(
-                            color: AppTheme.accentFor(context),
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
+                        Flexible(
+                          child: Text(
+                            art.sourceName.toUpperCase(),
+                            style: TextStyle(
+                              color: AppTheme.accentFor(context),
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 12),
