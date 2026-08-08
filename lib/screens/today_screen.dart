@@ -196,6 +196,11 @@ class _TodayScreenState extends State<TodayScreen> {
           }
 
           // Lista z rekomendacjami
+          final sortedArticles = [
+            ...articles.where((a) => recommendedIds.contains(a.id)),
+            ...articles.where((a) => !recommendedIds.contains(a.id)),
+          ];
+          final visibleArticles = sortedArticles.take(_visibleCount).toList();
           return Stack(
             children: [
               RefreshIndicator(
@@ -209,9 +214,8 @@ class _TodayScreenState extends State<TodayScreen> {
                   controller: _scrollController,
                   padding: EdgeInsets.zero,
                   addRepaintBoundaries: true,
-                  itemCount: (articles.length < _visibleCount ? articles.length : _visibleCount) + 1 + (articles.length > _visibleCount ? 1 : 0),
+                  itemCount: (sortedArticles.length < _visibleCount ? sortedArticles.length : _visibleCount) + 1 + (sortedArticles.length > _visibleCount ? 1 : 0),
                   itemBuilder: (context, index) {
-                    final visibleArticles = articles.take(_visibleCount).toList();
                     if (index < visibleArticles.length) {
                       final article = visibleArticles[index];
                       final isRec = recommendedIds.contains(article.id);
@@ -234,7 +238,7 @@ class _TodayScreenState extends State<TodayScreen> {
                       );
                     }
                     // Load more button
-                    if (articles.length > _visibleCount) {
+                    if (sortedArticles.length > _visibleCount) {
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         child: Center(
@@ -243,7 +247,7 @@ class _TodayScreenState extends State<TodayScreen> {
                               setState(() => _visibleCount += _loadMoreStep);
                             },
                             icon: const Icon(Icons.expand_more, size: 18),
-                            label: Text('Pokaż więcej (${articles.length - _visibleCount})'),
+                            label: Text('Pokaż więcej (${sortedArticles.length - _visibleCount})'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.accentFor(context),
                               foregroundColor: Colors.white,

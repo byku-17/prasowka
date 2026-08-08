@@ -148,6 +148,10 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
 
           final isSport = widget.categoryId == 'sport';
           final isWarsaw = widget.categoryId == 'warsaw';
+          final sortedArticles = [
+            ...articles.where((a) => recommendedIds.contains(a.id)),
+            ...articles.where((a) => !recommendedIds.contains(a.id)),
+          ];
 
           return Column(
             children: [
@@ -166,9 +170,9 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
                         controller: _scrollController,
                         padding: EdgeInsets.zero,
                         addRepaintBoundaries: true,
-                        itemCount: articles.length,
+                        itemCount: sortedArticles.length,
                         itemBuilder: (context, index) {
-                          final article = articles[index];
+                          final article = sortedArticles[index];
                           final isRec = recommendedIds.contains(article.id);
                           return ArticleCard(
                             article: article,

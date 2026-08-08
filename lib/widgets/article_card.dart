@@ -38,9 +38,15 @@ class ArticleCard extends StatelessWidget {
         Container(
           decoration: isRecommended ? BoxDecoration(
             color: isDark
-                ? const Color(0xFF2A2510).withValues(alpha: 0.6)
-                : const Color(0xFFFFF8E1).withValues(alpha: 0.8),
+                ? const Color(0xFF3D2E08).withValues(alpha: 0.9)
+                : const Color(0xFFFFF3CD).withValues(alpha: 1.0),
             borderRadius: BorderRadius.circular(2),
+            border: Border.all(
+              color: isDark
+                  ? const Color(0xFFF5B942).withValues(alpha: 0.6)
+                  : const Color(0xFFC97B1A).withValues(alpha: 0.4),
+              width: 1,
+            ),
           ) : null,
           child: InkWell(
             onTap: onTap,
@@ -191,14 +197,14 @@ class ArticleCard extends StatelessWidget {
             top: 8,
             left: 8,
             child: Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: isDark
                     ? const Color(0xFFF5B942).withValues(alpha: 0.9)
                     : const Color(0xFFC97B1A).withValues(alpha: 0.9),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.star, color: Colors.white, size: 14),
+              child: const Icon(Icons.star, color: Colors.white, size: 18),
             ),
           ),
       ],
