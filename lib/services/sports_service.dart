@@ -78,9 +78,14 @@ class SportsService {
       ));
     }
 
-    final results = await Future.wait(futures);
-    for (var list in results) {
-      allEvents.addAll(list);
+    // Await each future individually — jeden błąd nie zabija wszystkich wyników
+    for (final future in futures) {
+      try {
+        final list = await future;
+        if (list.isNotEmpty) allEvents.addAll(list);
+      } catch (e) {
+        debugPrint('SportsService: fetch error: $e');
+      }
     }
 
     // Deduplicate by canonicalKey (cross-source dedup)

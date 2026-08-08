@@ -7,33 +7,45 @@ class RemoteConfigService {
   factory RemoteConfigService() => _instance;
   RemoteConfigService._internal();
 
-  late final FirebaseRemoteConfig _config;
+  FirebaseRemoteConfig? _config;
+  bool _initialized = false;
 
   Future<void> init() async {
-    _config = FirebaseRemoteConfig.instance;
-
-    await _config.setConfigSettings(RemoteConfigSettings(
-      fetchTimeout: const Duration(seconds: 10),
-      minimumFetchInterval: const Duration(hours: 1),
-    ));
-
-    await _config.setDefaults(const {
-      'sportdb_api_key': '',
-      'thesportsdb_api_key': '',
-      'newsapi_key': '',
-    });
-
     try {
-      await _config.fetchAndActivate();
-      debugPrint('RemoteConfig: fetched successfully');
+      _config = FirebaseRemoteConfig.instance;
+
+      await _config!.setConfigSettings(RemoteConfigSettings(
+        fetchTimeout: const Duration(seconds: 10),
+        minimumFetchInterval: const Duration(hours: 1),
+      ));
+
+      await _config!.setDefaults(const {
+        'sportdb_api_key': '',
+        'thesportsdb_api_key': '',
+        'newsapi_key': '',
+      });
+
+      try {
+        await _config!.fetchAndActivate();
+        debugPrint('RemoteConfig: fetched successfully');
+      } catch (e) {
+        debugPrint('RemoteConfig: fetch failed, using defaults ($e)');
+      }
+      _initialized = true;
     } catch (e) {
-      debugPrint('RemoteConfig: fetch failed, using defaults ($e)');
+      debugPrint('RemoteConfig: init failed completely ($e)');
+      _initialized = false;
     }
   }
 
+  bool get isInitialized => _initialized && _config != null;
+
   String _get(String key, {String? fallback}) {
-    final remote = _config.getString(key);
-    if (remote.isNotEmpty) return remote;
+    if (_config == null) return fallback ?? '';
+    try {
+      final remote = _config!.getString(key);
+      if (remote.isNotEmpty) return remote;
+    } catch (_) {}
     if (fallback != null && fallback.isNotEmpty) return fallback;
     if (kDebugMode) return dotenv.env[key] ?? '';
     return '';

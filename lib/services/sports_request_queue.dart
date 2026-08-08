@@ -122,7 +122,6 @@ class SportsRequestQueue {
 
   T _default<T>(String source) {
     debugPrint('SportsQueue: $source zwracam pustą listę (default)');
-    // Pusta lista jest bezpiecznie kastowana do dowolnego List<T>
     return [] as T;
   }
 
