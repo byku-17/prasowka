@@ -41,6 +41,10 @@ class NewsSource extends HiveObject {
     'kwantowo_pl',
     'autokult',
     'elektrowoz',
+    'fly4free',
+    'nat_geo_traveler',
+    'kultura_onet',
+    'naekranie',
     'tvp_sport', 
     'probasket'
   ];
