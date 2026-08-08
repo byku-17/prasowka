@@ -53,7 +53,7 @@ class SportsService {
         final l = entry.value.first;
         futures.add(queue.enqueue(
           () => _fetchEspnScoreboard(l.espnSport!, l.espnLeague!, l.sportType, l.name, actualDateStr, referenceNow),
-          source: 'espn',
+          source: 'espn_${l.espnLeague}',
         ));
       }
     }
@@ -64,7 +64,7 @@ class SportsService {
       for (final league in tdbLeagues) {
         futures.add(queue.enqueue(
           () => _fetchTsdLeague(league, referenceNow),
-          source: 'thesportsdb',
+          source: 'tsdb_${league.id}',
         ));
       }
     }
