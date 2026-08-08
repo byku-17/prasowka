@@ -59,9 +59,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   void _initTts() {
     _tts.setLanguage('pl-PL');
-    _tts.setSpeechRate(0.5);
+    _tts.setSpeechRate(0.45);
     _tts.setVolume(1.0);
-    _tts.setPitch(1.0);
+    _tts.setPitch(1.05);
     _tts.setCompletionHandler(() {
       if (_ttsQueue.isNotEmpty) {
         _tts.speak(_ttsQueue.removeAt(0));
@@ -69,6 +69,28 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         if (mounted) setState(() => _isSpeaking = false);
       }
     });
+  }
+
+  String _cleanTextForTts(String raw) {
+    var text = raw;
+    text = text.replaceAll(RegExp(r'<[^>]*>'), ' ');
+    text = text.replaceAll(RegExp(r'https?://\S+'), '');
+    text = text.replaceAll(RegExp(r'www\.\S+'), '');
+    text = text.replaceAll(RegExp(r'Źródło:.*', multiLine: true), '');
+    text = text.replaceAll(RegExp(r'fot\.?.*', multiLine: true), '');
+    text = text.replaceAll(RegExp(r'photo:.*', caseSensitive: false, multiLine: true), '');
+    text = text.replaceAll(RegExp(r'source:.*', caseSensitive: false, multiLine: true), '');
+    text = text.replaceAll(RegExp(r'©.*', multiLine: true), '');
+    text = text.replaceAll(RegExp(r'Materiał partnera.*', multiLine: true), '');
+    text = text.replaceAll(RegExp(r'---.*---', multiLine: true), '');
+    text = text.replaceAll(RegExp(r'\[[^\]]*\]'), '');
+    text = text.replaceAll(RegExp(r'\(fot\.?\s*\)'), '');
+    text = text.replaceAll(RegExp(r'[•■●▪►►▶▷▸▹►]{2,}'), '');
+    text = text.replaceAll(RegExp(r'={3,}'), '');
+    text = text.replaceAll(RegExp(r'-{3,}'), '');
+    text = text.replaceAll(RegExp(r'\s{2,}'), ' ');
+    text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return text.trim();
   }
 
   final List<String> _ttsQueue = [];
@@ -117,7 +139,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final article = _currentArticle;
     final hasFull = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
     if (!hasFull) return;
-    final text = article.translatedFullContent ?? article.fullContent!;
+    final raw = article.translatedFullContent ?? article.fullContent!;
+    final text = _cleanTextForTts(raw);
+    if (text.isEmpty) return;
     _ttsQueue.clear();
     const chunkSize = 3500;
     for (int i = 0; i < text.length; i += chunkSize) {
