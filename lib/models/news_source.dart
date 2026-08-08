@@ -74,6 +74,26 @@ class NewsSource extends HiveObject {
     'Opole': 'radio_opole',
   };
 
+  /// Buduje listę źródeł dla kategorii miejskiej: lokalne + Google News
+  static List<NewsSource> getCitySources(String city, List<NewsSource> allSources) {
+    final sources = <NewsSource>[];
+    final localId = cityLocalSourceId[city];
+    if (localId != null) {
+      final local = allSources.firstWhere(
+        (s) => s.id == localId,
+        orElse: () => NewsSource(id: '', name: '', rssUrl: '', categoryId: 'warsaw'),
+      );
+      if (local.id.isNotEmpty) sources.add(local);
+    }
+    sources.add(NewsSource(
+      id: 'google_news_$city',
+      name: 'Google News - $city',
+      rssUrl: googleNewsCityUrl(city),
+      categoryId: 'warsaw',
+    ));
+    return sources;
+  }
+
   NewsSource({
     required this.id,
     required this.name,

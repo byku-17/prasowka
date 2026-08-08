@@ -59,22 +59,7 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
 
     List<NewsSource> catSources;
     if (widget.categoryId == 'warsaw') {
-      final city = settings.preferredCity;
-      catSources = [];
-      final localSourceId = NewsSource.cityLocalSourceId[city];
-      if (localSourceId != null) {
-        final localSource = allSources.firstWhere(
-          (s) => s.id == localSourceId,
-          orElse: () => NewsSource(id: '', name: '', rssUrl: '', categoryId: 'warsaw'),
-        );
-        if (localSource.id.isNotEmpty) catSources.add(localSource);
-      }
-      catSources.add(NewsSource(
-        id: 'google_news_$city',
-        name: 'Google News - $city',
-        rssUrl: NewsSource.googleNewsCityUrl(city),
-        categoryId: 'warsaw',
-      ));
+      catSources = NewsSource.getCitySources(settings.preferredCity, allSources);
     } else {
       catSources = allSources
           .where((s) => s.categoryId == widget.categoryId)
