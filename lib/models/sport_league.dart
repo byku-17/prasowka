@@ -275,8 +275,6 @@ class SportLeague {
       countryCode: 'WORLD',
       discipline: SportDiscipline.tennis,
       sportType: SportType.tennis,
-      espnSport: 'tennis',
-      espnLeague: 'wta',
       flashscoreUrl: 'https://www.flashscore.com/tennis/wta-singles/',
     ),
     SportLeague(
@@ -286,8 +284,6 @@ class SportLeague {
       countryCode: 'WORLD',
       discipline: SportDiscipline.tennis,
       sportType: SportType.tennis,
-      espnSport: 'tennis',
-      espnLeague: 'atp',
       flashscoreUrl: 'https://www.flashscore.com/tennis/atp-singles/',
     ),
 

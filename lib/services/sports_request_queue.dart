@@ -122,8 +122,8 @@ class SportsRequestQueue {
 
   T _default<T>(String source) {
     debugPrint('SportsQueue: $source zwracam pustą listę (default)');
-    if (T == List) return [] as T;
-    return throw StateError('SportsQueue: no default for type $T from $source');
+    // Pusta lista jest bezpiecznie kastowana do dowolnego List<T>
+    return [] as T;
   }
 
   void resetAllCooldowns() {
