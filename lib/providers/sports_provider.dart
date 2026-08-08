@@ -185,12 +185,25 @@ class SportsProvider with ChangeNotifier {
 
   Future<void> _performFetch(List<String>? selectedLeagueIds) async {
     try {
+      _debugLogs.add('SportDB key: ${_service.sportDbKeyStatus}');
+      _debugLogs.add('Ligi: ${selectedLeagueIds?.length ?? "ALL"}');
+      _debugLogs.add('Ulubione: ${_currentFavorites?.join(", ") ?? "brak"}');
+
       final newEvents = await _service.fetchAllEvents(selectedLeagueIds: selectedLeagueIds);
+
+      // Dodaj logi z serwisu
+      for (final log in _service.lastLogs) {
+        _debugLogs.add('  $log');
+      }
+
+      _debugLogs.add('Pobrano z API: ${newEvents.length} eventów');
+
       _updateCache(newEvents);
 
       _lastFetch = DateTime.now();
       _saveCacheToHive();
       _debugLogs.add('Cache lig: ${_leagueCache.length}');
+      _debugLogs.add('Cache eventów: ${_allCachedEvents().length}');
       _debugLogs.add('Pasek wyświetla: ${_filteredEvents.length} meczów');
       if (_filteredEvents.isNotEmpty) {
         final matches = _filteredEvents.whereType<MatchEvent>().toList();
@@ -213,6 +226,9 @@ class SportsProvider with ChangeNotifier {
             }
           }
         }
+      } else {
+        _debugLogs.add('Brak eventów po filtrach!');
+        _debugLogs.add('Wszystkich w cache: ${_allCachedEvents().length}');
       }
       
       _currentSelectedLeagues = selectedLeagueIds;
@@ -222,8 +238,9 @@ class SportsProvider with ChangeNotifier {
       } else {
         _stopAutoRefresh();
       }
-    } catch (e) {
+    } catch (e, stack) {
       _debugLogs.add('BŁĄD: $e');
+      _debugLogs.add('Stack: ${stack.toString().split('\n').take(3).join(' | ')}');
     } finally {
       _isLoading = false;
       notifyListeners();

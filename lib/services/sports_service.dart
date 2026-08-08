@@ -10,9 +10,11 @@ import 'package:prasowka/services/remote_config_service.dart';
 class SportsService {
   String get _sportDbKey => RemoteConfigService().sportDbKey;
   String get _theSportsDbKey => RemoteConfigService().theSportsDbKey;
+  String get sportDbKeyStatus => _sportDbKey.isNotEmpty ? 'OK (${_sportDbKey.length}chars)' : 'EMPTY';
 
   static const _espnUserAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15';
 
+  final List<String> lastLogs = [];
   final queue = SportsRequestQueue(maxConcurrent: 3, minDelay: const Duration(milliseconds: 500));
 
   Future<List<SportEvent>> fetchAllEvents({List<String>? selectedLeagueIds}) async {
@@ -27,6 +29,13 @@ class SportsService {
 
     final leaguesToFetch = _getLeaguesToFetch(selectedLeagueIds);
     final actualDateStr = referenceNow.toIso8601String().split('T')[0].replaceAll('-', '');
+
+    lastLogs.clear();
+    lastLogs.add('SportDB: ${_sportDbKey.isNotEmpty ? "klucz OK" : "BRAK KLUCZA"}');
+    lastLogs.add('TheSportsDB: ${_theSportsDbKey.isNotEmpty ? "klucz OK" : "BRAK KLUCZA"}');
+    lastLogs.add('Ligi: ${leaguesToFetch.map((l) => l.id).join(", ")}');
+    lastLogs.add('Data ESPN: $actualDateStr');
+    lastLogs.add('Rok referencyjny: ${referenceNow.year}');
 
     // Kolejka requestów z rate limiterem (max 3 rownolegle, 500ms delay)
     final List<Future<List<SportEvent>>> futures = [];
@@ -82,11 +91,13 @@ class SportsService {
     for (final future in futures) {
       try {
         final list = await future;
+        lastLogs.add('Source: ${list.length} eventów');
         if (list.isNotEmpty) allEvents.addAll(list);
       } catch (e) {
-        debugPrint('SportsService: fetch error: $e');
+        lastLogs.add('BŁĄD fetch: $e');
       }
     }
+    lastLogs.add('ŁĄCZNIE przed dedup: ${allEvents.length}');
 
     // Deduplicate by canonicalKey (cross-source dedup)
     // Ten sam mecz z SportDB/ESPN/TSDB dostaje ten sam klucz
