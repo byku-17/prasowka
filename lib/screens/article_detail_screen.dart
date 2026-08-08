@@ -63,9 +63,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     _tts.setVolume(1.0);
     _tts.setPitch(1.0);
     _tts.setCompletionHandler(() {
-      if (mounted) setState(() => _isSpeaking = false);
+      if (_ttsQueue.isNotEmpty) {
+        _tts.speak(_ttsQueue.removeAt(0));
+      } else {
+        if (mounted) setState(() => _isSpeaking = false);
+      }
     });
   }
+
+  final List<String> _ttsQueue = [];
 
   Article get _currentArticle {
     final articles = widget.articles;
@@ -104,6 +110,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   Future<void> _toggleTts() async {
     if (_isSpeaking) {
       await _tts.stop();
+      _ttsQueue.clear();
       setState(() => _isSpeaking = false);
       return;
     }
@@ -111,8 +118,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final hasFull = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
     if (!hasFull) return;
     final text = article.translatedFullContent ?? article.fullContent!;
+    _ttsQueue.clear();
+    const chunkSize = 3500;
+    for (int i = 0; i < text.length; i += chunkSize) {
+      _ttsQueue.add(text.substring(i, (i + chunkSize).clamp(0, text.length)));
+    }
     setState(() => _isSpeaking = true);
-    await _tts.speak(text);
+    await _tts.speak(_ttsQueue.removeAt(0));
   }
 
   bool get _canTts {
@@ -163,6 +175,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   @override
   void dispose() {
     _tts.stop();
+    _ttsQueue.clear();
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _pageController.dispose();
@@ -262,7 +275,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   icon: Icon(_isSpeaking ? Icons.stop_circle : Icons.volume_up),
                   onPressed: _canTts ? _toggleTts : null,
                   tooltip: _canTts ? (_isSpeaking ? 'Zatrzymaj' : 'Czytaj artykuł') : 'Najpierw odkryj artykuł',
-                  color: _isSpeaking ? AppTheme.accentFor(context) : null,
+                  color: _canTts ? Colors.red : Colors.grey,
                 ),
                 IconButton(
                   icon: const Icon(Icons.share),
