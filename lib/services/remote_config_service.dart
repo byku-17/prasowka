@@ -41,13 +41,20 @@ class RemoteConfigService {
   bool get isInitialized => _initialized && _config != null;
 
   String _get(String key, {String? fallback}) {
-    if (_config == null) return fallback ?? '';
+    if (_config == null) {
+      if (kDebugMode) {
+        try { return dotenv.env[key] ?? ''; } catch (_) {}
+      }
+      return fallback ?? '';
+    }
     try {
       final remote = _config!.getString(key);
       if (remote.isNotEmpty) return remote;
     } catch (_) {}
     if (fallback != null && fallback.isNotEmpty) return fallback;
-    if (kDebugMode) return dotenv.env[key] ?? '';
+    if (kDebugMode) {
+      try { return dotenv.env[key] ?? ''; } catch (_) {}
+    }
     return '';
   }
 

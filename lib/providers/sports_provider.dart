@@ -9,7 +9,7 @@ import 'package:prasowka/utils/text_utils.dart';
 
 const String _pinnedBoxName = 'pinned_matches';
 const String _sportsCacheBoxName = 'sports_cache';
-const Duration _liveTtl = Duration(minutes: 1);
+const Duration _liveTtl = Duration(minutes: 6);
 const Duration _normalTtl = Duration(minutes: 15);
 const Duration _finishedTtl = Duration(hours: 12);
 
@@ -249,16 +249,18 @@ class SportsProvider with ChangeNotifier {
 
   /// Aktualizuje cache i stosuje filtry — wspólne dla _performFetch i auto-refresh
   void _updateCache(List<SportEvent> newEvents) {
+    // Grupuj po konkurencji zamiast O(N×C)
+    final Map<String, List<SportEvent>> grouped = {};
     for (final event in newEvents) {
       final competition = event is MatchEvent ? event.competition : (event is RaceEvent ? 'races' : 'unknown');
-      _leagueCache[competition] = _LeagueCacheEntry(
-        events: newEvents.where((e) {
-          if (e is MatchEvent) return e.competition == competition;
-          if (e is RaceEvent) return competition == 'races';
-          return false;
-        }).toList(),
-        fetchedAt: DateTime.now(),
-        source: event.id.split('_').first,
+      grouped.putIfAbsent(competition, () => []).add(event);
+    }
+    final now = DateTime.now();
+    for (final entry in grouped.entries) {
+      _leagueCache[entry.key] = _LeagueCacheEntry(
+        events: entry.value,
+        fetchedAt: now,
+        source: entry.value.first.id.split('_').first,
       );
     }
     final allNow = _allCachedEvents();
@@ -418,6 +420,8 @@ class SportsProvider with ChangeNotifier {
       'atp', 'wta', 'wimbledon', 'roland garros', 'us open', 'australian open',
       // F1
       'formula 1', 'formula1', 'f1',
+      // Siatkówka
+      'plusliga', 'plus liga',
     };
 
     return list.where((e) {

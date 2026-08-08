@@ -123,7 +123,28 @@ class SportsService {
     }
     unique.addAll(canonicalToBest);
 
-    debugPrint('Prasówka Sports V9.1: Zakończono. Unikalnych: ${unique.length}');
+    // Normalizuj daty: referenceNow używ roku 2024, ale UI porównuje z2026
+    if (now.year != referenceNow.year) {
+      for (final event in unique.values) {
+        if (event is MatchEvent) {
+          final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
+          unique[event.id] = MatchEvent(
+            id: event.id, type: event.type, date: newDate, status: event.status,
+            homeTeam: event.homeTeam, awayTeam: event.awayTeam, score: event.score,
+            competition: event.competition, homeLogo: event.homeLogo, awayLogo: event.awayLogo,
+            time: event.time, freshness: event.freshness, fetchedAtUtc: event.fetchedAtUtc,
+          );
+        } else if (event is RaceEvent) {
+          final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
+          unique[event.id] = RaceEvent(
+            id: event.id, type: event.type, date: newDate, status: event.status,
+            raceName: event.raceName, circuitName: event.circuitName, countryCode: event.countryCode,
+          );
+        }
+      }
+    }
+
+    lastLogs.add('ŁĄCZNIE po dedup: ${unique.length}');
     return unique.values.toList();
   }
 
