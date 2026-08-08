@@ -32,7 +32,9 @@ void main() async {
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
   runZonedGuarded(() async {
-    if (kDebugMode) await dotenv.load(fileName: ".env");
+    if (kDebugMode) {
+      try { await dotenv.load(fileName: ".env"); } catch (_) {}
+    }
     await RemoteConfigService().init();
     await Hive.initFlutter();
 
