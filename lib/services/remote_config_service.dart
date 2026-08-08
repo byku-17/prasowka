@@ -35,10 +35,11 @@ class RemoteConfigService {
     final remote = _config.getString(key);
     if (remote.isNotEmpty) return remote;
     if (fallback != null && fallback.isNotEmpty) return fallback;
-    return dotenv.env[key] ?? '';
+    if (kDebugMode) return dotenv.env[key] ?? '';
+    return '';
   }
 
-  String get sportDbKey => _get('sportdb_api_key', fallback: dotenv.env['SPORTDB_API_KEY']);
-  String get theSportsDbKey => _get('thesportsdb_api_key', fallback: dotenv.env['THESPORTSDB_API_KEY']);
-  String get newsApiKey => _get('newsapi_key', fallback: dotenv.env['NEWSAPI_KEY']);
+  String get sportDbKey => _get('sportdb_api_key', fallback: kDebugMode ? dotenv.env['SPORTDB_API_KEY'] : null);
+  String get theSportsDbKey => _get('thesportsdb_api_key', fallback: kDebugMode ? dotenv.env['THESPORTSDB_API_KEY'] : null);
+  String get newsApiKey => _get('newsapi_key', fallback: kDebugMode ? dotenv.env['NEWSAPI_KEY'] : null);
 }

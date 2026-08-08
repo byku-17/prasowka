@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -31,7 +32,7 @@ void main() async {
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
   runZonedGuarded(() async {
-    await dotenv.load(fileName: ".env");
+    if (kDebugMode) await dotenv.load(fileName: ".env");
     await RemoteConfigService().init();
     await Hive.initFlutter();
 
