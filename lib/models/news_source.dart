@@ -35,6 +35,12 @@ class NewsSource extends HiveObject {
     'nyt_world', 
     'money_pl', 
     'techcrunch', 
+    'spiders_web',
+    'antyweb',
+    'nauka_w_polsce',
+    'kwantowo_pl',
+    'autokult',
+    'elektrowoz',
     'tvp_sport', 
     'probasket'
   ];

@@ -247,6 +247,12 @@ class NewsProvider with ChangeNotifier {
     _recommendedArticles = scored.map((e) => e.key).take(3).toList();
   }
 
+  static const Set<String> _boostedSourceNames = {
+    'TechCrunch', "Spider's Web", 'Antyweb',
+    'Nauka w Polsce', 'Kwantowo.pl',
+    'WP Autokult', 'Elektrowóz',
+  };
+
   static List<Article> _sortAndMixArticlesStatic(Map<String, dynamic> params) {
     final List<Article> list = (params['list'] as List)
         .map((m) => m is Map<String, dynamic> ? Article.fromTransferMap(m) : m as Article)
@@ -281,6 +287,27 @@ class NewsProvider with ChangeNotifier {
       }
       list.clear();
       list.addAll(mixed);
+    }
+
+    if (categoryId == 'all' && list.length > 8) {
+      final boosted = list.where((a) => _boostedSourceNames.contains(a.sourceName)).toList();
+      final regular = list.where((a) => !_boostedSourceNames.contains(a.sourceName)).toList();
+      if (boosted.isNotEmpty) {
+        final result = <Article>[];
+        int bIdx = 0;
+        int rIdx = 0;
+        for (int i = 0; i < list.length; i++) {
+          if (i % 4 == 3 && bIdx < boosted.length) {
+            result.add(boosted[bIdx++]);
+          } else if (rIdx < regular.length) {
+            result.add(regular[rIdx++]);
+          } else if (bIdx < boosted.length) {
+            result.add(boosted[bIdx++]);
+          }
+        }
+        list.clear();
+        list.addAll(result);
+      }
     }
 
     if (shuffle && list.length > 10) {
