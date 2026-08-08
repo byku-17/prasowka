@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -39,6 +40,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   double _pointerStartY = 0;
   DateTime? _pointerStartTime;
 
+  final FlutterTts _tts = FlutterTts();
+  bool _isSpeaking = false;
+
   @override
   void initState() {
     super.initState();
@@ -49,8 +53,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
-
+    _initTts();
     _recordHistory(widget.article);
+  }
+
+  void _initTts() {
+    _tts.setLanguage('pl-PL');
+    _tts.setSpeechRate(0.5);
+    _tts.setVolume(1.0);
+    _tts.setPitch(1.0);
+    _tts.setCompletionHandler(() {
+      if (mounted) setState(() => _isSpeaking = false);
+    });
   }
 
   Article get _currentArticle {
@@ -80,41 +94,30 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     return !hasFullContent && !provider.isFetchingFullContent && !RssService.isGoogleNewsUrl(article.url);
   }
 
-  void _showFontSizePicker(BuildContext context) {
+  void _cycleFontSize() {
     final settings = context.read<SettingsProvider>();
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Rozmiar czcionki', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
-            _buildFontSizeOption(context, settings, 'Mały', 14),
-            _buildFontSizeOption(context, settings, 'Średni', 16),
-            _buildFontSizeOption(context, settings, 'Duży', 18),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
+    final current = settings.readingFontSize;
+    final next = current == 14 ? 16 : current == 16 ? 18 : 14;
+    settings.setReadingFontSize(next);
   }
 
-  Widget _buildFontSizeOption(BuildContext context, SettingsProvider settings, String label, int size) {
-    final isSelected = settings.readingFontSize == size;
-    return ListTile(
-      leading: Icon(
-        isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-        color: isSelected ? AppTheme.accentFor(context) : Colors.grey,
-      ),
-      title: Text(label, style: TextStyle(fontSize: size.toDouble() - 2, fontWeight: FontWeight.w500)),
-      onTap: () {
-        settings.setReadingFontSize(size);
-        Navigator.pop(context);
-      },
-    );
+  Future<void> _toggleTts() async {
+    if (_isSpeaking) {
+      await _tts.stop();
+      setState(() => _isSpeaking = false);
+      return;
+    }
+    final article = _currentArticle;
+    final hasFull = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
+    if (!hasFull) return;
+    final text = article.translatedFullContent ?? article.fullContent!;
+    setState(() => _isSpeaking = true);
+    await _tts.speak(text);
+  }
+
+  bool get _canTts {
+    final article = _currentArticle;
+    return article.fullContent != null && article.fullContent!.trim().isNotEmpty;
   }
 
   void _handleSwipeUp() {
@@ -159,6 +162,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   @override
   void dispose() {
+    _tts.stop();
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _pageController.dispose();
@@ -251,8 +255,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.text_fields),
-                  onPressed: () => _showFontSizePicker(context),
+                  onPressed: _cycleFontSize,
                   tooltip: 'Rozmiar czcionki',
+                ),
+                IconButton(
+                  icon: Icon(_isSpeaking ? Icons.stop_circle : Icons.volume_up),
+                  onPressed: _canTts ? _toggleTts : null,
+                  tooltip: _canTts ? (_isSpeaking ? 'Zatrzymaj' : 'Czytaj artykuł') : 'Najpierw odkryj artykuł',
+                  color: _isSpeaking ? AppTheme.accentFor(context) : null,
                 ),
                 IconButton(
                   icon: const Icon(Icons.share),
