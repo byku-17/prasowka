@@ -26,7 +26,7 @@ class SportsService {
     debugPrint('Prasówka Sports V9.1: Start (Reference: $referenceNow)');
 
     final leaguesToFetch = _getLeaguesToFetch(selectedLeagueIds);
-    final actualDateStr = now.toIso8601String().split('T')[0].replaceAll('-', '');
+    final actualDateStr = referenceNow.toIso8601String().split('T')[0].replaceAll('-', '');
 
     // Kolejka requestów z rate limiterem (max 3 rownolegle, 500ms delay)
     final List<Future<List<SportEvent>>> futures = [];
