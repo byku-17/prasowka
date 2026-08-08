@@ -554,7 +554,9 @@ class SportsService {
 
   Future<List<SportEvent>> _fetchEspnScoreboard(String sport, String league, SportType type, String competition, String dateStr, DateTime referenceNow) async {
     try {
-      final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard?dates=$dateStr';
+      final now = DateTime.now();
+      final todayStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard?dates=$todayStr';
       final response = await http.get(Uri.parse(url), headers: {
         'User-Agent': _espnUserAgent,
         'Accept': 'application/json',

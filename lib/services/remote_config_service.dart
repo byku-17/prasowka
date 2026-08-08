@@ -58,7 +58,7 @@ class RemoteConfigService {
     return '';
   }
 
-  String get sportDbKey => _get('sportdb_api_key', fallback: kDebugMode ? dotenv.env['SPORTDB_API_KEY'] : null);
-  String get theSportsDbKey => _get('thesportsdb_api_key', fallback: kDebugMode ? dotenv.env['THESPORTSDB_API_KEY'] : null);
-  String get newsApiKey => _get('newsapi_key', fallback: kDebugMode ? dotenv.env['NEWSAPI_KEY'] : null);
+  String get sportDbKey => _get('sportdb_api_key');
+  String get theSportsDbKey => _get('thesportsdb_api_key');
+  String get newsApiKey => _get('newsapi_key');
 }
