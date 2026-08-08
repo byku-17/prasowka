@@ -8,6 +8,7 @@ import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/screens/article_detail_screen.dart';
 import 'package:prasowka/screens/notifications_screen.dart';
+import 'package:prasowka/widgets/scroll_to_top_wrapper.dart';
 import 'package:prasowka/screens/settings_screen.dart';
 import 'package:prasowka/services/notification_history.dart';
 import 'package:prasowka/theme/app_theme.dart';
@@ -25,7 +26,6 @@ class TodayScreen extends StatefulWidget {
 
 class _TodayScreenState extends State<TodayScreen> {
   final ScrollController _scrollController = ScrollController();
-  bool _showBackToTop = false;
   bool _hasFetched = false;
   final Set<String> _dismissedArticleIds = {};
   static const int _initialLoad = 20;
@@ -37,13 +37,6 @@ class _TodayScreenState extends State<TodayScreen> {
   void initState() {
     super.initState();
     _refreshUnread();
-    _scrollController.addListener(() {
-      if (_scrollController.offset > 600 && !_showBackToTop) {
-        setState(() => _showBackToTop = true);
-      } else if (_scrollController.offset <= 600 && _showBackToTop) {
-        setState(() => _showBackToTop = false);
-      }
-    });
     widget.refreshNotifier?.addListener(_onRefreshTap);
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchIfNeeded());
   }
@@ -58,7 +51,7 @@ class _TodayScreenState extends State<TodayScreen> {
   void _onRefreshTap() {
     _hasFetched = false;
     setState(() => _visibleCount = _initialLoad);
-    _scrollToTop();
+    _scrollController.animateTo(0, duration: const Duration(milliseconds: 600), curve: Curves.easeOutCubic);
     _fetchIfNeeded();
   }
 
@@ -93,14 +86,6 @@ class _TodayScreenState extends State<TodayScreen> {
       enabledSourceIds: enabledIds,
       keywords: settings.keywords,
       forceRefresh: true,
-    );
-  }
-
-  void _scrollToTop() {
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOutCubic,
     );
   }
 
@@ -201,9 +186,9 @@ class _TodayScreenState extends State<TodayScreen> {
             ...articles.where((a) => !recommendedIds.contains(a.id)),
           ];
           final visibleArticles = sortedArticles.take(_visibleCount).toList();
-          return Stack(
-            children: [
-              RefreshIndicator(
+          return ScrollToTopWrapper(
+            scrollController: _scrollController,
+            child: RefreshIndicator(
                 color: AppTheme.accentGold,
                 onRefresh: () async {
                   _hasFetched = false;
@@ -260,20 +245,7 @@ class _TodayScreenState extends State<TodayScreen> {
                   },
                 ),
               ),
-              if (_showBackToTop)
-                Positioned(
-                  right: 16,
-                  bottom: 80,
-                  child: FloatingActionButton.small(
-                    onPressed: _scrollToTop,
-                    backgroundColor: AppTheme.accentGold,
-                    foregroundColor: Colors.black,
-                    elevation: 4,
-                    child: const Icon(Icons.arrow_upward),
-                  ),
-                ),
-            ],
-          );
+            );
         },
       ),
     );

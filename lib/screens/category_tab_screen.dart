@@ -8,6 +8,7 @@ import 'package:prasowka/screens/article_detail_screen.dart';
 import 'package:prasowka/screens/settings_screen.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/widgets/article_card.dart';
+import 'package:prasowka/widgets/scroll_to_top_wrapper.dart';
 import 'package:prasowka/widgets/empty_state_widget.dart';
 import 'package:prasowka/widgets/scores_bar.dart';
 import 'package:prasowka/widgets/local_info_bar.dart';
@@ -26,19 +27,11 @@ class CategoryTabScreen extends StatefulWidget {
 
 class _CategoryTabScreenState extends State<CategoryTabScreen> {
   final ScrollController _scrollController = ScrollController();
-  bool _showBackToTop = false;
   bool _hasFetched = false;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(() {
-      if (_scrollController.offset > 600 && !_showBackToTop) {
-        setState(() => _showBackToTop = true);
-      } else if (_scrollController.offset <= 600 && _showBackToTop) {
-        setState(() => _showBackToTop = false);
-      }
-    });
     widget.refreshNotifier?.addListener(_onRefreshTap);
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchIfNeeded());
   }
@@ -52,7 +45,7 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
 
   void _onRefreshTap() {
     _hasFetched = false;
-    _scrollToTop();
+    _scrollController.animateTo(0, duration: const Duration(milliseconds: 600), curve: Curves.easeOutCubic);
     _fetchIfNeeded();
   }
 
@@ -97,14 +90,6 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
       enabledSourceIds: enabledIds,
       keywords: settings.keywords,
       forceRefresh: true,
-    );
-  }
-
-  void _scrollToTop() {
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOutCubic,
     );
   }
 
@@ -179,52 +164,39 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
               if (isSport) const ScoresBar(),
               if (isWarsaw) const LocalInfoBar(),
               Expanded(
-                child: Stack(
-                  children: [
-                    RefreshIndicator(
-                      color: AppTheme.accentGold,
-                      onRefresh: () async {
-                        _hasFetched = false;
-                        _fetchIfNeeded();
-                      },
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        padding: EdgeInsets.zero,
-                        addRepaintBoundaries: true,
-                        itemCount: sortedArticles.length,
-                        itemBuilder: (context, index) {
-                          final article = sortedArticles[index];
-                          final isRec = recommendedIds.contains(article.id);
-                          return ArticleCard(
-                            article: article,
-                            isRecommended: isRec,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ArticleDetailScreen(
-                                  article: article,
-                                  articles: sortedArticles,
-                                  currentIndex: index,
-                                ),
+                child: ScrollToTopWrapper(
+                  scrollController: _scrollController,
+                  child: RefreshIndicator(
+                    color: AppTheme.accentGold,
+                    onRefresh: () async {
+                      _hasFetched = false;
+                      _fetchIfNeeded();
+                    },
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: EdgeInsets.zero,
+                      addRepaintBoundaries: true,
+                      itemCount: sortedArticles.length,
+                      itemBuilder: (context, index) {
+                        final article = sortedArticles[index];
+                        final isRec = recommendedIds.contains(article.id);
+                        return ArticleCard(
+                          article: article,
+                          isRecommended: isRec,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ArticleDetailScreen(
+                                article: article,
+                                articles: sortedArticles,
+                                currentIndex: index,
                               ),
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
                     ),
-                    if (_showBackToTop)
-                      Positioned(
-                        right: 16,
-                        bottom: 80,
-                        child: FloatingActionButton.small(
-                          onPressed: _scrollToTop,
-                          backgroundColor: AppTheme.accentGold,
-                          foregroundColor: Colors.black,
-                          elevation: 4,
-                          child: const Icon(Icons.arrow_upward),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ),
             ],
