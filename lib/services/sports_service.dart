@@ -115,11 +115,20 @@ class SportsService {
     if (selectedLeagueIds == null || selectedLeagueIds.isEmpty) {
       return SportLeague.allLeagues.where((l) => l.hasApi).toList();
     }
-    return selectedLeagueIds
+    final selected = selectedLeagueIds
         .map((id) => SportLeague.findById(id))
         .whereType<SportLeague>()
         .where((l) => l.hasApi)
         .toList();
+
+    // Zawsze dodaj tenis WTA/ATP (popularne ligi globalne)
+    for (final league in SportLeague.allLeagues) {
+      if ((league.id == 'tennis_wta' || league.id == 'tennis_atp') && !selected.any((s) => s.id == league.id)) {
+        selected.add(league);
+      }
+    }
+
+    return selected;
   }
 
   // ─── SPORTDB.DEV + FLASHSCORE (primary) ───
