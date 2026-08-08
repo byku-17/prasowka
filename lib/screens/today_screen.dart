@@ -16,7 +16,8 @@ import 'package:prasowka/widgets/empty_state_widget.dart';
 import 'package:prasowka/widgets/news_skeleton.dart';
 
 class TodayScreen extends StatefulWidget {
-  const TodayScreen({super.key});
+  final ValueNotifier<int>? refreshNotifier;
+  const TodayScreen({super.key, this.refreshNotifier});
 
   @override
   State<TodayScreen> createState() => _TodayScreenState();
@@ -43,13 +44,22 @@ class _TodayScreenState extends State<TodayScreen> {
         setState(() => _showBackToTop = false);
       }
     });
+    widget.refreshNotifier?.addListener(_onRefreshTap);
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchIfNeeded());
   }
 
   @override
   void dispose() {
+    widget.refreshNotifier?.removeListener(_onRefreshTap);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onRefreshTap() {
+    _hasFetched = false;
+    setState(() => _visibleCount = _initialLoad);
+    _scrollToTop();
+    _fetchIfNeeded();
   }
 
   void _refreshUnread() async {

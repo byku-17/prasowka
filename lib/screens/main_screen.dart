@@ -25,6 +25,7 @@ class _MainScreenState extends State<MainScreen> {
   late final PageController _pageController;
   DateTime? _lastBackPressTime;
   StreamSubscription? _notificationSubscription;
+  final ValueNotifier<int> refreshNotifier = ValueNotifier<int>(0);
 
   List<Widget> _screens = [];
   List<_TabDef> _tabs = [];
@@ -81,9 +82,9 @@ class _MainScreenState extends State<MainScreen> {
     ];
 
     _screens = [
-      const TodayScreen(),
-      CategoryTabScreen(categoryId: settings.mainTabSlot1),
-      CategoryTabScreen(categoryId: settings.mainTabSlot2),
+      TodayScreen(refreshNotifier: refreshNotifier),
+      CategoryTabScreen(categoryId: settings.mainTabSlot1, refreshNotifier: refreshNotifier),
+      CategoryTabScreen(categoryId: settings.mainTabSlot2, refreshNotifier: refreshNotifier),
       const TopicsScreen(),
       const SavedScreen(),
     ];
@@ -106,10 +107,15 @@ class _MainScreenState extends State<MainScreen> {
   void dispose() {
     _notificationSubscription?.cancel();
     _pageController.dispose();
+    refreshNotifier.dispose();
     super.dispose();
   }
 
   void _onTabTapped(int index) {
+    if (index == _currentIndex) {
+      refreshNotifier.value++;
+      return;
+    }
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 250),

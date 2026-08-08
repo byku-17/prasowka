@@ -192,11 +192,12 @@ class NewsProvider with ChangeNotifier {
           'list': transferList,
           'teams': keywords ?? _lastKeywords,
           'categoryId': categoryId,
+          'shuffle': forceRefresh,
         });
         _articlesMap[categoryId] = mixed;
         finalList = mixed;
       } else {
-        _sortAndMixArticlesSync(accumulated, keywords ?? _lastKeywords, categoryId);
+        _sortAndMixArticlesSync(accumulated, keywords ?? _lastKeywords, categoryId, shuffle: forceRefresh);
         _articlesMap[categoryId] = accumulated;
         finalList = accumulated;
       }
@@ -252,6 +253,7 @@ class NewsProvider with ChangeNotifier {
         .toList();
     final List<String>? teams = params['teams'];
     final String categoryId = params['categoryId'];
+    final bool shuffle = params['shuffle'] == true;
 
     list.sort((a, b) {
       if (a.imageUrl != null && b.imageUrl == null) return -1;
@@ -280,6 +282,16 @@ class NewsProvider with ChangeNotifier {
       list.clear();
       list.addAll(mixed);
     }
+
+    if (shuffle && list.length > 10) {
+      final rng = DateTime.now().millisecondsSinceEpoch;
+      for (int i = list.length - 1; i > 0; i--) {
+        final j = (rng ^ (i * 2654435761)) % (i + 1);
+        final temp = list[i];
+        list[i] = list[j];
+        list[j] = temp;
+      }
+    }
     
     if (categoryId == 'all' && list.length > 100) list.removeRange(100, list.length);
     
@@ -294,14 +306,21 @@ class NewsProvider with ChangeNotifier {
          list.addAll([...filtered, ...other]);
       }
     }
+
+    final readArticles = list.where((a) => a.isRead).toList();
+    final unreadArticles = list.where((a) => !a.isRead).toList();
+    list.clear();
+    list.addAll([...unreadArticles, ...readArticles]);
+
     return list;
   }
 
-  void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId) {
+  void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId, {bool shuffle = false}) {
     final result = _sortAndMixArticlesStatic({
       'list': list,
       'teams': teams,
       'categoryId': categoryId,
+      'shuffle': shuffle,
     });
     list.clear();
     list.addAll(result);

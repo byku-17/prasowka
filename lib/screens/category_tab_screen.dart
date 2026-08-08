@@ -16,7 +16,8 @@ import 'package:prasowka/widgets/news_skeleton.dart';
 /// Used for the 2 configurable main tabs.
 class CategoryTabScreen extends StatefulWidget {
   final String categoryId;
-  const CategoryTabScreen({super.key, required this.categoryId});
+  final ValueNotifier<int>? refreshNotifier;
+  const CategoryTabScreen({super.key, required this.categoryId, this.refreshNotifier});
 
   @override
   State<CategoryTabScreen> createState() => _CategoryTabScreenState();
@@ -37,13 +38,21 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
         setState(() => _showBackToTop = false);
       }
     });
+    widget.refreshNotifier?.addListener(_onRefreshTap);
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchIfNeeded());
   }
 
   @override
   void dispose() {
+    widget.refreshNotifier?.removeListener(_onRefreshTap);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onRefreshTap() {
+    _hasFetched = false;
+    _scrollToTop();
+    _fetchIfNeeded();
   }
 
   void _fetchIfNeeded() {
