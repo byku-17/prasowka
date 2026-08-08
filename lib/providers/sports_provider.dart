@@ -11,6 +11,7 @@ const String _pinnedBoxName = 'pinned_matches';
 const String _sportsCacheBoxName = 'sports_cache';
 const Duration _liveTtl = Duration(minutes: 1);
 const Duration _normalTtl = Duration(minutes: 15);
+const Duration _finishedTtl = Duration(hours: 12);
 
 class _LeagueCacheEntry {
   final List<SportEvent> events;
@@ -24,8 +25,12 @@ class _LeagueCacheEntry {
   });
 
   bool isExpired(bool hasLive) {
-    final ttl = hasLive ? _liveTtl : _normalTtl;
-    return DateTime.now().difference(fetchedAt) > ttl;
+    final age = DateTime.now().difference(fetchedAt);
+    final allFinished = events.every((e) => e.status == EventStatus.finished);
+
+    if (allFinished) return age > _finishedTtl;
+    if (hasLive) return age > _liveTtl;
+    return age > _normalTtl;
   }
 
   Map<String, dynamic> toMap() => {
