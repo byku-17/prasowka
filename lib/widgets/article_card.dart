@@ -37,15 +37,12 @@ class ArticleCard extends StatelessWidget {
       children: [
         Container(
           decoration: isRecommended ? BoxDecoration(
-            color: isDark
-                ? const Color(0xFF3D2E08).withValues(alpha: 0.9)
-                : const Color(0xFFFFF3CD).withValues(alpha: 1.0),
             borderRadius: BorderRadius.circular(2),
             border: Border.all(
               color: isDark
-                  ? const Color(0xFFF5B942).withValues(alpha: 0.6)
-                  : const Color(0xFFC97B1A).withValues(alpha: 0.4),
-              width: 1,
+                  ? const Color(0xFFF5B942).withValues(alpha: 0.7)
+                  : const Color(0xFFC97B1A).withValues(alpha: 0.5),
+              width: 1.5,
             ),
           ) : null,
           child: InkWell(
@@ -116,7 +113,9 @@ class ArticleCard extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
                                 height: 1.2,
-                                color: article.isRead ? mutedText : null,
+                                color: isRecommended
+                                    ? (isDark ? const Color(0xFFF5B942) : const Color(0xFFC97B1A))
+                                    : (article.isRead ? mutedText : null),
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
