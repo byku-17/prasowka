@@ -125,10 +125,11 @@ class SportsService {
 
     // Normalizuj daty: referenceNow używ roku 2024, ale UI porównuje z2026
     if (now.year != referenceNow.year) {
+      final Map<String, SportEvent> updates = {};
       for (final event in unique.values) {
         if (event is MatchEvent) {
           final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
-          unique[event.id] = MatchEvent(
+          updates[event.id] = MatchEvent(
             id: event.id, type: event.type, date: newDate, status: event.status,
             homeTeam: event.homeTeam, awayTeam: event.awayTeam, score: event.score,
             competition: event.competition, homeLogo: event.homeLogo, awayLogo: event.awayLogo,
@@ -136,12 +137,13 @@ class SportsService {
           );
         } else if (event is RaceEvent) {
           final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
-          unique[event.id] = RaceEvent(
+          updates[event.id] = RaceEvent(
             id: event.id, type: event.type, date: newDate, status: event.status,
             raceName: event.raceName, circuitName: event.circuitName, countryCode: event.countryCode,
           );
         }
       }
+      unique.addAll(updates);
     }
 
     lastLogs.add('ŁĄCZNIE po dedup: ${unique.length}');
