@@ -8,7 +8,6 @@ class AuthService extends ChangeNotifier {
 
   User? get user => _auth.currentUser;
   bool get isLoggedIn => user != null;
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   AuthService() {
     _auth.authStateChanges().listen((_) => notifyListeners());
@@ -52,10 +51,6 @@ class AuthService extends ChangeNotifier {
   Future<void> signOut() async {
     await _google.signOut();
     await _auth.signOut();
-  }
-
-  Future<void> deleteAccount() async {
-    await user?.delete();
   }
 
   String _translateError(String code) {

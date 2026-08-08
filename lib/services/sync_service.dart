@@ -10,12 +10,9 @@ class SyncService extends ChangeNotifier {
   final AuthService _auth;
   final EncryptionService _encryption = EncryptionService();
   
-  bool _syncing = false;
-  bool get syncing => _syncing;
   DateTime? _lastSync;
   DateTime? get lastSync => _lastSync;
   String? _encryptionPassword;
-  bool get isEncrypted => _encryptionPassword != null;
 
   SyncService(this._auth);
 
@@ -32,7 +29,6 @@ class SyncService extends ChangeNotifier {
 
   Future<void> pushAll() async {
     if (_uid == null) return;
-    _syncing = true;
     notifyListeners();
 
     try {
@@ -52,7 +48,6 @@ class SyncService extends ChangeNotifier {
       debugPrint('Sync push error: $e');
     }
 
-    _syncing = false;
     notifyListeners();
   }
 
@@ -60,7 +55,6 @@ class SyncService extends ChangeNotifier {
 
   Future<void> pullAll() async {
     if (_uid == null) return;
-    _syncing = true;
     notifyListeners();
 
     try {
@@ -80,7 +74,6 @@ class SyncService extends ChangeNotifier {
       debugPrint('Sync pull error: $e');
     }
 
-    _syncing = false;
     notifyListeners();
   }
 

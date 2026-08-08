@@ -65,7 +65,22 @@ class StorageService {
     final currentCache = getCategoryCache(categoryId);
     final Map<String, Article> uniqueArticles = {};
     for (var a in currentCache) { uniqueArticles[a.id] = a; }
-    for (var a in newArticles) { uniqueArticles[a.id] = a; }
+    for (var a in newArticles) {
+      final existing = uniqueArticles[a.id];
+      if (existing != null) {
+        if (existing.isRead) a.isRead = true;
+        if (existing.isSaved) a.isSaved = true;
+        if (existing.isLiked) a.isLiked = true;
+        if (existing.isDisliked) a.isDisliked = true;
+        if (existing.fullContent != null) a.fullContent = existing.fullContent;
+        if (existing.translatedTitle != null) a.translatedTitle = existing.translatedTitle;
+        if (existing.translatedDescription != null) a.translatedDescription = existing.translatedDescription;
+        if (existing.translatedFullContent != null) a.translatedFullContent = existing.translatedFullContent;
+        if (existing.tagIds.isNotEmpty) a.tagIds = existing.tagIds;
+        a.readTimeSeconds = existing.readTimeSeconds;
+      }
+      uniqueArticles[a.id] = a;
+    }
     final List<Article> combinedList = uniqueArticles.values.toList();
     combinedList.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
     final limitedList = combinedList.take(200).toList();
@@ -105,9 +120,6 @@ class StorageService {
     return box.values.cast<Article>().where((a) => a.isSaved).toList();
   }
 
-  List<Article> getArticlesWithTag(String tagId) =>
-      getSavedArticles().where((a) => a.tagIds.contains(tagId)).toList();
-
   Future<void> toggleArticleTag(Article article, String tagId) async {
     if (!Hive.isBoxOpen(articlesBoxName)) return;
     final box = Hive.box(articlesBoxName);
@@ -127,5 +139,11 @@ class StorageService {
     if (!Hive.isBoxOpen(articlesBoxName)) return null;
     final box = Hive.box(articlesBoxName);
     return box.get(id) as Article?;
+  }
+
+  Future<void> saveArticleState(Article article) async {
+    if (!Hive.isBoxOpen(articlesBoxName)) return;
+    final box = Hive.box(articlesBoxName);
+    await box.put(article.id, article);
   }
 }

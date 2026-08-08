@@ -514,33 +514,4 @@ class BackgroundService {
   Future<void> cancelAllTasks() async {
     await Workmanager().cancelAll();
   }
-
-  Future<void> showTestNotification() async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'sowa_test',
-      'Test Sowy',
-      channelDescription: 'Kanał do testowania powiadomień',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
-
-await _notifications.show(
-    id: 999,
-    title: 'Test Wartownika 🦉',
-    body: 'Powiadomienia działają poprawnie. Sowa czuwa!',
-    notificationDetails: platformChannelSpecifics,
-  );
-
-    await NotificationHistory().add(NotificationEntry(
-      id: 'test_999',
-      title: 'Test Wartownika 🦉',
-      body: 'Powiadomienia działają poprawnie. Sowa czuwa!',
-      timestamp: DateTime.now(),
-      type: 'article',
-    ));
-  }
 }

@@ -61,7 +61,6 @@ class SettingsProvider with ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
   AppThemeVariant get themeVariant => _themeVariant;
   List<NewsCategory> get allCategories => _allCategories;
-  List<String> get activeCategoryIds => _activeCategoryIds;
   List<String> get enabledSourceIds => _enabledSourceIds;
   List<String> get favoriteTeams => _favoriteTeams;
   List<String> get keywords => _keywords;
@@ -197,7 +196,7 @@ class SettingsProvider with ChangeNotifier {
 
     if (_enabledSourceIds.isEmpty && _allSources.isNotEmpty) {
       _enabledSourceIds = _allSources.where((s) => s.isDefault).map((s) => s.id).toList();
-      await saveEnabledSources();
+      await _saveEnabledSources();
     }
 
     // 5b. Dodaj nowe domyślne źródła (np. portale miejskie), jeśli nie ma ich na liście
@@ -205,7 +204,7 @@ class SettingsProvider with ChangeNotifier {
     final newDefaults = defaultIds.where((id) => !_enabledSourceIds.contains(id)).toList();
     if (newDefaults.isNotEmpty) {
       _enabledSourceIds.addAll(newDefaults);
-      await saveEnabledSources();
+      await _saveEnabledSources();
     }
 
     // 6. Zainteresowania
@@ -336,7 +335,7 @@ class SettingsProvider with ChangeNotifier {
     await box.put(source.id, source);
     _allSources = List<NewsSource>.from(box.values);
     _enabledSourceIds.add(source.id);
-    await saveEnabledSources();
+    await _saveEnabledSources();
     notifyListeners();
   }
 
@@ -345,7 +344,7 @@ class SettingsProvider with ChangeNotifier {
     await box.delete(id);
     _allSources = List<NewsSource>.from(box.values);
     _enabledSourceIds.remove(id);
-    await saveEnabledSources();
+    await _saveEnabledSources();
     notifyListeners();
   }
 
@@ -356,7 +355,7 @@ class SettingsProvider with ChangeNotifier {
     await box.putAll({for (var s in NewsSource.defaultSources) s.id: s});
     _allSources = List<NewsSource>.from(box.values);
     _enabledSourceIds = _allSources.where((s) => s.isDefault).map((s) => s.id).toList();
-    await saveEnabledSources();
+    await _saveEnabledSources();
     notifyListeners();
   }
 
@@ -385,56 +384,14 @@ class SettingsProvider with ChangeNotifier {
 
   Future<void> toggleSource(String id) async {
     _enabledSourceIds.contains(id) ? _enabledSourceIds.remove(id) : _enabledSourceIds.add(id);
-    await saveEnabledSources();
-    notifyListeners();
-  }
-
-  Future<void> saveEnabledSources() async {
     await Hive.box(settingsBoxName).put(sourcesEnabledKey, _enabledSourceIds);
-  }
-
-  Future<void> toggleAllSourcesInCategory(String catId, bool enable) async {
-    final ids = _allSources.where((s) => s.categoryId == catId).map((s) => s.id).toList();
-    if (enable) {
-      for (var id in ids) { if (!_enabledSourceIds.contains(id)) _enabledSourceIds.add(id); }
-    } else {
-      _enabledSourceIds.removeWhere((id) => ids.contains(id));
-    }
-    await saveEnabledSources();
     notifyListeners();
   }
 
-  Future<void> toggleAllSources(bool enable) async {
-    _enabledSourceIds = enable ? _allSources.map((s) => s.id).toList() : [];
-    await saveEnabledSources();
-    notifyListeners();
-  }
-
-  Future<void> reorderCategories(int old, int neu) async {
-    if (neu > old) neu -= 1;
-    final item = _categoryOrder.removeAt(old);
-    _categoryOrder.insert(neu, item);
-    await Hive.box(settingsBoxName).put(categoryOrderKey, _categoryOrder);
-    notifyListeners();
-  }
-
-  List<NewsCategory> get allCategoriesOrdered {
-    List<NewsCategory> ordered = [];
-    for (var id in _categoryOrder) {
-      final f = _allCategories.where((c) => c.id == id).toList();
-      if (f.isNotEmpty) ordered.add(f.first);
-    }
-    for (var c in _allCategories) {
-      if (!ordered.any((o) => o.id == c.id)) ordered.add(c);
-    }
-    return ordered;
-  }
-
-  bool isCategoryActive(String id) => _activeCategoryIds.contains(id);
   bool isSourceActive(String id) => _enabledSourceIds.contains(id);
 
-  List<NewsCategory> get activeCategories {
-    return allCategoriesOrdered.where((c) => _activeCategoryIds.contains(c.id)).toList();
+  Future<void> _saveEnabledSources() async {
+    await Hive.box(settingsBoxName).put(sourcesEnabledKey, _enabledSourceIds);
   }
 
   Future<void> setLastTabIndex(int index) async {
@@ -485,20 +442,6 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setSelectedLeagues(List<String> ids) async {
     _selectedLeagueIds = List<String>.from(ids);
     await Hive.box(settingsBoxName).put(selectedLeaguesKey, _selectedLeagueIds);
-    notifyListeners();
-  }
-
-  Future<void> addCustomCategory(String name, IconData icon) async {
-    final id = 'custom_${name.toLowerCase().replaceAll(' ', '_')}';
-    if (_allCategories.any((c) => c.id == id)) return;
-    final newCategory = NewsCategory(id: id, name: name, iconCode: icon.codePoint, isCustom: true);
-    final box = Hive.box<NewsCategory>(categoriesBoxName);
-    await box.put(id, newCategory);
-    _allCategories = box.values.toList();
-    _categoryOrder.add(id);
-    await Hive.box(settingsBoxName).put(categoryOrderKey, _categoryOrder);
-    _activeCategoryIds.add(id);
-    await Hive.box(settingsBoxName).put(activeCategoriesKey, _activeCategoryIds);
     notifyListeners();
   }
 
@@ -562,9 +505,21 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  List<NewsCategory> get _allCategoriesOrdered {
+    List<NewsCategory> ordered = [];
+    for (var id in _categoryOrder) {
+      final f = _allCategories.where((c) => c.id == id).toList();
+      if (f.isNotEmpty) ordered.add(f.first);
+    }
+    for (var c in _allCategories) {
+      if (!ordered.any((o) => o.id == c.id)) ordered.add(c);
+    }
+    return ordered;
+  }
+
   List<NewsCategory> get topicCategories {
     final excluded = {'all', 'api_news', _mainTabSlot1, _mainTabSlot2};
-    return allCategoriesOrdered
+    return _allCategoriesOrdered
         .where((c) => !excluded.contains(c.id) && _activeCategoryIds.contains(c.id))
         .toList();
   }

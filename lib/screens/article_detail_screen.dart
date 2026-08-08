@@ -35,8 +35,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   late int _currentIndex;
   late final PageController _pageController;
 
-  DateTime? _lastSwipeUpTime;
-  bool _showSwipeHint = false;
   double _pointerStartY = 0;
   DateTime? _pointerStartTime;
 
@@ -158,20 +156,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   void _handleSwipeUp() {
     if (!_canFetch) return;
-    final now = DateTime.now();
-    if (_lastSwipeUpTime != null && now.difference(_lastSwipeUpTime!) < const Duration(milliseconds: 800)) {
-      setState(() {
-        _showSwipeHint = false;
-        _lastSwipeUpTime = null;
-      });
-      context.read<NewsProvider>().fetchFullArticleContent(_currentArticle);
-    } else {
-      _lastSwipeUpTime = now;
-      setState(() => _showSwipeHint = true);
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted && _showSwipeHint) setState(() => _showSwipeHint = false);
-      });
-    }
+    context.read<NewsProvider>().fetchFullArticleContent(_currentArticle);
   }
 
   void _scrollListener() {
@@ -189,9 +174,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   void _onPointerUp(PointerUpEvent event) {
     if (_pointerStartTime == null) return;
+    if (_scrollController.hasClients && _scrollController.position.isScrollingNotifier.value) return;
     final dy = event.position.dy - _pointerStartY;
     final dt = DateTime.now().difference(_pointerStartTime!).inMilliseconds;
-    if (dt < 500 && dy < -25) {
+    if (dt < 700 && dy < -20) {
       _handleSwipeUp();
     }
   }
@@ -232,8 +218,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           _markReadIfEnough(_stopwatch.elapsed.inSeconds);
           setState(() {
             _currentIndex = index;
-            _showSwipeHint = false;
-            _lastSwipeUpTime = null;
           });
           _stopwatch.reset();
           _stopwatch.start();
@@ -250,10 +234,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   Widget _buildArticlePage(BuildContext context, Article art) {
     return Scaffold(
-      body: Listener(
-        onPointerDown: _onPointerDown,
-        onPointerUp: _onPointerUp,
-        child: CustomScrollView(
+      body: Stack(
+        children: [
+          Listener(
+            onPointerDown: _onPointerDown,
+            onPointerUp: _onPointerUp,
+            child: CustomScrollView(
           controller: _scrollController,
           slivers: [
             SliverAppBar(
@@ -313,6 +299,21 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     ));
                   },
                 ),
+                Consumer<NewsProvider>(
+                  builder: (context, provider, child) {
+                    final hasFullContent = art.fullContent != null && art.fullContent!.trim().isNotEmpty;
+                    if (hasFullContent) return const SizedBox.shrink();
+                    return IconButton(
+                      icon: provider.isFetchingFullContent
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.refresh),
+                      onPressed: provider.isFetchingFullContent
+                          ? null
+                          : () => provider.fetchFullArticleContent(art),
+                      tooltip: 'Odśwież artykuł',
+                    );
+                  },
+                ),
               ],
             ),
 
@@ -369,10 +370,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 ),
               ),
             ),
+
           ],
         ),
       ),
-    );
+
+      _buildFloatingReactionButtons(context, art),
+    ],
+  ),
+);
   }
 
   Widget _buildContentBody(BuildContext context, NewsProvider provider, bool hasFullContent, Article art) {
@@ -398,6 +404,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
 
     if (!hasFullContent) {
+      final fetchFailed = provider.fetchFailedIds.contains(art.id);
       return Column(
         key: const ValueKey('snippet'),
         children: [
@@ -406,34 +413,37 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
             onTapUrl: (url) async { await _launchUrl(context, url); return true; },
           ),
-          if (_showSwipeHint) ...[
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E3238),
-                borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 24),
+          if (fetchFailed) ...[
+            Icon(Icons.error_outline, color: Colors.red.shade300, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              'Nie udało się pobrać treści',
+              style: TextStyle(color: Colors.red.shade300, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: provider.isFetchingFullContent
+                  ? null
+                  : () => provider.fetchFullArticleContent(art),
+              icon: provider.isFetchingFullContent
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.refresh, size: 18, color: AppTheme.accentFor(context)),
+              label: Text(
+                fetchFailed ? 'SPRÓBUJ PONOWNIE' : 'POBIERZ TREŚĆ',
+                style: TextStyle(fontSize: 12, color: AppTheme.accentFor(context)),
               ),
-              child: const Column(
-                children: [
-                  Icon(Icons.keyboard_arrow_up, color: Colors.white70, size: 28),
-                  SizedBox(height: 4),
-                  Text(
-                    'Przesuń jeszcze raz,\naby pobrać artykuł',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.accentFor(context),
+                side: BorderSide(color: AppTheme.accentFor(context).withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
             ),
-          ],
-          const SizedBox(height: 32),
-          _buildActionButtons(context, provider, art),
+          ),
+          const SizedBox(height: 16),
         ],
       );
     }
@@ -447,134 +457,99 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
           onTapUrl: (url) async { await _launchUrl(context, url); return true; },
         ),
-        const SizedBox(height: 32),
-        _buildActionButtons(context, provider, art),
       ],
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, NewsProvider provider, Article art) {
-    if (RssService.isGoogleNewsUrl(art.url)) {
-      return Center(
-        child: ElevatedButton.icon(
-          onPressed: () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
-            ));
-          },
-          icon: const Icon(Icons.auto_stories),
-          label: const Text('CZYTAJ ARTYKUŁ'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.accentFor(context),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+  Widget _buildFloatingReactionButtons(BuildContext context, Article art) {
+    final provider = context.read<NewsProvider>();
+    return Positioned(
+      bottom: 16,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () => provider.toggleLike(art),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: art.isLiked ? AppTheme.accentFor(context) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    art.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                    color: art.isLiked ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => provider.toggleDislike(art),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: art.isDisliked ? Colors.red : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    art.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
+                    color: art.isDisliked ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () async {
+                  if (!art.isSaved) {
+                    await provider.toggleSaved(art);
+                    if (context.mounted) {
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => TagPickerBottomSheet(article: art),
+                      );
+                    }
+                  } else {
+                    await provider.toggleSaved(art);
+                  }
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: art.isSaved ? Colors.blue : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    art.isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    color: art.isSaved ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      );
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        children: [
-          ElevatedButton.icon(
-            onPressed: provider.isFetchingFullContent
-                ? null
-                : () => provider.fetchFullArticleContent(art),
-            icon: provider.isFetchingFullContent
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.auto_stories, size: 16),
-            label: Text(
-              provider.fetchFailedIds.contains(art.id) ? 'SPRÓBUJ PONOWNIE' : 'PEŁNA TREŚĆ',
-              style: const TextStyle(fontSize: 12),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accentFor(context),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
-              ));
-            },
-            icon: const Icon(Icons.open_in_browser, size: 16),
-            label: const Text('W APLIKACJI', style: TextStyle(fontSize: 12)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.accentFor(context),
-              side: BorderSide(color: AppTheme.accentFor(context)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => provider.toggleLike(art),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: art.isLiked ? AppTheme.accentFor(context) : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                art.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                color: art.isLiked ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => provider.toggleDislike(art),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: art.isDisliked ? Colors.red : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                art.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
-                color: art.isDisliked ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () async {
-              if (!art.isSaved) {
-                await provider.toggleSaved(art);
-                if (context.mounted) {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => TagPickerBottomSheet(article: art),
-                  );
-                }
-              } else {
-                await provider.toggleSaved(art);
-              }
-            },
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: art.isSaved ? Colors.blue : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                art.isSaved ? Icons.bookmark : Icons.bookmark_border,
-                color: art.isSaved ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                size: 20,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

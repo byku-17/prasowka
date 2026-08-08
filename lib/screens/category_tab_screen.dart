@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/models/article.dart';
+import 'package:prasowka/models/news_source.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/screens/article_detail_screen.dart';
@@ -63,9 +64,29 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
     final allSources = settings.allSources;
     final enabledIds = settings.enabledSourceIds;
 
-    final catSources = allSources
-        .where((s) => s.categoryId == widget.categoryId)
-        .toList();
+    List<NewsSource> catSources;
+    if (widget.categoryId == 'warsaw') {
+      final city = settings.preferredCity;
+      catSources = [];
+      final localSourceId = NewsSource.cityLocalSourceId[city];
+      if (localSourceId != null) {
+        final localSource = allSources.firstWhere(
+          (s) => s.id == localSourceId,
+          orElse: () => NewsSource(id: '', name: '', rssUrl: '', categoryId: 'warsaw'),
+        );
+        if (localSource.id.isNotEmpty) catSources.add(localSource);
+      }
+      catSources.add(NewsSource(
+        id: 'google_news_$city',
+        name: 'Google News - $city',
+        rssUrl: NewsSource.googleNewsCityUrl(city),
+        categoryId: 'warsaw',
+      ));
+    } else {
+      catSources = allSources
+          .where((s) => s.categoryId == widget.categoryId)
+          .toList();
+    }
 
     final category = settings.getCategoryById(widget.categoryId);
     if (category == null) return;
@@ -182,7 +203,7 @@ class _CategoryTabScreenState extends State<CategoryTabScreen> {
                               MaterialPageRoute(
                                 builder: (_) => ArticleDetailScreen(
                                   article: article,
-                                  articles: articles,
+                                  articles: sortedArticles,
                                   currentIndex: index,
                                 ),
                               ),

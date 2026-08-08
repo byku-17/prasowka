@@ -36,8 +36,6 @@ class NewsProvider with ChangeNotifier {
   List<Article> get articles => _articlesMap[_selectedCategory.id] ?? [];
   List<Article> get recommendedArticles => _recommendedArticles;
   bool get isLoading => _loadingMap[_selectedCategory.id] ?? false;
-  String? get errorMessage => _errorMap[_selectedCategory.id];
-  NewsCategory get selectedCategory => _selectedCategory;
   bool get isFetchingFullContent => _isFetchingFullContent;
   bool get isTranslating => _isTranslating;
   Set<String> get fetchFailedIds => _fetchFailedIds;
@@ -167,6 +165,8 @@ class NewsProvider with ChangeNotifier {
                 article.isDisliked = stored.isDisliked;
                 article.fullContent = stored.fullContent;
                 article.tagIds = stored.tagIds;
+                article.isRead = stored.isRead;
+                article.readTimeSeconds = stored.readTimeSeconds;
               }
               _interestService.calculateScore(article);
             }
@@ -217,7 +217,7 @@ class NewsProvider with ChangeNotifier {
   }
 
   List<Article> getRecommendedFrom(List<Article> candidates) {
-    final filtered = candidates.where((a) => !a.isDisliked).toList();
+    final filtered = candidates.where((a) => !a.isDisliked && !a.isRead).toList();
     if (filtered.isEmpty) return [];
     
     final List<MapEntry<Article, double>> scored = filtered.map((a) {
@@ -231,7 +231,11 @@ class NewsProvider with ChangeNotifier {
   }
 
   void _calculateRecommendations() {
-    final allArticles = allLoadedArticles.where((a) => !a.isDisliked).toList();
+    final Map<String, Article> unique = {};
+    for (var a in allLoadedArticles) {
+      if (!a.isDisliked && !a.isRead) unique[a.id] = a;
+    }
+    final allArticles = unique.values.toList();
     if (allArticles.isEmpty) {
       _recommendedArticles = [];
       return;
@@ -377,12 +381,9 @@ class NewsProvider with ChangeNotifier {
   void markArticleRead(Article article) {
     if (article.isRead) return;
     article.isRead = true;
-    final s = _storageService.getStoredArticle(article.id);
-    if (s != null) {
-      s.isRead = true;
-      s.readTimeSeconds = article.readTimeSeconds;
-      s.save();
-    }
+    _storageService.saveArticleState(article);
+    article.cachedScore = null;
+    _calculateRecommendations();
     notifyListeners();
   }
 
@@ -390,9 +391,6 @@ class NewsProvider with ChangeNotifier {
     await _storageService.toggleSaved(article);
     if (article.isSaved) {
       await _interestService.processInteraction(article, 2.0);
-      if (article.tagIds.isEmpty) {
-        await _storageService.toggleArticleTag(article, 'to_read');
-      }
     } else {
       await _interestService.processInteraction(article, -2.0);
     }
@@ -415,20 +413,15 @@ class NewsProvider with ChangeNotifier {
     }
   }
 
-  void setCategory(NewsCategory category) {
-    if (_selectedCategory.id == category.id) return;
-    _selectedCategory = category;
-    notifyListeners();
-  }
-
   Future<void> fetchFullArticleContent(Article article) async {
     if (RssService.isGoogleNewsUrl(article.url)) return;
+    if (article.fullContent != null && article.fullContent!.trim().isNotEmpty) return;
     _isFetchingFullContent = true;
     _fetchFailedIds.remove(article.id);
     notifyListeners();
     try {
       final full = await _readerService.extractFullContent(article.url);
-      if (full != null && full.trim().isNotEmpty) {
+      if (full != null && full.trim().length > 50) {
         article.fullContent = full;
         final s = _storageService.getStoredArticle(article.id);
         if (s != null) { s.fullContent = full; await s.save(); }
@@ -484,7 +477,13 @@ class NewsProvider with ChangeNotifier {
 
   List<Article> get allLoadedArticles {
     final Map<String, Article> unique = {};
-    for (var list in _articlesMap.values) { for (var a in list) { unique[a.id] = a; } }
+    for (var list in _articlesMap.values) {
+      for (var a in list) {
+        final existing = unique[a.id];
+        if (existing != null && existing.isRead) continue;
+        unique[a.id] = a;
+      }
+    }
     return unique.values.toList();
   }
 
@@ -502,8 +501,6 @@ class NewsProvider with ChangeNotifier {
   void _invalidateSavedCache() {
     _cachedSavedArticles = null;
   }
-
-  List<Article> getArticlesWithTag(String tagId) => _storageService.getArticlesWithTag(tagId);
 
   Future<void> toggleArticleTag(Article article, String tagId) async {
     await _storageService.toggleArticleTag(article, tagId);

@@ -3,8 +3,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
-import 'package:prasowka/services/image_cache_manager.dart';
 import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/widgets/tag_picker_bottom_sheet.dart';
+import 'package:prasowka/services/image_cache_manager.dart';
 import 'package:prasowka/providers/tag_provider.dart';
 
 class ArticleCard extends StatelessWidget {
@@ -435,12 +436,7 @@ class ArticleCard extends StatelessWidget {
             selector: (p) => article.isDisliked,
             onPressed: () => context.read<NewsProvider>().toggleDislike(article),
           ),
-          _ReactionButton(
-            iconBuilder: (isActive) => isActive ? Icons.bookmark : Icons.bookmark_border,
-            colorBuilder: (isActive) => isActive ? Colors.blue : Colors.grey,
-            selector: (p) => article.isSaved,
-            onPressed: () => context.read<NewsProvider>().toggleSaved(article),
-          ),
+          _BookmarkReactionButton(article: article),
         ],
       ),
     );
@@ -464,13 +460,7 @@ class ArticleCard extends StatelessWidget {
           onPressed: () => context.read<NewsProvider>().toggleDislike(article),
           small: true,
         ),
-        _ReactionButton(
-          iconBuilder: (isActive) => isActive ? Icons.bookmark : Icons.bookmark_border,
-          colorBuilder: (isActive) => isActive ? Colors.blue : Colors.grey,
-          selector: (p) => article.isSaved,
-          onPressed: () => context.read<NewsProvider>().toggleSaved(article),
-          small: true,
-        ),
+        _BookmarkReactionButton(article: article, small: true),
       ],
     );
   }
@@ -482,6 +472,68 @@ class ArticleCard extends StatelessWidget {
     if (difference.inHours > 0) return '${difference.inHours}h';
     if (difference.inMinutes > 0) return '${difference.inMinutes}m';
     return 'teraz';
+  }
+}
+
+class _BookmarkReactionButton extends StatefulWidget {
+  final Article article;
+  final bool small;
+  const _BookmarkReactionButton({required this.article, this.small = false});
+
+  @override
+  State<_BookmarkReactionButton> createState() => _BookmarkReactionButtonState();
+}
+
+class _BookmarkReactionButtonState extends State<_BookmarkReactionButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<NewsProvider, bool>(
+      selector: (_, p) => widget.article.isSaved,
+      builder: (context, isActive, child) {
+        return GestureDetector(
+          onTap: () {
+            setState(() => _isPressed = true);
+            context.read<NewsProvider>().toggleSaved(widget.article);
+            Future.delayed(const Duration(milliseconds: 150), () {
+              if (mounted) setState(() => _isPressed = false);
+            });
+          },
+          onLongPress: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => TagPickerBottomSheet(article: widget.article),
+            );
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.small ? 4 : 8,
+              vertical: widget.small ? 2 : 6,
+            ),
+            child: AnimatedScale(
+              scale: _isPressed ? 1.3 : 1.0,
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeInOut,
+              child: Icon(
+                isActive ? Icons.bookmark : Icons.bookmark_border,
+                color: isActive ? Colors.blue : Colors.grey,
+                size: widget.small ? 16 : 22,
+                shadows: isActive ? [
+                  Shadow(
+                    color: Colors.blue.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                  )
+                ] : null,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
