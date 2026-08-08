@@ -62,190 +62,26 @@ void callbackDispatcher() {
       await interest.init();
       await NotificationHistory().init();
 
-      // Sprawdź dzienny limit
       final dailyCount = await _getDailyCount();
       if (dailyCount >= _maxNotificationsPerDay) {
         debugPrint('Sowa Wartownik: Dzienny limit $_maxNotificationsPerDay osiągnięty ($dailyCount)');
         return Future.value(true);
       }
 
-      // --- POWIADOMIENIA RSS ---
-      final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
+      notifiedCount += await _handleRssNotifications(storage, interest, rss, notifiedCount);
 
-      for (var source in sources) {
-        try {
-          final articles = await rss.fetchArticles(source);
-          for (var article in articles) {
-            if (!storage.wasNotified(article.id)) {
-              final score = interest.calculateScore(article);
-              
-              if (score >= 3.0) {
-                await _showNotification(article);
-                await storage.markAsNotified(article.id);
-                notifiedCount++;
-                if (notifiedCount >= _maxNotificationsPerRun) {
-                  debugPrint('Sowa Wartownik: Osiągnięto limit $_maxNotificationsPerRun powiadomień na run');
-                  return Future.value(true);
-                }
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('Sowa Wartownik: Błąd pobierania źródła ${source.name}: $e');
-        }
-      }
-
-      // --- POWIADOMIENIA SPORTOWE (WSPÓLNY FETCH) ---
       List<SportEvent> sportEvents = [];
       try {
-        const settingsBoxName = 'settings';
-        if (Hive.isBoxOpen(settingsBoxName)) {
-          final sportsService = SportsService();
-          sportEvents = await sportsService.fetchAllEvents();
+        if (Hive.isBoxOpen('settings')) {
+          sportEvents = await SportsService().fetchAllEvents();
         }
       } catch (e) {
         debugPrint('Sowa Wartownik: Błąd pobierania danych sportowych: $e');
       }
 
-      // --- POWIADOMIENIA DLA FAVORITÓW ---
-      try {
-        const settingsBoxName = 'settings';
-        if (Hive.isBoxOpen(settingsBoxName)) {
-          final settingsBox = Hive.box(settingsBoxName);
-          final favoriteTeams = List<String>.from(settingsBox.get('favoriteTeams', defaultValue: <String>[]));
-
-          if (favoriteTeams.isNotEmpty && sportEvents.isNotEmpty) {
-            if (!Hive.isBoxOpen(_sportsNotifiedBoxName)) {
-              await Hive.openBox(_sportsNotifiedBoxName);
-            }
-            final sportsBox = Hive.box(_sportsNotifiedBoxName);
-            final normalizedFavs = favoriteTeams.map((f) => TextUtils.normalize(f)).toList();
-            final now = DateTime.now();
-
-            for (var event in sportEvents) {
-              if (event is! MatchEvent) continue;
-              final searchable = TextUtils.normalize("${event.homeTeam} ${event.awayTeam} ${event.competition}");
-              if (!normalizedFavs.any((f) => searchable.contains(f))) continue;
-
-              bool shouldNotify = false;
-              if (event.status == EventStatus.live) {
-                shouldNotify = true;
-              } else if (event.status == EventStatus.scheduled) {
-                // Sprawdź czy to na pewno dzisiaj (zapobiega alertom o tej samej godzinie jutro)
-                final isToday = event.date.year == now.year &&
-                               event.date.month == now.month &&
-                               event.date.day == now.day;
-                               
-                if (isToday) {
-                  // Porównuj czas (godzina:minuta)
-                  final eventMinutes = event.date.hour * 60 + event.date.minute;
-                  final nowMinutes = now.hour * 60 + now.minute;
-                  final diffMinutes = eventMinutes - nowMinutes;
-                  if (diffMinutes >= 0 && diffMinutes <= 15) shouldNotify = true;
-                }
-              }
-              if (!shouldNotify) continue;
-
-              final notifiedKey = '${event.id}_${event.date.year}_${event.date.month}_${event.date.day}';
-              if (sportsBox.get(notifiedKey, defaultValue: false) == true) continue;
-
-              await _showSportNotification(event);
-              await sportsBox.put(notifiedKey, true);
-              notifiedCount++;
-              if (notifiedCount >= _maxNotificationsPerRun) break;
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('Sowa Wartownik: Błąd powiadomień sportowych: $e');
-      }
-
-      // --- POWIADOMIENIA LIVE SCORE (PRZYPINANIE) ---
-      try {
-        if (!Hive.isBoxOpen(_pinnedMatchesBoxName)) {
-          await Hive.openBox(_pinnedMatchesBoxName);
-        }
-        final pinnedBox = Hive.box(_pinnedMatchesBoxName);
-        final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toList();
-
-        if (pinnedIds.isNotEmpty && sportEvents.isNotEmpty) {
-          if (!Hive.isBoxOpen(_pinnedScoresBoxName)) {
-            await Hive.openBox(_pinnedScoresBoxName);
-          }
-          final scoresBox = Hive.box(_pinnedScoresBoxName);
-
-          for (var event in sportEvents) {
-            if (event is! MatchEvent) continue;
-            if (!pinnedIds.contains(event.id)) continue;
-            if (event.status != EventStatus.live) continue;
-
-            final prevScore = scoresBox.get(event.id, defaultValue: '') as String;
-            final currentScore = event.score;
-
-            if (prevScore.isNotEmpty && prevScore != currentScore) {
-              // Wynik się zmienił → powiadomienie o golu
-              await _showGoalNotification(event, prevScore, currentScore);
-              notifiedCount++;
-            }
-
-            // Zapisz aktualny wynik
-            await scoresBox.put(event.id, currentScore);
-
-            if (notifiedCount >= _maxNotificationsPerRun) break;
-          }
-        }
-      } catch (e) {
-        debugPrint('Sowa Wartownik: Błąd powiadomień pinned: $e');
-      }
-
-      // --- PRZYPOMNIENIA ME CZOWE (5 min przed startem) ---
-      try {
-        const remindersBoxName = 'match_reminders_notified';
-        if (!Hive.isBoxOpen(remindersBoxName)) {
-          await Hive.openBox(remindersBoxName);
-        }
-        final remindersBox = Hive.box(remindersBoxName);
-
-        if (!Hive.isBoxOpen(_pinnedMatchesBoxName)) {
-          await Hive.openBox(_pinnedMatchesBoxName);
-        }
-        final pinnedBox = Hive.box(_pinnedMatchesBoxName);
-        final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toSet();
-
-        if (pinnedIds.isNotEmpty && sportEvents.isNotEmpty) {
-          final now = DateTime.now();
-
-          for (var event in sportEvents) {
-            if (event is! MatchEvent) continue;
-            if (!pinnedIds.contains(event.id)) continue;
-            if (event.status != EventStatus.scheduled) continue;
-
-            final eventTime = event.date;
-            
-            // Sprawdź czy to na pewno dzisiaj (zapobiega reminderom o tej samej godzinie jutro)
-            final isToday = eventTime.year == now.year &&
-                           eventTime.month == now.month &&
-                           eventTime.day == now.day;
-                           
-            if (!isToday) continue;
-
-            final diffMinutes = eventTime.difference(now).inMinutes;
-
-            // Wyślij przypomnienie 5 minut przed meczem (w oknie 3-7 min)
-            if (diffMinutes >= 3 && diffMinutes <= 7) {
-              final reminderKey = '${event.id}_reminder_${event.date.day}_${event.date.month}';
-              if (remindersBox.get(reminderKey, defaultValue: false) == true) continue;
-
-              await _showMatchReminder(event);
-              await remindersBox.put(reminderKey, true);
-              notifiedCount++;
-              if (notifiedCount >= _maxNotificationsPerRun) break;
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('Sowa Wartownik: Błąd przypomnień meczowych: $e');
-      }
+      notifiedCount += await _handleFavoriteNotifications(sportEvents, notifiedCount);
+      notifiedCount += await _handlePinnedScoreNotifications(sportEvents, notifiedCount);
+      notifiedCount += await _handleMatchReminders(sportEvents, notifiedCount);
 
       debugPrint('Sowa Wartownik: Zakończono. Wysłano $notifiedCount powiadomień');
       return Future.value(true);
@@ -254,6 +90,157 @@ void callbackDispatcher() {
       return Future.value(false);
     }
   });
+}
+
+Future<int> _handleRssNotifications(StorageService storage, UserInterestService interest, RssService rss, int startCount) async {
+  int count = 0;
+  final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
+
+  for (var source in sources) {
+    try {
+      final articles = await rss.fetchArticles(source);
+      for (var article in articles) {
+        if (!storage.wasNotified(article.id)) {
+          final score = interest.calculateScore(article);
+          if (score >= 3.0) {
+            await _showNotification(article);
+            await storage.markAsNotified(article.id);
+            count++;
+            if (startCount + count >= _maxNotificationsPerRun) return count;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Sowa Wartownik: Błąd pobierania źródła ${source.name}: $e');
+    }
+  }
+  return count;
+}
+
+Future<int> _handleFavoriteNotifications(List<SportEvent> sportEvents, int startCount) async {
+  int count = 0;
+  try {
+    if (!Hive.isBoxOpen('settings')) return 0;
+    final settingsBox = Hive.box('settings');
+    final favoriteTeams = List<String>.from(settingsBox.get('favoriteTeams', defaultValue: <String>[]));
+    if (favoriteTeams.isEmpty || sportEvents.isEmpty) return 0;
+
+    if (!Hive.isBoxOpen(_sportsNotifiedBoxName)) {
+      await Hive.openBox(_sportsNotifiedBoxName);
+    }
+    final sportsBox = Hive.box(_sportsNotifiedBoxName);
+    final normalizedFavs = favoriteTeams.map((f) => TextUtils.normalize(f)).toList();
+    final now = DateTime.now();
+
+    for (var event in sportEvents) {
+      if (event is! MatchEvent) continue;
+      final searchable = TextUtils.normalize("${event.homeTeam} ${event.awayTeam} ${event.competition}");
+      if (!normalizedFavs.any((f) => searchable.contains(f))) continue;
+
+      bool shouldNotify = false;
+      if (event.status == EventStatus.live) {
+        shouldNotify = true;
+      } else if (event.status == EventStatus.scheduled) {
+        final isToday = event.date.year == now.year && event.date.month == now.month && event.date.day == now.day;
+        if (isToday) {
+          final diffMinutes = (event.date.hour * 60 + event.date.minute) - (now.hour * 60 + now.minute);
+          if (diffMinutes >= 0 && diffMinutes <= 15) shouldNotify = true;
+        }
+      }
+      if (!shouldNotify) continue;
+
+      final notifiedKey = '${event.id}_${event.date.year}_${event.date.month}_${event.date.day}';
+      if (sportsBox.get(notifiedKey, defaultValue: false) == true) continue;
+
+      await _showSportNotification(event);
+      await sportsBox.put(notifiedKey, true);
+      count++;
+      if (startCount + count >= _maxNotificationsPerRun) break;
+    }
+  } catch (e) {
+    debugPrint('Sowa Wartownik: Błąd powiadomień sportowych: $e');
+  }
+  return count;
+}
+
+Future<int> _handlePinnedScoreNotifications(List<SportEvent> sportEvents, int startCount) async {
+  int count = 0;
+  try {
+    if (!Hive.isBoxOpen(_pinnedMatchesBoxName)) {
+      await Hive.openBox(_pinnedMatchesBoxName);
+    }
+    final pinnedBox = Hive.box(_pinnedMatchesBoxName);
+    final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toList();
+    if (pinnedIds.isEmpty || sportEvents.isEmpty) return 0;
+
+    if (!Hive.isBoxOpen(_pinnedScoresBoxName)) {
+      await Hive.openBox(_pinnedScoresBoxName);
+    }
+    final scoresBox = Hive.box(_pinnedScoresBoxName);
+
+    for (var event in sportEvents) {
+      if (event is! MatchEvent) continue;
+      if (!pinnedIds.contains(event.id)) continue;
+      if (event.status != EventStatus.live) continue;
+
+      final prevScore = scoresBox.get(event.id, defaultValue: '') as String;
+      final currentScore = event.score;
+
+      if (prevScore.isNotEmpty && prevScore != currentScore) {
+        await _showGoalNotification(event, prevScore, currentScore);
+        count++;
+      }
+
+      await scoresBox.put(event.id, currentScore);
+      if (startCount + count >= _maxNotificationsPerRun) break;
+    }
+  } catch (e) {
+    debugPrint('Sowa Wartownik: Błąd powiadomień pinned: $e');
+  }
+  return count;
+}
+
+Future<int> _handleMatchReminders(List<SportEvent> sportEvents, int startCount) async {
+  int count = 0;
+  try {
+    const remindersBoxName = 'match_reminders_notified';
+    if (!Hive.isBoxOpen(remindersBoxName)) {
+      await Hive.openBox(remindersBoxName);
+    }
+    final remindersBox = Hive.box(remindersBoxName);
+
+    if (!Hive.isBoxOpen(_pinnedMatchesBoxName)) {
+      await Hive.openBox(_pinnedMatchesBoxName);
+    }
+    final pinnedBox = Hive.box(_pinnedMatchesBoxName);
+    final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toSet();
+    if (pinnedIds.isEmpty || sportEvents.isEmpty) return 0;
+
+    final now = DateTime.now();
+
+    for (var event in sportEvents) {
+      if (event is! MatchEvent) continue;
+      if (!pinnedIds.contains(event.id)) continue;
+      if (event.status != EventStatus.scheduled) continue;
+
+      final isToday = event.date.year == now.year && event.date.month == now.month && event.date.day == now.day;
+      if (!isToday) continue;
+
+      final diffMinutes = event.date.difference(now).inMinutes;
+      if (diffMinutes >= 3 && diffMinutes <= 7) {
+        final reminderKey = '${event.id}_reminder_${event.date.day}_${event.date.month}';
+        if (remindersBox.get(reminderKey, defaultValue: false) == true) continue;
+
+        await _showMatchReminder(event);
+        await remindersBox.put(reminderKey, true);
+        count++;
+        if (startCount + count >= _maxNotificationsPerRun) break;
+      }
+    }
+  } catch (e) {
+    debugPrint('Sowa Wartownik: Błąd przypomnień meczowych: $e');
+  }
+  return count;
 }
 
 Future<void> _showNotification(Article article) async {
@@ -409,31 +396,23 @@ Future<void> _showMatchReminder(MatchEvent event) async {
   final title = '⏰ Za chwilę! — ${event.competition}';
   final body = '${event.homeTeam} vs ${event.awayTeam} zaczyna się za kilka minut!';
 
-  final flashscoreUrl = _buildFlashscoreMatchUrl(event);
-
   await flutterLocalNotificationsPlugin.show(
     id: event.id.hashCode.abs() + 7777,
     title: title,
     body: body,
     notificationDetails: platformChannelSpecifics,
-    payload: flashscoreUrl,
+    payload: 'https://www.flashscore.com',
   );
 
   await NotificationHistory().add(NotificationEntry(
     id: 'sport_reminder_${event.id}',
     title: title,
     body: body,
-    url: flashscoreUrl,
+    url: 'https://www.flashscore.com',
     timestamp: DateTime.now(),
     type: 'sport',
   ));
   await _incrementDailyCount();
-}
-
-String _buildFlashscoreMatchUrl(MatchEvent event) {
-  // Flashscore nie ma bezpośrednich URL-i do meczów bez ID,
-  // ale main page zawsze pokazuje nadchodzące mecze
-  return 'https://www.flashscore.com';
 }
 
 class BackgroundService {
