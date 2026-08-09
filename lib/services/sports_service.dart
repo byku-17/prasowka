@@ -99,6 +99,33 @@ class SportsService {
     }
     lastLogs.add('ŁĄCZNIE przed dedup: ${allEvents.length}');
 
+    // Normalizuj daty PRZED dedup — ESPN używa roku bieżącego, a
+    // SportDB/TSDB roku referencyjnego (2024). Ten sam mecz z różnych
+    // źródeł musi mieć ten sam klucz kanoniczny, inaczej zostaje zdublowany.
+    if (now.year != referenceNow.year) {
+      final normalized = <SportEvent>[];
+      for (final event in allEvents) {
+        if (event is MatchEvent) {
+          final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
+          normalized.add(MatchEvent(
+            id: event.id, type: event.type, date: newDate, status: event.status,
+            homeTeam: event.homeTeam, awayTeam: event.awayTeam, score: event.score,
+            competition: event.competition, homeLogo: event.homeLogo, awayLogo: event.awayLogo,
+            time: event.time, freshness: event.freshness, fetchedAtUtc: event.fetchedAtUtc,
+          ));
+        } else if (event is RaceEvent) {
+          final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
+          normalized.add(RaceEvent(
+            id: event.id, type: event.type, date: newDate, status: event.status,
+            raceName: event.raceName, circuitName: event.circuitName, countryCode: event.countryCode,
+          ));
+        }
+      }
+      allEvents
+        ..clear()
+        ..addAll(normalized);
+    }
+
     // Deduplicate by canonicalKey (cross-source dedup)
     // Ten sam mecz z SportDB/ESPN/TSDB dostaje ten sam klucz
     final Map<String, SportEvent> unique = {};
@@ -129,29 +156,6 @@ class SportsService {
       unique.remove(id);
     }
     unique.addAll(canonicalToBest);
-
-    // Normalizuj daty: referenceNow używ roku 2024, ale UI porównuje z2026
-    if (now.year != referenceNow.year) {
-      final Map<String, SportEvent> updates = {};
-      for (final event in unique.values) {
-        if (event is MatchEvent) {
-          final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
-          updates[event.id] = MatchEvent(
-            id: event.id, type: event.type, date: newDate, status: event.status,
-            homeTeam: event.homeTeam, awayTeam: event.awayTeam, score: event.score,
-            competition: event.competition, homeLogo: event.homeLogo, awayLogo: event.awayLogo,
-            time: event.time, freshness: event.freshness, fetchedAtUtc: event.fetchedAtUtc,
-          );
-        } else if (event is RaceEvent) {
-          final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
-          updates[event.id] = RaceEvent(
-            id: event.id, type: event.type, date: newDate, status: event.status,
-            raceName: event.raceName, circuitName: event.circuitName, countryCode: event.countryCode,
-          );
-        }
-      }
-      unique.addAll(updates);
-    }
 
     lastLogs.add('ŁĄCZNIE po dedup: ${unique.length}');
     return unique.values.toList();
