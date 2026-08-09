@@ -62,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ─── SEKCJA KONTO ───
 
-  List<_SettingsItem> _buildAccountItems(AuthService auth, SyncService sync) {
+  List<_SettingsItem> _buildAccountItems(AuthService auth, SyncService sync, SettingsProvider settings) {
     final items = <_SettingsItem>[];
     if (auth.isLoggedIn) {
       items.add(_SettingsItem(
@@ -99,6 +99,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Zakres danych wysyłanych do chmury',
         section: 'Konto',
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncScopePage())),
+      ));
+      items.add(_SettingsItem(
+        icon: Icons.sync,
+        title: 'Automatyczna synchronizacja',
+        subtitle: 'Sync przy otwarciu i powrocie do aplikacji',
+        section: 'Konto',
+        onTap: () => settings.setAutoSyncEnabled(!settings.autoSyncEnabled),
+        trailing: Switch(
+          value: settings.autoSyncEnabled,
+          onChanged: (val) => settings.setAutoSyncEnabled(val),
+          activeThumbColor: AppTheme.accentFor(context),
+        ),
       ));
       items.add(_SettingsItem(
         icon: Icons.logout,
@@ -658,7 +670,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final settings = context.watch<SettingsProvider>();
 
     final allItems = [
-      ..._buildAccountItems(auth, sync),
+      ..._buildAccountItems(auth, sync, settings),
       ..._buildAppearanceItems(settings),
       ..._buildNotificationItems(settings),
       ..._buildContentItems(settings),

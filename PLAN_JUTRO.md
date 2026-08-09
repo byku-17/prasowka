@@ -42,7 +42,7 @@
 
 ### DANE I NARZĘDZIA (~13h)
 - [x] Co synchronizować: wybór zakresu (źródła, kategorie, zainteresowania, tagi, przeczytane, ustawienia) (~4h)
-- [ ] Automatyczna synchronizacja włącz/wyłącz (~5h)
+- [x] Automatyczna synchronizacja włącz/wyłącz (~5h)
 - [x] Resetuj ustawienia aplikacji (~2h)
 - [x] Usuń lokalne dane (~2h)
 

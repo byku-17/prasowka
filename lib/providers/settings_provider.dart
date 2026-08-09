@@ -54,6 +54,7 @@ class SettingsProvider with ChangeNotifier {
   static const String articleSortPopular = 'popular';
   static const String excludedWordsKey = 'excludedWords';
   static const String syncScopeKey = 'syncScope';
+  static const String autoSyncEnabledKey = 'autoSyncEnabled';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -87,6 +88,7 @@ class SettingsProvider with ChangeNotifier {
   String _articleSortOrder = articleSortUnread;
   List<String> _excludedWords = [];
   List<String> _syncScope = List<String>.from(SyncService.allScopes);
+  bool _autoSyncEnabled = false;
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -125,6 +127,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> get excludedWords => List.unmodifiable(_excludedWords);
   List<String> get syncScope => List.unmodifiable(_syncScope);
   bool isSyncScopeEnabled(String scope) => _syncScope.contains(scope);
+  bool get autoSyncEnabled => _autoSyncEnabled;
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -223,6 +226,7 @@ class SettingsProvider with ChangeNotifier {
     } else {
       _syncScope = List<String>.from(SyncService.allScopes);
     }
+    _autoSyncEnabled = settingsBox.get(autoSyncEnabledKey, defaultValue: false) as bool;
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -701,6 +705,13 @@ class SettingsProvider with ChangeNotifier {
       _syncScope.remove(scope);
     }
     await Hive.box(settingsBoxName).put(syncScopeKey, _syncScope);
+    notifyListeners();
+  }
+
+  /// Automatyczna synchronizacja przy otwarciu i powrocie do aplikacji.
+  Future<void> setAutoSyncEnabled(bool enabled) async {
+    _autoSyncEnabled = enabled;
+    await Hive.box(settingsBoxName).put(autoSyncEnabledKey, enabled);
     notifyListeners();
   }
 
