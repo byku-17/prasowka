@@ -122,6 +122,8 @@ Future<int> _handleFavoriteNotifications(List<SportEvent> sportEvents, int start
   try {
     if (!Hive.isBoxOpen('settings')) return 0;
     final settingsBox = Hive.box('settings');
+    final resultEnabled = settingsBox.get('sportResultNotifications', defaultValue: true) as bool;
+    final startEnabled = settingsBox.get('sportStartNotifications', defaultValue: true) as bool;
     final favoriteTeams = List<String>.from(settingsBox.get('favoriteTeams', defaultValue: <String>[]));
     if (favoriteTeams.isEmpty || sportEvents.isEmpty) return 0;
 
@@ -139,8 +141,8 @@ Future<int> _handleFavoriteNotifications(List<SportEvent> sportEvents, int start
 
       bool shouldNotify = false;
       if (event.status == EventStatus.live) {
-        shouldNotify = true;
-      } else if (event.status == EventStatus.scheduled) {
+        shouldNotify = resultEnabled;
+      } else if (event.status == EventStatus.scheduled && startEnabled) {
         final isToday = event.date.year == now.year && event.date.month == now.month && event.date.day == now.day;
         if (isToday) {
           final diffMinutes = (event.date.hour * 60 + event.date.minute) - (now.hour * 60 + now.minute);
@@ -172,6 +174,10 @@ Future<int> _handlePinnedScoreNotifications(List<SportEvent> sportEvents, int st
     final pinnedBox = Hive.box(_pinnedMatchesBoxName);
     final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toList();
     if (pinnedIds.isEmpty || sportEvents.isEmpty) return 0;
+
+    if (!Hive.isBoxOpen('settings')) return 0;
+    final resultEnabled = Hive.box('settings').get('sportResultNotifications', defaultValue: true) as bool;
+    if (!resultEnabled) return 0;
 
     if (!Hive.isBoxOpen(_pinnedScoresBoxName)) {
       await Hive.openBox(_pinnedScoresBoxName);
@@ -215,6 +221,10 @@ Future<int> _handleMatchReminders(List<SportEvent> sportEvents, int startCount) 
     final pinnedBox = Hive.box(_pinnedMatchesBoxName);
     final pinnedIds = pinnedBox.keys.map((k) => k.toString()).toSet();
     if (pinnedIds.isEmpty || sportEvents.isEmpty) return 0;
+
+    if (!Hive.isBoxOpen('settings')) return 0;
+    final startEnabled = Hive.box('settings').get('sportStartNotifications', defaultValue: true) as bool;
+    if (!startEnabled) return 0;
 
     final now = DateTime.now();
 

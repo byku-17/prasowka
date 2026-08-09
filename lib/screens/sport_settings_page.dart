@@ -4,6 +4,7 @@ import 'package:prasowka/models/sport_league.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/providers/sports_provider.dart';
+import 'package:prasowka/widgets/section_header.dart';
 
 class SportSettingsPage extends StatelessWidget {
   const SportSettingsPage({super.key});
@@ -17,13 +18,51 @@ class SportSettingsPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
-          // Pasek wyników — tylko moi faworyci
+          const SectionHeader('PASEK WYNIKÓW'),
           SwitchListTile(
             secondary: const Icon(Icons.sports_score_outlined),
             title: const Text('Tylko moi faworyci', style: TextStyle(fontSize: 14)),
             subtitle: const Text('Pokazuje wyłącznie mecze klubów i lig wpisanych w zainteresowaniach.', style: TextStyle(fontSize: 11)),
             value: settings.onlyFavoriteTeams,
             onChanged: (val) => settings.setOnlyFavoriteTeams(val),
+            activeThumbColor: AppTheme.accentFor(context),
+            dense: true,
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.flag_outlined),
+            title: const Text('Pokazuj wyniki zakończonych spotkań', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Mecze, które już się skończyły, widoczne są na pasku.', style: TextStyle(fontSize: 11)),
+            value: settings.showFinished,
+            onChanged: (val) => settings.setShowFinished(val),
+            activeThumbColor: AppTheme.accentFor(context),
+            dense: true,
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.schedule_outlined),
+            title: const Text('Pokazuj nadchodzące mecze', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Planowane spotkania pojawiają się przed startem.', style: TextStyle(fontSize: 11)),
+            value: settings.showUpcoming,
+            onChanged: (val) => settings.setShowUpcoming(val),
+            activeThumbColor: AppTheme.accentFor(context),
+            dense: true,
+          ),
+          const Divider(height: 32),
+          const SectionHeader('POWIADOMIENIA SPORTOWE'),
+          SwitchListTile(
+            secondary: const Icon(Icons.notifications_active_outlined),
+            title: const Text('Powiadomienia o wyniku', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Gole i zmiany wyniku meczów Twoich drużyn (np. „⚽ GOL!").', style: TextStyle(fontSize: 11)),
+            value: settings.sportResultNotifications,
+            onChanged: (val) => settings.setSportResultNotifications(val),
+            activeThumbColor: AppTheme.accentFor(context),
+            dense: true,
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.alarm_on_outlined),
+            title: const Text('Powiadomienia o rozpoczęciu meczu', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Przypomnienia przed startem meczu Twojej drużyny.', style: TextStyle(fontSize: 11)),
+            value: settings.sportStartNotifications,
+            onChanged: (val) => settings.setSportStartNotifications(val),
             activeThumbColor: AppTheme.accentFor(context),
             dense: true,
           ),

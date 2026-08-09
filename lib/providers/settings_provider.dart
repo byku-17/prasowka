@@ -33,6 +33,10 @@ class SettingsProvider with ChangeNotifier {
   static const String showAllSourcesKey = 'showAllSources';
   static const String readingFontSizeKey = 'readingFontSize';
   static const String openArticlesInBrowserKey = 'openArticlesInBrowser';
+  static const String showFinishedKey = 'showFinished';
+  static const String showUpcomingKey = 'showUpcoming';
+  static const String sportResultNotificationsKey = 'sportResultNotifications';
+  static const String sportStartNotificationsKey = 'sportStartNotifications';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -52,6 +56,10 @@ class SettingsProvider with ChangeNotifier {
   bool _showAllSources = false;
   int _readingFontSize = 16;
   bool _openArticlesInBrowser = false;
+  bool _showFinished = true;
+  bool _showUpcoming = true;
+  bool _sportResultNotifications = true;
+  bool _sportStartNotifications = true;
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -74,6 +82,10 @@ class SettingsProvider with ChangeNotifier {
   bool get showAllSources => _showAllSources;
   int get readingFontSize => _readingFontSize;
   bool get openArticlesInBrowser => _openArticlesInBrowser;
+  bool get showFinished => _showFinished;
+  bool get showUpcoming => _showUpcoming;
+  bool get sportResultNotifications => _sportResultNotifications;
+  bool get sportStartNotifications => _sportStartNotifications;
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -151,6 +163,12 @@ class SettingsProvider with ChangeNotifier {
 
     // 4c2. Otwieranie artykułów w zewnętrznej przeglądarce
     _openArticlesInBrowser = settingsBox.get(openArticlesInBrowserKey, defaultValue: false);
+
+    // 4c3. Sport — widoczność i powiadomienia
+    _showFinished = settingsBox.get(showFinishedKey, defaultValue: true);
+    _showUpcoming = settingsBox.get(showUpcomingKey, defaultValue: true);
+    _sportResultNotifications = settingsBox.get(sportResultNotificationsKey, defaultValue: true);
+    _sportStartNotifications = settingsBox.get(sportStartNotificationsKey, defaultValue: true);
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -473,6 +491,30 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setOpenArticlesInBrowser(bool val) async {
     _openArticlesInBrowser = val;
     await Hive.box(settingsBoxName).put(openArticlesInBrowserKey, val);
+    notifyListeners();
+  }
+
+  Future<void> setShowFinished(bool val) async {
+    _showFinished = val;
+    await Hive.box(settingsBoxName).put(showFinishedKey, val);
+    notifyListeners();
+  }
+
+  Future<void> setShowUpcoming(bool val) async {
+    _showUpcoming = val;
+    await Hive.box(settingsBoxName).put(showUpcomingKey, val);
+    notifyListeners();
+  }
+
+  Future<void> setSportResultNotifications(bool val) async {
+    _sportResultNotifications = val;
+    await Hive.box(settingsBoxName).put(sportResultNotificationsKey, val);
+    notifyListeners();
+  }
+
+  Future<void> setSportStartNotifications(bool val) async {
+    _sportStartNotifications = val;
+    await Hive.box(settingsBoxName).put(sportStartNotificationsKey, val);
     notifyListeners();
   }
 

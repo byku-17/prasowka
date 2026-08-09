@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/services/sports_service.dart';
 import 'package:prasowka/services/notification_history.dart';
+import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/utils/text_utils.dart';
 
 const String _pinnedBoxName = 'pinned_matches';
@@ -123,8 +124,28 @@ class SportsProvider with ChangeNotifier {
       _filteredEvents = allEvents;
     }
 
+    // Przełączniki: pokazuj zakończone / nadchodzące mecze
+    final showFinished = _settingsBool(SettingsProvider.showFinishedKey, defaultValue: true);
+    final showUpcoming = _settingsBool(SettingsProvider.showUpcomingKey, defaultValue: true);
+    if (!showFinished || !showUpcoming) {
+      _filteredEvents = _filteredEvents.where((e) {
+        if (e.status == EventStatus.finished) return showFinished;
+        if (e.status == EventStatus.scheduled) return showUpcoming;
+        return true; // live zawsze widoczny
+      }).toList();
+    }
+
     // Gdy ulubione nie pasują do żadnego meczu — pasek jest pusty
     // UI wyświetla "Brak meczów"
+  }
+
+  bool _settingsBool(String key, {required bool defaultValue}) {
+    try {
+      if (!Hive.isBoxOpen('settings')) return defaultValue;
+      return Hive.box('settings').get(key, defaultValue: defaultValue) as bool;
+    } catch (_) {
+      return defaultValue;
+    }
   }
   /// Zbiór ID przypiętych meczów
   Set<String> get pinnedMatchIds {
@@ -277,6 +298,7 @@ class SportsProvider with ChangeNotifier {
 
   void _detectScoreChanges(List<SportEvent> events) {
     if (_currentFavorites == null || _currentFavorites!.isEmpty) return;
+    if (!_settingsBool(SettingsProvider.sportResultNotificationsKey, defaultValue: true)) return;
     final normalizedFavs = _currentFavorites!.map((f) => TextUtils.normalize(f)).toList();
 
     for (var event in events) {

@@ -35,10 +35,10 @@
 
 ### SPORT (~9h)
 - [ ] Kolejność drużyn i lig (~3h)
-- [ ] Pokazuj wyniki zakończonych spotkań (przełącznik) (~2h)
-- [ ] Pokazuj nadchodzące mecze (przełącznik) (~2h)
-- [ ] Powiadomienia o wyniku (przełącznik) (~1h)
-- [ ] Powiadomienia o rozpoczęciu meczu (przełącznik) (~1h)
+- [x] Pokazuj wyniki zakończonych spotkań (przełącznik) (~2h)
+- [x] Pokazuj nadchodzące mecze (przełącznik) (~2h)
+- [x] Powiadomienia o wyniku (przełącznik) (~1h)
+- [x] Powiadomienia o rozpoczęciu meczu (przełącznik) (~1h)
 
 ### DANE I NARZĘDZIA (~13h)
 - [ ] Co synchronizować: wybór zakresu (źródła, kategorie, zainteresowania, tagi, przeczytane, ustawienia) (~4h)
