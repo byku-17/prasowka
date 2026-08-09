@@ -48,7 +48,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
-  # Ikony i Splash Screen
+  # Splash Screen
   flutter_native_splash: ^2.4.1
 
   # Sieć i RSS
@@ -57,6 +57,7 @@ dependencies:
   html: ^0.15.4
   translator: ^1.0.4+1
   webview_flutter: ^4.10.0
+  flutter_tts: ^4.2.2
 
   # UI i Narzędzia
   google_fonts: ^6.3.3
@@ -64,10 +65,14 @@ dependencies:
   flutter_widget_from_html: ^0.15.3
   url_launcher: ^6.2.5
   share_plus: ^13.3.0
+  package_info_plus: ^10.2.1
   intl: ^0.19.0
   flutter_local_notifications: ^22.2.0
   workmanager: ^0.10.7
   shimmer: ^3.0.0
+  encrypt: ^5.0.3
+  flutter_secure_storage: ^11.0.0
+  connectivity_plus: ^7.3.1
 
 dev_dependencies:
   flutter_test:
@@ -89,25 +94,23 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
-    - assets/logo.png
+    - assets/logo.webp
 
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/logo.png"
+  image_path: "assets/logo_icon.png"
   min_sdk_android: 21
-  # To tło zostanie użyte dla ikon adaptacyjnych (Android 8+)
   adaptive_icon_background: "#0D0D0D"
-  adaptive_icon_foreground: "assets/logo.png"
+  adaptive_icon_foreground: "assets/logo_icon.png"
 
 flutter_native_splash:
-  color: "#0D0D0D"
-  image: assets/logo.png
+  color: "#1E2126"
+  image: assets/splash.png
   android_12:
-    image: assets/logo.png
-    color: "#0D0D0D"
-    icon_background_color: "#0D0D0D"
+    image: assets/splash.png
+    color: "#1E2126"
+    icon_background_color: "#1E2126"
   fullscreen: true
   android_gravity: center
   ios_content_mode: center

@@ -96,7 +96,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset('assets/logo.png', height: 120),
+          Image.asset('assets/logo.webp', height: 120),
           const SizedBox(height: 40),
           Text(
             'WITAJ W PRASÓWCE',

@@ -32,7 +32,6 @@ class UserTag {
   );
 
   static List<UserTag> defaultTags() => [
-    UserTag(id: 'to_read', name: 'Do przeczytania', colorValue: 0xFF4CAF50, iconCodePoint: 0xe550), // bookmark
     UserTag(id: 'important', name: 'Ważne', colorValue: 0xFFF44336, iconCodePoint: 0xe563), // priority_high
     UserTag(id: 'inspiration', name: 'Inspiracja', colorValue: 0xFF9C27B0, iconCodePoint: 0xe80e), // lightbulb
   ];

@@ -7,12 +7,25 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:22082383120:android:1a1b86d2a055e98b464995",
+        "mobilesdk_app_id": "1:22082383120:android:de34bf53b18bcb2c464995",
         "android_client_info": {
           "package_name": "com.prasowka.prasowka"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "22082383120-vhc8me8i413itkbnvm70au5un9988hl6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.prasowka.prasowka",
+            "certificate_hash": "b87d41fb23c2fde2feac9a752f0efeaf37e0e0fd"
+          }
+        },
+        {
+          "client_id": "22082383120-d0polvsfpe66d0dnjv5qj1judj6aism2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD58Nc33EHcwFUiSPiRV5vGcJKz29e1rs8"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "22082383120-d0polvsfpe66d0dnjv5qj1judj6aism2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

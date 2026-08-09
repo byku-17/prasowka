@@ -105,7 +105,17 @@ class CanonicalKey {
     };
 
     for (final entry in aliases.entries) {
+      // Dopasowanie częściowe: "English Premier League" → "premier_league",
+      // "La Liga Santander" → "la_liga". Najpierw pełne (bezpieczniejsze),
+      // potem zawieranie (żeby warianty z prefiksem kraju się scalały).
       if (s == entry.key) return entry.value;
+    }
+    // Posortuj aliasy malejąco po długości klucza, żeby najpierw trafiały
+    // nazwy bardziej specyficzne (np. "champions league" przed "league").
+    final sorted = aliases.entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
+    for (final entry in sorted) {
+      if (s.contains(entry.key)) return entry.value;
     }
 
     return s.replaceAll(RegExp(r'\s+'), '_');

@@ -10,9 +10,11 @@ import 'package:prasowka/services/remote_config_service.dart';
 class SportsService {
   String get _sportDbKey => RemoteConfigService().sportDbKey;
   String get _theSportsDbKey => RemoteConfigService().theSportsDbKey;
+  String get sportDbKeyStatus => _sportDbKey.isNotEmpty ? 'OK (${_sportDbKey.length}chars)' : 'EMPTY';
 
   static const _espnUserAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15';
 
+  final List<String> lastLogs = [];
   final queue = SportsRequestQueue(maxConcurrent: 3, minDelay: const Duration(milliseconds: 500));
 
   Future<List<SportEvent>> fetchAllEvents({List<String>? selectedLeagueIds}) async {
@@ -26,7 +28,14 @@ class SportsService {
     debugPrint('Prasówka Sports V9.1: Start (Reference: $referenceNow)');
 
     final leaguesToFetch = _getLeaguesToFetch(selectedLeagueIds);
-    final dateStr = referenceNow.toIso8601String().split('T')[0].replaceAll('-', '');
+    final actualDateStr = referenceNow.toIso8601String().split('T')[0].replaceAll('-', '');
+
+    lastLogs.clear();
+    lastLogs.add('SportDB: ${_sportDbKey.isNotEmpty ? "klucz OK" : "BRAK KLUCZA"}');
+    lastLogs.add('TheSportsDB: ${_theSportsDbKey.isNotEmpty ? "klucz OK" : "BRAK KLUCZA"}');
+    lastLogs.add('Ligi: ${leaguesToFetch.map((l) => l.id).join(", ")}');
+    lastLogs.add('Data ESPN: $actualDateStr');
+    lastLogs.add('Rok referencyjny: ${referenceNow.year}');
 
     // Kolejka requestów z rate limiterem (max 3 rownolegle, 500ms delay)
     final List<Future<List<SportEvent>>> futures = [];
@@ -52,8 +61,8 @@ class SportsService {
       for (final entry in groupedEspn.entries) {
         final l = entry.value.first;
         futures.add(queue.enqueue(
-          () => _fetchEspnScoreboard(l.espnSport!, l.espnLeague!, l.sportType, l.name, dateStr, referenceNow),
-          source: 'espn',
+          () => _fetchEspnScoreboard(l.espnSport!, l.espnLeague!, l.sportType, l.name, actualDateStr, referenceNow),
+          source: 'espn_${l.espnLeague}',
         ));
       }
     }
@@ -64,7 +73,7 @@ class SportsService {
       for (final league in tdbLeagues) {
         futures.add(queue.enqueue(
           () => _fetchTsdLeague(league, referenceNow),
-          source: 'thesportsdb',
+          source: 'tsdb_${league.id}',
         ));
       }
     }
@@ -78,22 +87,59 @@ class SportsService {
       ));
     }
 
-    final results = await Future.wait(futures);
-    for (var list in results) {
-      allEvents.addAll(list);
+    // Await each future individually — jeden błąd nie zabija wszystkich wyników
+    for (final future in futures) {
+      try {
+        final list = await future;
+        lastLogs.add('Source: ${list.length} eventów');
+        if (list.isNotEmpty) allEvents.addAll(list);
+      } catch (e) {
+        lastLogs.add('BŁĄD fetch: $e');
+      }
+    }
+    lastLogs.add('ŁĄCZNIE przed dedup: ${allEvents.length}');
+
+    // Normalizuj daty PRZED dedup — ESPN używa roku bieżącego, a
+    // SportDB/TSDB roku referencyjnego (2024). Ten sam mecz z różnych
+    // źródeł musi mieć ten sam klucz kanoniczny, inaczej zostaje zdublowany.
+    if (now.year != referenceNow.year) {
+      final normalized = <SportEvent>[];
+      for (final event in allEvents) {
+        if (event is MatchEvent) {
+          final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
+          normalized.add(MatchEvent(
+            id: event.id, type: event.type, date: newDate, status: event.status,
+            homeTeam: event.homeTeam, awayTeam: event.awayTeam, score: event.score,
+            competition: event.competition, homeLogo: event.homeLogo, awayLogo: event.awayLogo,
+            time: event.time, freshness: event.freshness, fetchedAtUtc: event.fetchedAtUtc,
+          ));
+        } else if (event is RaceEvent) {
+          final newDate = DateTime(now.year, event.date.month, event.date.day, event.date.hour, event.date.minute);
+          normalized.add(RaceEvent(
+            id: event.id, type: event.type, date: newDate, status: event.status,
+            raceName: event.raceName, circuitName: event.circuitName, countryCode: event.countryCode,
+          ));
+        }
+      }
+      allEvents
+        ..clear()
+        ..addAll(normalized);
     }
 
     // Deduplicate by canonicalKey (cross-source dedup)
     // Ten sam mecz z SportDB/ESPN/TSDB dostaje ten sam klucz
     final Map<String, SportEvent> unique = {};
     final Map<String, SportEvent> canonicalToBest = {};
+    final Set<String> canonicalIds = {};
     for (var e in allEvents) {
       if (e is MatchEvent) {
         final key = CanonicalKey.generate(e);
         final existing = canonicalToBest[key];
         if (existing == null) {
           canonicalToBest[key] = e;
+          canonicalIds.add(e.id);
         } else {
+          canonicalIds.add(e.id);
           // Preferuj: live > finished > scheduled
           final priority = {EventStatus.live: 3, EventStatus.finished: 2, EventStatus.scheduled: 1};
           if ((priority[e.status] ?? 0) > (priority[existing.status] ?? 0)) {
@@ -105,9 +151,13 @@ class SportsService {
         unique[e.id] = e;
       }
     }
+    // Usuń oryginały which have canonical duplicates, then dodaj kanoniczne
+    for (final id in canonicalIds) {
+      unique.remove(id);
+    }
     unique.addAll(canonicalToBest);
 
-    debugPrint('Prasówka Sports V9.1: Zakończono. Unikalnych: ${unique.length}');
+    lastLogs.add('ŁĄCZNIE po dedup: ${unique.length}');
     return unique.values.toList();
   }
 
@@ -115,11 +165,20 @@ class SportsService {
     if (selectedLeagueIds == null || selectedLeagueIds.isEmpty) {
       return SportLeague.allLeagues.where((l) => l.hasApi).toList();
     }
-    return selectedLeagueIds
+    final selected = selectedLeagueIds
         .map((id) => SportLeague.findById(id))
         .whereType<SportLeague>()
         .where((l) => l.hasApi)
         .toList();
+
+    // Zawsze dodaj tenis WTA/ATP (popularne ligi globalne)
+    for (final league in SportLeague.allLeagues) {
+      if ((league.id == 'tennis_wta' || league.id == 'tennis_atp') && !selected.any((s) => s.id == league.id)) {
+        selected.add(league);
+      }
+    }
+
+    return selected;
   }
 
   // ─── SPORTDB.DEV + FLASHSCORE (primary) ───
@@ -506,7 +565,9 @@ class SportsService {
 
   Future<List<SportEvent>> _fetchEspnScoreboard(String sport, String league, SportType type, String competition, String dateStr, DateTime referenceNow) async {
     try {
-      final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard?dates=$dateStr';
+      final now = DateTime.now();
+      final todayStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard?dates=$todayStr';
       final response = await http.get(Uri.parse(url), headers: {
         'User-Agent': _espnUserAgent,
         'Accept': 'application/json',

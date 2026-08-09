@@ -5,12 +5,14 @@ import 'package:hive/hive.dart';
 import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/services/sports_service.dart';
 import 'package:prasowka/services/notification_history.dart';
+import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/utils/text_utils.dart';
 
 const String _pinnedBoxName = 'pinned_matches';
 const String _sportsCacheBoxName = 'sports_cache';
-const Duration _liveTtl = Duration(minutes: 1);
+const Duration _liveTtl = Duration(minutes: 6);
 const Duration _normalTtl = Duration(minutes: 15);
+const Duration _finishedTtl = Duration(hours: 12);
 
 class _LeagueCacheEntry {
   final List<SportEvent> events;
@@ -24,8 +26,12 @@ class _LeagueCacheEntry {
   });
 
   bool isExpired(bool hasLive) {
-    final ttl = hasLive ? _liveTtl : _normalTtl;
-    return DateTime.now().difference(fetchedAt) > ttl;
+    final age = DateTime.now().difference(fetchedAt);
+    final allFinished = events.every((e) => e.status == EventStatus.finished);
+
+    if (allFinished) return age > _finishedTtl;
+    if (hasLive) return age > _liveTtl;
+    return age > _normalTtl;
   }
 
   Map<String, dynamic> toMap() => {
@@ -118,14 +124,27 @@ class SportsProvider with ChangeNotifier {
       _filteredEvents = allEvents;
     }
 
-    // Discovery mode
-    if (_filteredEvents.isEmpty && allEvents.isNotEmpty) {
-      final topMatches = _filterTopLeagues(allEvents).take(5).toList();
-      if (topMatches.isNotEmpty) {
-        _filteredEvents = topMatches;
-      } else {
-        _filteredEvents = allEvents.take(10).toList();
-      }
+    // Przełączniki: pokazuj zakończone / nadchodzące mecze
+    final showFinished = _settingsBool(SettingsProvider.showFinishedKey, defaultValue: true);
+    final showUpcoming = _settingsBool(SettingsProvider.showUpcomingKey, defaultValue: true);
+    if (!showFinished || !showUpcoming) {
+      _filteredEvents = _filteredEvents.where((e) {
+        if (e.status == EventStatus.finished) return showFinished;
+        if (e.status == EventStatus.scheduled) return showUpcoming;
+        return true; // live zawsze widoczny
+      }).toList();
+    }
+
+    // Gdy ulubione nie pasują do żadnego meczu — pasek jest pusty
+    // UI wyświetla "Brak meczów"
+  }
+
+  bool _settingsBool(String key, {required bool defaultValue}) {
+    try {
+      if (!Hive.isBoxOpen('settings')) return defaultValue;
+      return Hive.box('settings').get(key, defaultValue: defaultValue) as bool;
+    } catch (_) {
+      return defaultValue;
     }
   }
   /// Zbiór ID przypiętych meczów
@@ -180,12 +199,25 @@ class SportsProvider with ChangeNotifier {
 
   Future<void> _performFetch(List<String>? selectedLeagueIds) async {
     try {
+      _debugLogs.add('SportDB key: ${_service.sportDbKeyStatus}');
+      _debugLogs.add('Ligi: ${selectedLeagueIds?.length ?? "ALL"}');
+      _debugLogs.add('Ulubione: ${_currentFavorites?.join(", ") ?? "brak"}');
+
       final newEvents = await _service.fetchAllEvents(selectedLeagueIds: selectedLeagueIds);
+
+      // Dodaj logi z serwisu
+      for (final log in _service.lastLogs) {
+        _debugLogs.add('  $log');
+      }
+
+      _debugLogs.add('Pobrano z API: ${newEvents.length} eventów');
+
       _updateCache(newEvents);
 
       _lastFetch = DateTime.now();
       _saveCacheToHive();
       _debugLogs.add('Cache lig: ${_leagueCache.length}');
+      _debugLogs.add('Cache eventów: ${_allCachedEvents().length}');
       _debugLogs.add('Pasek wyświetla: ${_filteredEvents.length} meczów');
       if (_filteredEvents.isNotEmpty) {
         final matches = _filteredEvents.whereType<MatchEvent>().toList();
@@ -208,6 +240,9 @@ class SportsProvider with ChangeNotifier {
             }
           }
         }
+      } else {
+        _debugLogs.add('Brak eventów po filtrach!');
+        _debugLogs.add('Wszystkich w cache: ${_allCachedEvents().length}');
       }
       
       _currentSelectedLeagues = selectedLeagueIds;
@@ -217,8 +252,9 @@ class SportsProvider with ChangeNotifier {
       } else {
         _stopAutoRefresh();
       }
-    } catch (e) {
+    } catch (e, stack) {
       _debugLogs.add('BŁĄD: $e');
+      _debugLogs.add('Stack: ${stack.toString().split('\n').take(3).join(' | ')}');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -227,16 +263,18 @@ class SportsProvider with ChangeNotifier {
 
   /// Aktualizuje cache i stosuje filtry — wspólne dla _performFetch i auto-refresh
   void _updateCache(List<SportEvent> newEvents) {
+    // Grupuj po konkurencji zamiast O(N×C)
+    final Map<String, List<SportEvent>> grouped = {};
     for (final event in newEvents) {
       final competition = event is MatchEvent ? event.competition : (event is RaceEvent ? 'races' : 'unknown');
-      _leagueCache[competition] = _LeagueCacheEntry(
-        events: newEvents.where((e) {
-          if (e is MatchEvent) return e.competition == competition;
-          if (e is RaceEvent) return competition == 'races';
-          return false;
-        }).toList(),
-        fetchedAt: DateTime.now(),
-        source: event.id.split('_').first,
+      grouped.putIfAbsent(competition, () => []).add(event);
+    }
+    final now = DateTime.now();
+    for (final entry in grouped.entries) {
+      _leagueCache[entry.key] = _LeagueCacheEntry(
+        events: entry.value,
+        fetchedAt: now,
+        source: entry.value.first.id.split('_').first,
       );
     }
     final allNow = _allCachedEvents();
@@ -260,6 +298,7 @@ class SportsProvider with ChangeNotifier {
 
   void _detectScoreChanges(List<SportEvent> events) {
     if (_currentFavorites == null || _currentFavorites!.isEmpty) return;
+    if (!_settingsBool(SettingsProvider.sportResultNotificationsKey, defaultValue: true)) return;
     final normalizedFavs = _currentFavorites!.map((f) => TextUtils.normalize(f)).toList();
 
     for (var event in events) {
@@ -396,6 +435,8 @@ class SportsProvider with ChangeNotifier {
       'atp', 'wta', 'wimbledon', 'roland garros', 'us open', 'australian open',
       // F1
       'formula 1', 'formula1', 'f1',
+      // Siatkówka
+      'plusliga', 'plus liga',
     };
 
     return list.where((e) {

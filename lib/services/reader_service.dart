@@ -18,11 +18,30 @@ class ReaderService {
         decodedBody = latin1.decode(response.bodyBytes);
       }
 
-      return await compute(_extractMainContentCompute, decodedBody);
+      final extracted = await compute(_extractMainContentCompute, decodedBody);
+      if (extracted == null) return null;
+      return normalizeHtml(extracted);
     } catch (e) {
       debugPrint('ReaderService Error: $e');
       return null;
     }
+  }
+
+  /// Usuwa zbędne odstępy z treści HTML:
+  /// - serie 2+ znaczników <br> zamienia na jeden,
+  /// - usuwa puste akapity (<p></p>, <p><br></p> itd.),
+  /// - zwija 3+ nowe linie do dwóch (na wypadek treści tekstowej).
+  static String normalizeHtml(String html) {
+    if (html.isEmpty) return html;
+    var s = html;
+    s = s.replaceAll(RegExp(r'(?:<br\s*/?>\s*){2,}', caseSensitive: false), '<br>');
+    s = s.replaceAll(
+      RegExp(r'<p\b[^>]*>\s*(?:<br\s*/?>\s*)*</p>', caseSensitive: false),
+      '',
+    );
+    s = s.replaceAll(RegExp(r'[ \t]+\n'), '\n');
+    s = s.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return s;
   }
 
   Future<String> _resolveUrl(String url) async {
@@ -41,29 +60,199 @@ String? _extractMainContentCompute(String htmlBody) {
     final document = html_parser.parse(htmlBody);
     document.querySelectorAll('script, style, nav, footer, header, noscript, iframe, .ads, .social-share, source, picture, figure figcaption').forEach((e) => e.remove());
 
-    dom.Element? bestElement;
-    int maxParagraphs = 0;
+    // Usuń podpisy pod zdjęciami i elementy-śmieci (caption/credit/byline),
+    // żeby nie trafiały do wyekstrahowanej treści (czytnik + lektor).
+    _removeCaptionElements(document);
 
+    // 1) JSON-LD articleBody — najczęściej zawiera PEŁNĄ treść,
+    //    podczas gdy DOM po usunięciu JS-owych elementów bywa okrojony.
+    final jsonLdBody = _extractJsonLdBody(document);
+    if (jsonLdBody != null && jsonLdBody.trim().length >= 350) {
+      return _paragraphize(jsonLdBody);
+    }
+
+    // 2) Najlepszy kontener — najwięcej TEKSTU w akapitach (nie liczby
+    //    akapitów). Mierzony łączną długością, bo liczba <p> bywa myląca.
+    dom.Element? bestElement;
+    int maxTextLength = 0;
     final articles = document.querySelectorAll('article');
-    if (articles.isNotEmpty) {
-      bestElement = articles.reduce((a, b) => a.text.length > b.text.length ? a : b);
-    } else {
-      final containers = document.querySelectorAll('div, section, main');
-      for (var container in containers) {
-        final pCount = container.querySelectorAll('p').length;
-        if (pCount > maxParagraphs) {
-          maxParagraphs = pCount;
-          bestElement = container;
-        }
+    final containers = articles.isNotEmpty
+        ? articles
+        : document.querySelectorAll('div, section, main');
+    for (final container in containers) {
+      final paras = container.querySelectorAll('p');
+      if (paras.isEmpty) continue;
+      final textLength = paras.fold<int>(
+        0,
+        (sum, p) => sum + p.text.trim().length,
+      );
+      if (textLength > maxTextLength) {
+        maxTextLength = textLength;
+        bestElement = container;
       }
     }
 
     if (bestElement != null) {
       bestElement.querySelectorAll('button, form, .related-articles, .comments').forEach((e) => e.remove());
-      return bestElement.innerHtml;
+      // Gdy kontener pokrywa większość akapitów strony, zwróć go w całości.
+      if (maxTextLength >= 350) return bestElement.innerHtml;
     }
-    return null;
+
+    // 3) Awaryjnie: zbierz wszystkie sensowne akapity z całej strony
+    //    (pomijając junk) — treść bywa rozbita na kilka kontenerów.
+    final merged = _extractMergedParagraphs(document);
+    if (merged != null && merged.length >= 350) return merged;
+
+    // Nawet jeśli kontener był krótki — zwróć go (zostanie odrzucony
+    // przez próg _hasUsableContent >= 350).
+    return bestElement?.innerHtml;
   } catch (e) {
     return null;
   }
+}
+
+/// Wyciąga pole `articleBody` z danych JSON-LD (typ NewsArticle itp.).
+/// Pomija skrypty bez treści (logo, wydawca itd.).
+String? _extractJsonLdBody(dom.Document document) {
+  try {
+    final scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    for (final script in scripts) {
+      final raw = script.text.trim();
+      if (raw.isEmpty) continue;
+      dynamic data;
+      try {
+        data = jsonDecode(raw);
+      } catch (_) {
+        continue;
+      }
+      for (final node in _flattenJsonLdNodes(data)) {
+        if (node is Map) {
+          final body = node['articleBody'];
+          if (body is String && body.trim().length >= 100) {
+            return body.trim();
+          }
+        }
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+List<dynamic> _flattenJsonLdNodes(dynamic data) {
+  final result = <dynamic>[];
+  if (data is List) {
+    for (final item in data) {
+      result.addAll(_flattenJsonLdNodes(item));
+    }
+  } else if (data is Map) {
+    result.add(data);
+    final graph = data['@graph'];
+    if (graph is List) {
+      for (final item in graph) {
+        result.addAll(_flattenJsonLdNodes(item));
+      }
+    }
+  }
+  return result;
+}
+
+/// Zamienia zwykły tekst (np. z JSON-LD) na akapity <p>.
+String _paragraphize(String text) {
+  return text
+      .split(RegExp(r'\n\s*\n'))
+      .map((p) => p.trim())
+      .where((p) => p.isNotEmpty)
+      .map((p) => '<p>${p.replaceAll(RegExp(r'\s*\n\s*'), ' ')}</p>')
+      .join();
+}
+
+/// Łączy akapity z całego dokumentu, pomijając nawigację, reklamy,
+/// sidebar, sekcje powiązane/komentarze i bardzo krótkie fragmenty.
+String? _extractMergedParagraphs(dom.Document document) {
+  const junkTags = {
+    'nav', 'footer', 'aside', 'form', 'button',
+    'script', 'style', 'noscript',
+  };
+  const junkClassWords = {
+    'sidebar', 'related', 'recommended', 'comments', 'menu',
+    'share', 'social', 'newsletter', 'advert', 'banner', 'widget',
+    'caption', 'credit', 'byline', 'figcaption',
+  };
+  final blocks = <String>[];
+  final seen = <String>{};
+  for (final p in document.querySelectorAll('p')) {
+    var el = p.parent;
+    var inJunk = false;
+    while (el != null) {
+      final cls = el.className.toLowerCase();
+      final hasJunkClass = junkClassWords.any(cls.split(' ').contains);
+      if (junkTags.contains(el.localName) || hasJunkClass) {
+        inJunk = true;
+        break;
+      }
+      el = el.parent;
+    }
+    if (inJunk) continue;
+    final text = p.text.trim();
+    if (text.length < 30) continue;
+    if (!seen.add(text)) continue;
+    blocks.add(p.outerHtml);
+  }
+  if (blocks.isEmpty) return null;
+  return blocks.join();
+}
+
+/// Usuwa z dokumentu podpisy pod zdjęciami i elementy oznaczone klasami
+/// caption/credit/byline (często pojawiają się na początku lub w środku
+/// wyekstrahowanego kontenera i psują start czytania).
+void _removeCaptionElements(dom.Document document) {
+  try {
+    const junkWords = ['caption', 'credit', 'byline', 'creditline', 'photocaption', 'imagecaption', 'figcaption'];
+    for (final el in document.querySelectorAll('figcaption, span, div, p, h1, h2, h3, h4, h5, h6, li')) {
+      final cls = ((el.attributes['class'] ?? '') + ' ' + (el.attributes['id'] ?? '')).toLowerCase();
+      if (el.localName == 'figcaption' ||
+          cls.split(RegExp(r'[\s_-]+')).any((w) => junkWords.contains(w))) {
+        el.remove();
+      }
+    }
+  } catch (_) {}
+}
+
+/// Czyści surowy HTML artykułu dla lektora TTS:
+/// - usuwa podpisy pod zdjęciami i elementy caption/credit/byline,
+/// - wyciąga czysty tekst (bez tagów),
+/// - usuwa URL-e, linie „Źródło:", „fot.", ©, „Materiał partnera" itd.
+/// Dzięki temu lektor zawsze zaczyna od właściwej treści, a nie od przypisu.
+String cleanForTts(String raw) {
+  if (raw.trim().isEmpty) return '';
+  try {
+    final doc = html_parser.parse(raw);
+    _removeCaptionElements(doc);
+    doc.querySelectorAll('script, style').forEach((e) => e.remove());
+    final text = doc.body?.text ?? '';
+    return _stripTtsJunk(text);
+  } catch (_) {
+    return _stripTtsJunk(raw.replaceAll(RegExp(r'<[^>]*>'), ' '));
+  }
+}
+
+String _stripTtsJunk(String text) {
+  var t = text;
+  t = t.replaceAll(RegExp(r'https?://\S+'), '');
+  t = t.replaceAll(RegExp(r'www\.\S+'), '');
+  t = t.replaceAll(RegExp(r'Źródło:.*', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'fot\.?.*', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'photo:.*', caseSensitive: false, multiLine: true), '');
+  t = t.replaceAll(RegExp(r'source:.*', caseSensitive: false, multiLine: true), '');
+  t = t.replaceAll(RegExp(r'©.*', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'Materiał partnera.*', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'---.*---', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'\[[^\]]*\]'), '');
+  t = t.replaceAll(RegExp(r'\(fot\.?\s*\)'), '');
+  t = t.replaceAll(RegExp(r'[•■●▪►▶▷▸▹]{2,}'), '');
+  t = t.replaceAll(RegExp(r'={3,}'), '');
+  t = t.replaceAll(RegExp(r'-{3,}'), '');
+  t = t.replaceAll(RegExp(r'\s{2,}'), ' ');
+  t = t.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+  return t.trim();
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:prasowka/models/sport_event.dart';
 
 class _SourceState {
   DateTime? cooldownUntil;
@@ -75,20 +76,20 @@ class SportsRequestQueue {
     }
   }
 
-  Future<T> enqueue<T>(
-    Future<T> Function() request, {
+  Future<List<SportEvent>> enqueue(
+    Future<List<SportEvent>> Function() request, {
     String source = 'unknown',
   }) async {
     if (_isOnCooldown(source)) {
       debugPrint('SportsQueue: $source w cooldownie, pomijam');
-      return _default<T>(source);
+      return _default(source);
     }
 
     await _acquire();
     try {
       await Future.delayed(minDelay);
 
-      T? result;
+      List<SportEvent>? result;
       int attempts = 0;
 
       while (attempts < maxRetries) {
@@ -114,16 +115,15 @@ class SportsRequestQueue {
         }
       }
 
-      return result ?? _default<T>(source);
+      return result ?? _default(source);
     } finally {
       _release();
     }
   }
 
-  T _default<T>(String source) {
+  List<SportEvent> _default(String source) {
     debugPrint('SportsQueue: $source zwracam pustą listę (default)');
-    if (T == List) return [] as T;
-    return throw StateError('SportsQueue: no default for type $T from $source');
+    return <SportEvent>[];
   }
 
   void resetAllCooldowns() {

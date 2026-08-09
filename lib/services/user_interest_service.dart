@@ -36,9 +36,4 @@ class UserInterestService {
     article.cachedScore = score;
     return score;
   }
-
-  Future<void> resetInterests() async {
-    final box = Hive.box<double>(interestsBoxName);
-    await box.clear();
-  }
 }

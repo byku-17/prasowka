@@ -8,6 +8,8 @@ import 'package:prasowka/services/reader_service.dart';
 import 'package:prasowka/services/user_interest_service.dart';
 import 'package:prasowka/services/translation_service.dart';
 import 'package:prasowka/services/news_api_service.dart';
+import 'package:prasowka/services/connectivity_service.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class NewsProvider with ChangeNotifier {
   final RssService _rssService = RssService();
@@ -24,7 +26,7 @@ class NewsProvider with ChangeNotifier {
   
   List<Article> _recommendedArticles = [];
   final Set<String> _fetchFailedIds = {};
-  bool _isFetchingFullContent = false;
+  final Set<String> _fetchingArticleIds = {};
   bool _isTranslating = false;
   NewsCategory _selectedCategory = NewsCategory.defaultCategories.first;
   
@@ -36,11 +38,10 @@ class NewsProvider with ChangeNotifier {
   List<Article> get articles => _articlesMap[_selectedCategory.id] ?? [];
   List<Article> get recommendedArticles => _recommendedArticles;
   bool get isLoading => _loadingMap[_selectedCategory.id] ?? false;
-  String? get errorMessage => _errorMap[_selectedCategory.id];
-  NewsCategory get selectedCategory => _selectedCategory;
-  bool get isFetchingFullContent => _isFetchingFullContent;
+  bool get isFetchingFullContent => _fetchingArticleIds.isNotEmpty;
   bool get isTranslating => _isTranslating;
   Set<String> get fetchFailedIds => _fetchFailedIds;
+  bool isFetchingFor(String id) => _fetchingArticleIds.contains(id);
 
   List<Article> getArticlesForCategory(String categoryId) => _articlesMap[categoryId] ?? [];
   bool isCategoryLoading(String categoryId) => _loadingMap[categoryId] ?? false;
@@ -56,6 +57,159 @@ class NewsProvider with ChangeNotifier {
     }
   }
 
+  /// Przywraca zapisany stan artykułu (isSaved, isLiked, itp.)
+  void _restoreArticleState(Article article) {
+    final stored = _storageService.getStoredArticle(article.id);
+    if (stored != null) {
+      article.isSaved = stored.isSaved;
+      article.isLiked = stored.isLiked;
+      article.isDisliked = stored.isDisliked;
+      if (_hasUsableContent(stored)) article.fullContent = stored.fullContent;
+      article.tagIds = stored.tagIds;
+      article.isRead = stored.isRead;
+      article.readTimeSeconds = stored.readTimeSeconds;
+    }
+  }
+
+  static bool _hasUsableContent(Article a) {
+    final fc = a.fullContent;
+    // Zwiększono próg do 350 znaków, aby uniknąć uznawania komunikatów o cookies za treść
+    return fc != null && fc.trim().length >= 350;
+  }
+
+  /// Buduje listę źródeł do pobrania dla danej kategorii
+  List<NewsSource> _resolveSources(String categoryId, List<NewsSource>? allSources, List<String>? enabledSourceIds) {
+    final baseSources = (allSources != null && allSources.isNotEmpty)
+        ? allSources
+        : NewsSource.defaultSources;
+
+    List<NewsSource> sources;
+    if (categoryId == 'all') {
+      sources = baseSources.where((s) => NewsSource.topSourceIds.contains(s.id) || s.id.startsWith('custom_')).toList();
+    } else if (categoryId == 'warsaw') {
+      sources = baseSources;
+    } else {
+      sources = baseSources.where((s) => s.categoryId == categoryId).toList();
+    }
+
+    final activeIds = enabledSourceIds ?? _lastActiveSourceIds;
+    if (activeIds != null && activeIds.isNotEmpty) {
+      final filtered = sources.where((s) => activeIds.contains(s.id)).toList();
+      if (filtered.isNotEmpty) sources = filtered;
+    }
+
+    if (sources.isEmpty) {
+      sources = baseSources.where((s) => s.categoryId == categoryId).toList();
+      if (categoryId == 'all') sources = baseSources.take(30).toList();
+    }
+
+    return sources;
+  }
+
+  /// Pobiera artykuły ze źródeł w batchach po 10
+  Future<List<Article>> _fetchSourcesInBatches(
+    List<NewsSource> sources, String categoryId, String requestId,
+  ) async {
+    final accumulated = <Article>[];
+
+    for (int i = 0; i < sources.length; i += 10) {
+      final batch = sources.skip(i).take(10).toList();
+      final results = await Future.wait(
+        batch.map((s) async {
+          try {
+            return await _rssService.fetchArticles(s);
+          } catch (e) {
+            debugPrint('Sowa: Błąd źródła ${s.name}: $e');
+            return <Article>[];
+          }
+        }),
+      );
+
+      if (_requestIds[categoryId] != requestId) return accumulated;
+
+      bool hasNew = false;
+      for (var fetched in results) {
+        if (fetched.isNotEmpty) {
+          hasNew = true;
+          for (var article in fetched) {
+            _restoreArticleState(article);
+            _interestService.calculateScore(article);
+          }
+          accumulated.addAll(fetched);
+        }
+      }
+
+      if (hasNew) {
+        _hasEverLoadedMap[categoryId] = true;
+        if (accumulated.length % 200 == 0) _calculateRecommendations();
+        _articlesMap[categoryId] = List.from(accumulated);
+        notifyListeners();
+      }
+    }
+
+    return accumulated;
+  }
+
+  /// Usuwa z listy artykuły starsze niż ustawiony okres retencji (0 = nigdy).
+  void _applyRetention(List<Article> list) {
+    int days = 0;
+    if (Hive.isBoxOpen('settings')) {
+      days = Hive.box('settings').get('articleRetentionDays', defaultValue: 0) as int;
+    }
+    if (days <= 0) return;
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    list.removeWhere((a) => a.publishedAt.isBefore(cutoff));
+  }
+
+  /// Usuwa z listy artykuły zawierające słowa wykluczające w tytule lub opisie.
+  void _applyExcludedWords(List<Article> list) {
+    if (!Hive.isBoxOpen('settings')) return;
+    final words = List<String>.from(Hive.box('settings').get('excludedWords', defaultValue: <String>[]));
+    if (words.isEmpty) return;
+    final lower = words.map((w) => w.toLowerCase()).toList();
+    list.removeWhere((a) {
+      final text = '${a.title} ${a.description}'.toLowerCase();
+      return lower.any((w) => text.contains(w));
+    });
+  }
+
+  /// Sortuje, miesza i zapisuje do cache
+  Future<List<Article>> _sortAndSave(
+    String categoryId, List<Article> accumulated, List<String>? keywords, bool forceRefresh,
+  ) async {
+    _applyRetention(accumulated);
+    _applyExcludedWords(accumulated);
+    _lastFetchTimes[categoryId] = DateTime.now();
+    _articlesMap[categoryId] = accumulated;
+
+    final sortOrder = Hive.isBoxOpen('settings')
+        ? Hive.box('settings').get('articleSortOrder', defaultValue: 'unread') as String
+        : 'unread';
+
+    List<Article> finalList;
+    if (accumulated.length > 50) {
+      final transferList = accumulated.map((a) => a.toTransferMap()).toList();
+      final mixed = await compute(_sortAndMixArticlesStatic, {
+        'list': transferList,
+        'teams': keywords ?? _lastKeywords,
+        'categoryId': categoryId,
+        'shuffle': forceRefresh,
+        'sortOrder': sortOrder,
+      });
+      _articlesMap[categoryId] = mixed;
+      finalList = mixed;
+    } else {
+      _sortAndMixArticlesSync(accumulated, keywords ?? _lastKeywords, categoryId,
+          shuffle: forceRefresh, sortOrder: sortOrder);
+      _articlesMap[categoryId] = accumulated;
+      finalList = accumulated;
+    }
+
+    _calculateRecommendations();
+    await _storageService.saveCategoryCache(categoryId, finalList);
+    return finalList;
+  }
+
   Future<void> fetchNews({
     NewsCategory? category,
     List<NewsSource>? allSources,
@@ -67,12 +221,14 @@ class NewsProvider with ChangeNotifier {
     final categoryId = targetCategory.id;
     final requestId = DateTime.now().millisecondsSinceEpoch.toString();
     _requestIds[categoryId] = requestId;
-    
+
     if (enabledSourceIds != null) _lastActiveSourceIds = enabledSourceIds;
     if (keywords != null) _lastKeywords = keywords;
 
     final cached = _storageService.getCategoryCache(categoryId);
     if (cached.isNotEmpty && !forceRefresh) {
+      _applyRetention(cached);
+      _applyExcludedWords(cached);
       _articlesMap[categoryId] = cached;
       _hasEverLoadedMap[categoryId] = true;
       _calculateRecommendations();
@@ -85,6 +241,15 @@ class NewsProvider with ChangeNotifier {
       _hasEverLoadedMap[categoryId] = true;
     }
 
+    final wifiOnly = Hive.isBoxOpen('settings') &&
+        Hive.box('settings').get('wifiOnlyRefresh', defaultValue: false) == true;
+    if (wifiOnly && !(await ConnectivityService().isOnWifi())) {
+      _loadingMap[categoryId] = false;
+      _errorMap[categoryId] = 'Odświeżanie wymaga połączenia z Wi-Fi. Pokażę zapisane artykuły.';
+      notifyListeners();
+      return;
+    }
+
     _loadingMap[categoryId] = true;
     _errorMap[categoryId] = null;
     notifyListeners();
@@ -94,14 +259,7 @@ class NewsProvider with ChangeNotifier {
         final articles = await _newsApiService.fetchArticles();
         if (_requestIds[categoryId] != requestId) return;
         for (var article in articles) {
-          final stored = _storageService.getStoredArticle(article.id);
-          if (stored != null) {
-            article.isSaved = stored.isSaved;
-            article.isLiked = stored.isLiked;
-            article.isDisliked = stored.isDisliked;
-            article.fullContent = stored.fullContent;
-            article.tagIds = stored.tagIds;
-          }
+          _restoreArticleState(article);
           _interestService.calculateScore(article);
         }
         _articlesMap[categoryId] = articles;
@@ -114,96 +272,12 @@ class NewsProvider with ChangeNotifier {
         return;
       }
 
-      final List<NewsSource> baseSources = (allSources != null && allSources.isNotEmpty) 
-          ? allSources 
-          : NewsSource.defaultSources;
-          
-      List<NewsSource> sourcesToFetch;
-      if (categoryId == 'all') {
-        sourcesToFetch = baseSources.where((s) => NewsSource.topSourceIds.contains(s.id) || s.id.startsWith('custom_')).toList();
-      } else if (categoryId == 'warsaw') {
-        sourcesToFetch = baseSources;
-      } else {
-        sourcesToFetch = baseSources.where((s) => s.categoryId == categoryId).toList();
-      }
+      final sources = _resolveSources(categoryId, allSources, enabledSourceIds);
+      final accumulated = await _fetchSourcesInBatches(sources, categoryId, requestId);
+      if (_requestIds[categoryId] != requestId) return;
 
-      final activeIds = enabledSourceIds ?? _lastActiveSourceIds;
-      if (activeIds != null && activeIds.isNotEmpty) {
-        final filtered = sourcesToFetch.where((s) => activeIds.contains(s.id)).toList();
-        if (filtered.isNotEmpty) sourcesToFetch = filtered;
-      }
+      await _sortAndSave(categoryId, accumulated, keywords, forceRefresh);
 
-      if (sourcesToFetch.isEmpty) {
-        sourcesToFetch = baseSources.where((s) => s.categoryId == categoryId).toList();
-        if (categoryId == 'all') sourcesToFetch = baseSources.take(30).toList();
-      }
-
-      List<Article> accumulated = [];
-
-      for (int i = 0; i < sourcesToFetch.length; i += 10) {
-        final batch = sourcesToFetch.skip(i).take(10).toList();
-        final results = await Future.wait(
-          batch.map((s) async {
-            try {
-              return await _rssService.fetchArticles(s);
-            } catch (e) {
-              debugPrint('Sowa: Błąd źródła ${s.name}: $e');
-              return <Article>[];
-            }
-          }),
-        );
-        
-        if (_requestIds[categoryId] != requestId) return;
-
-        bool hasNew = false;
-        for (var fetched in results) {
-          if (fetched.isNotEmpty) {
-            hasNew = true;
-            for (var article in fetched) {
-              final stored = _storageService.getStoredArticle(article.id);
-              if (stored != null) {
-                article.isSaved = stored.isSaved;
-                article.isLiked = stored.isLiked;
-                article.isDisliked = stored.isDisliked;
-                article.fullContent = stored.fullContent;
-                article.tagIds = stored.tagIds;
-              }
-              _interestService.calculateScore(article);
-            }
-            accumulated.addAll(fetched);
-          }
-        }
-        
-        if (hasNew) {
-          _hasEverLoadedMap[categoryId] = true;
-          if (accumulated.length % 200 == 0) _calculateRecommendations();
-          _articlesMap[categoryId] = List.from(accumulated);
-          notifyListeners();
-        }
-      }
-
-      _lastFetchTimes[categoryId] = DateTime.now();
-      _articlesMap[categoryId] = accumulated;
-      
-      List<Article> finalList;
-      if (accumulated.length > 50) {
-        final transferList = accumulated.map((a) => a.toTransferMap()).toList();
-        final mixed = await compute(_sortAndMixArticlesStatic, {
-          'list': transferList,
-          'teams': keywords ?? _lastKeywords,
-          'categoryId': categoryId,
-        });
-        _articlesMap[categoryId] = mixed;
-        finalList = mixed;
-      } else {
-        _sortAndMixArticlesSync(accumulated, keywords ?? _lastKeywords, categoryId);
-        _articlesMap[categoryId] = accumulated;
-        finalList = accumulated;
-      }
-      
-      _calculateRecommendations();
-      await _storageService.saveCategoryCache(categoryId, finalList);
-      
       _loadingMap[categoryId] = false;
       _hasEverLoadedMap[categoryId] = true;
       notifyListeners();
@@ -215,8 +289,26 @@ class NewsProvider with ChangeNotifier {
     }
   }
 
+  List<Article> getRecommendedFrom(List<Article> candidates) {
+    final filtered = candidates.where((a) => !a.isDisliked && !a.isRead).toList();
+    if (filtered.isEmpty) return [];
+    
+    final List<MapEntry<Article, double>> scored = filtered.map((a) {
+      final base = a.cachedScore ?? _interestService.calculateScore(a);
+      final withImage = base > 0 && a.imageUrl != null ? base * 1.5 : base;
+      return MapEntry(a, withImage);
+    }).where((e) => e.value > 0).toList();
+    
+    scored.sort((a, b) => b.value.compareTo(a.value));
+    return scored.map((e) => e.key).take(3).toList();
+  }
+
   void _calculateRecommendations() {
-    final allArticles = allLoadedArticles.where((a) => !a.isDisliked).toList();
+    final Map<String, Article> unique = {};
+    for (var a in allLoadedArticles) {
+      if (!a.isDisliked && !a.isRead) unique[a.id] = a;
+    }
+    final allArticles = unique.values.toList();
     if (allArticles.isEmpty) {
       _recommendedArticles = [];
       return;
@@ -232,18 +324,44 @@ class NewsProvider with ChangeNotifier {
     _recommendedArticles = scored.map((e) => e.key).take(3).toList();
   }
 
+  /// Kategorie o podwyższonym udziale w zakładce „Dzisiaj” (co 3–4 posty).
+  static const Set<String> _boostedCategoryIds = {
+    'tech', 'science', 'automotive', 'travel', 'culture',
+  };
+
+  /// Mapa: nazwa źródła -> id kategorii, zbudowana z listy domyślnych źródeł.
+  static final Map<String, String> _categoryBySourceName = {
+    for (final s in NewsSource.defaultSources) s.name: s.categoryId,
+  };
+
+  static bool _isBoostedArticle(Article a) {
+    final categoryId = _categoryBySourceName[a.sourceName];
+    return categoryId != null && _boostedCategoryIds.contains(categoryId);
+  }
+
   static List<Article> _sortAndMixArticlesStatic(Map<String, dynamic> params) {
     final List<Article> list = (params['list'] as List)
         .map((m) => m is Map<String, dynamic> ? Article.fromTransferMap(m) : m as Article)
         .toList();
     final List<String>? teams = params['teams'];
     final String categoryId = params['categoryId'];
+    final bool shuffle = params['shuffle'] == true;
+    final String sortOrder = params['sortOrder'] as String? ?? 'unread';
 
     list.sort((a, b) {
       if (a.imageUrl != null && b.imageUrl == null) return -1;
       if (a.imageUrl == null && b.imageUrl != null) return 1;
       return b.publishedAt.compareTo(a.publishedAt);
     });
+
+    if (sortOrder == 'popular') {
+      list.sort((a, b) {
+        final sa = a.cachedScore ?? 0.0;
+        final sb = b.cachedScore ?? 0.0;
+        if (sa != sb) return sb.compareTo(sa);
+        return b.publishedAt.compareTo(a.publishedAt);
+      });
+    }
     
     list.removeWhere((a) => a.isDisliked);
     
@@ -266,6 +384,37 @@ class NewsProvider with ChangeNotifier {
       list.clear();
       list.addAll(mixed);
     }
+
+    if (categoryId == 'all' && list.length > 8) {
+      final boosted = list.where(_isBoostedArticle).toList();
+      final regular = list.where((a) => !_isBoostedArticle(a)).toList();
+      if (boosted.isNotEmpty) {
+        final result = <Article>[];
+        int bIdx = 0;
+        int rIdx = 0;
+        for (int i = 0; i < list.length; i++) {
+          if (i % 4 == 3 && bIdx < boosted.length) {
+            result.add(boosted[bIdx++]);
+          } else if (rIdx < regular.length) {
+            result.add(regular[rIdx++]);
+          } else if (bIdx < boosted.length) {
+            result.add(boosted[bIdx++]);
+          }
+        }
+        list.clear();
+        list.addAll(result);
+      }
+    }
+
+    if (shuffle && list.length > 10) {
+      final rng = DateTime.now().millisecondsSinceEpoch;
+      for (int i = list.length - 1; i > 0; i--) {
+        final j = (rng ^ (i * 2654435761)) % (i + 1);
+        final temp = list[i];
+        list[i] = list[j];
+        list[j] = temp;
+      }
+    }
     
     if (categoryId == 'all' && list.length > 100) list.removeRange(100, list.length);
     
@@ -280,14 +429,25 @@ class NewsProvider with ChangeNotifier {
          list.addAll([...filtered, ...other]);
       }
     }
+
+    if (sortOrder != 'latest') {
+      final readArticles = list.where((a) => a.isRead).toList();
+      final unreadArticles = list.where((a) => !a.isRead).toList();
+      list.clear();
+      list.addAll([...unreadArticles, ...readArticles]);
+    }
+
     return list;
   }
 
-  void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId) {
+  void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId,
+      {bool shuffle = false, String sortOrder = 'unread'}) {
     final result = _sortAndMixArticlesStatic({
       'list': list,
       'teams': teams,
       'categoryId': categoryId,
+      'shuffle': shuffle,
+      'sortOrder': sortOrder,
     });
     list.clear();
     list.addAll(result);
@@ -317,12 +477,19 @@ class NewsProvider with ChangeNotifier {
   void markArticleRead(Article article) {
     if (article.isRead) return;
     article.isRead = true;
-    final s = _storageService.getStoredArticle(article.id);
-    if (s != null) {
-      s.isRead = true;
-      s.readTimeSeconds = article.readTimeSeconds;
-      s.save();
+    _storageService.saveArticleState(article);
+    article.cachedScore = null;
+    // Przesuń przeczytany artykuł na koniec każdej listy, w której
+    // występuje — tak jak robi to _sortAndMixArticlesStatic przy
+    // odświeżaniu.
+    for (final list in _articlesMap.values) {
+      final index = list.indexWhere((a) => a.id == article.id);
+      if (index >= 0) {
+        final item = list.removeAt(index);
+        list.add(item);
+      }
     }
+    _calculateRecommendations();
     notifyListeners();
   }
 
@@ -330,9 +497,6 @@ class NewsProvider with ChangeNotifier {
     await _storageService.toggleSaved(article);
     if (article.isSaved) {
       await _interestService.processInteraction(article, 2.0);
-      if (article.tagIds.isEmpty) {
-        await _storageService.toggleArticleTag(article, 'to_read');
-      }
     } else {
       await _interestService.processInteraction(article, -2.0);
     }
@@ -355,20 +519,18 @@ class NewsProvider with ChangeNotifier {
     }
   }
 
-  void setCategory(NewsCategory category) {
-    if (_selectedCategory.id == category.id) return;
-    _selectedCategory = category;
-    notifyListeners();
-  }
-
   Future<void> fetchFullArticleContent(Article article) async {
     if (RssService.isGoogleNewsUrl(article.url)) return;
-    _isFetchingFullContent = true;
+    // Usunięto blokadę _hasUsableContent, aby umożliwić ręczne odświeżenie/ponowne pobranie
+    if (isFetchingFor(article.id)) return;
+    
+    _fetchingArticleIds.add(article.id);
     _fetchFailedIds.remove(article.id);
     notifyListeners();
     try {
       final full = await _readerService.extractFullContent(article.url);
-      if (full != null && full.trim().isNotEmpty) {
+      // Synchronizacja progu z _hasUsableContent
+      if (full != null && full.trim().length >= 350) {
         article.fullContent = full;
         final s = _storageService.getStoredArticle(article.id);
         if (s != null) { s.fullContent = full; await s.save(); }
@@ -382,7 +544,7 @@ class NewsProvider with ChangeNotifier {
     } catch (e) {
       _fetchFailedIds.add(article.id);
     } finally {
-      _isFetchingFullContent = false;
+      _fetchingArticleIds.remove(article.id);
       notifyListeners();
     }
   }
@@ -424,7 +586,13 @@ class NewsProvider with ChangeNotifier {
 
   List<Article> get allLoadedArticles {
     final Map<String, Article> unique = {};
-    for (var list in _articlesMap.values) { for (var a in list) { unique[a.id] = a; } }
+    for (var list in _articlesMap.values) {
+      for (var a in list) {
+        final existing = unique[a.id];
+        if (existing != null && existing.isRead) continue;
+        unique[a.id] = a;
+      }
+    }
     return unique.values.toList();
   }
 
@@ -442,8 +610,6 @@ class NewsProvider with ChangeNotifier {
   void _invalidateSavedCache() {
     _cachedSavedArticles = null;
   }
-
-  List<Article> getArticlesWithTag(String tagId) => _storageService.getArticlesWithTag(tagId);
 
   Future<void> toggleArticleTag(Article article, String tagId) async {
     await _storageService.toggleArticleTag(article, tagId);

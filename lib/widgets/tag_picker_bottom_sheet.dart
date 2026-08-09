@@ -12,6 +12,7 @@ class TagPickerBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tags = context.watch<TagProvider>().tags;
+    context.watch<NewsProvider>();
     final accent = AppTheme.accentFor(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -61,32 +62,67 @@ class TagPickerBottomSheet extends StatelessWidget {
               Flexible(
                 child: ListView(
                   shrinkWrap: true,
-                  children: tags.map((tag) {
-                    final isSelected = article.tagIds.contains(tag.id);
-                    return ListTile(
-                      leading: Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(
-                          color: tag.color.withValues(alpha: isSelected ? 0.25 : 0.10),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(tag.icon, color: tag.color, size: 18),
-                      ),
-                      title: Text(
-                        tag.name,
-                        style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected ? tag.color : (isDark ? Colors.white70 : Colors.black87),
-                        ),
-                      ),
-                      trailing: isSelected
-                          ? Icon(Icons.check_circle, color: tag.color, size: 22)
-                          : Icon(Icons.circle_outlined, color: Colors.grey.shade400, size: 22),
-                      onTap: () {
-                        context.read<NewsProvider>().toggleArticleTag(article, tag.id);
+                  children: [
+                    Selector<NewsProvider, bool>(
+                      selector: (_, p) => article.isSaved,
+                      builder: (context, isSaved, child) {
+                        return ListTile(
+                          leading: Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: isSaved ? 0.25 : 0.10),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isSaved ? Icons.bookmark : Icons.bookmark_border,
+                              color: Colors.blue,
+                              size: 18,
+                            ),
+                          ),
+                          title: Text(
+                            'Do przeczytania',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isSaved ? Colors.blue : (isDark ? Colors.white70 : Colors.black87),
+                            ),
+                          ),
+                          trailing: isSaved
+                              ? const Icon(Icons.check_circle, color: Colors.blue, size: 22)
+                              : Icon(Icons.circle_outlined, color: Colors.grey.shade400, size: 22),
+                          onTap: () {
+                            context.read<NewsProvider>().toggleSaved(article);
+                          },
+                        );
                       },
-                    );
-                  }).toList(),
+                    ),
+                    const Divider(height: 1),
+                    ...tags.where((t) => t.id != 'to_read').map((tag) {
+                      final isSelected = article.tagIds.contains(tag.id);
+                      return ListTile(
+                        leading: Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                            color: tag.color.withValues(alpha: isSelected ? 0.25 : 0.10),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(tag.icon, color: tag.color, size: 18),
+                        ),
+                        title: Text(
+                          tag.name,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? tag.color : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Icon(Icons.check_circle, color: tag.color, size: 22)
+                            : Icon(Icons.circle_outlined, color: Colors.grey.shade400, size: 22),
+                        onTap: () {
+                          context.read<NewsProvider>().toggleArticleTag(article, tag.id);
+                        },
+                      );
+                    }),
+                  ],
                 ),
               ),
             const SizedBox(height: 8),

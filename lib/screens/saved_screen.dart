@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/user_tag.dart';
 import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/providers/tag_provider.dart';
 import 'package:prasowka/screens/article_detail_screen.dart';
 import 'package:prasowka/screens/settings_screen.dart';
@@ -396,7 +397,7 @@ class _HistoryTabState extends State<_HistoryTab> {
         onTap: () => _openArticle(entry),
         child: Row(
           children: [
-            if (entry.imageUrl != null && entry.imageUrl!.isNotEmpty)
+            if (context.read<SettingsProvider>().showImagesNow && entry.imageUrl != null && entry.imageUrl!.isNotEmpty)
               CachedNetworkImage(
                 imageUrl: entry.imageUrl!,
                 width: 64,

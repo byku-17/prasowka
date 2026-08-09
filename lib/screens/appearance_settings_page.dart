@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
@@ -17,7 +18,7 @@ class AppearanceSettingsPage extends StatelessWidget {
     String currentLabel = _getCurrentLabel(currentVariant, currentMode);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('WYGLĄD I ALERTY')),
+      appBar: AppBar(title: const Text('WYGLĄD')),
       body: ListView(
         children: [
           const SectionHeader('MOTYW'),
@@ -28,54 +29,46 @@ class AppearanceSettingsPage extends StatelessWidget {
             onTap: () => _showUnifiedThemePicker(context, settings),
           ),
           const Divider(),
-          const SectionHeader('POWIADOMIENIA (WARTOWNIK SOWY)'),
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications_active_outlined),
-            title: const Text('Powiadamiaj o ważnych tematach'),
-            subtitle: const Text('Sowa będzie szukać newsów w tle i da znać o tych, które pasują do Twoich polubień.'),
-            value: settings.notificationsEnabled,
-            onChanged: (val) => settings.toggleNotifications(val),
-            activeThumbColor: AppTheme.accentFor(context),
-          ),
-          const SectionHeader('WIDOK SPORTOWY'),
-          SwitchListTile(
-            secondary: const Icon(Icons.sports_score_outlined),
-            title: const Text('Pokaż wyniki meczów'),
-            subtitle: const Text('Wyświetla pasek z wynikami na górze sekcji Sport.'),
-            value: settings.showSportsBar,
-            onChanged: (val) => settings.toggleSportsBar(val),
-            activeThumbColor: AppTheme.accentFor(context),
-          ),
-          if (settings.showSportsBar)
-            SwitchListTile(
-              title: const Text('Tylko moi faworyci', style: TextStyle(fontSize: 14)),
-              subtitle: const Text('Pokazuje wyłącznie mecze klubów i lig wpisanych w zainteresowaniach.', style: TextStyle(fontSize: 11)),
-              value: settings.onlyFavoriteTeams,
-              onChanged: (val) => settings.setOnlyFavoriteTeams(val),
-              activeThumbColor: AppTheme.accentFor(context),
-              dense: true,
-            ),
-          const Divider(),
-          const SectionHeader('ŹRÓDŁA NEWSÓW'),
-          SwitchListTile(
-            secondary: const Icon(Icons.dynamic_feed_outlined),
-            title: const Text('Wszystkie źródła na "Dzisiaj"'),
-            subtitle: const Text('Pokazuje artykuły ze wszystkich aktywnych źródeł zamiast tylko wybranych portali.'),
-            value: settings.showAllSources,
-            onChanged: (val) => settings.toggleShowAllSources(val),
-            activeThumbColor: AppTheme.accentFor(context),
-          ),
-          const Divider(),
+          const SectionHeader('ROZMIAR TEKSTU'),
           ListTile(
-            leading: const Icon(Icons.cleaning_services_outlined),
-            title: const Text('Wyczyść pamięć cache'),
-            subtitle: const Text('Usuwa pobrane wcześniej artykuły i obrazy.'),
-            onTap: () async {
-              await settings.clearNewsCache();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cache wyczyszczony.')));
-              }
-            },
+            leading: const Icon(Icons.text_fields),
+            title: const Text('Rozmiar tekstu artykułów'),
+            subtitle: Text(_fontSizeLabel(settings.readingFontSize)),
+            onTap: () => _showFontSizePicker(context, settings),
+          ),
+          const Divider(),
+          const SectionHeader('KRÓJ CZIONKI'),
+          ListTile(
+            leading: const Icon(Icons.font_download_outlined),
+            title: const Text('Czcionka artykułów'),
+            subtitle: Text(_fontLabel(settings.readingFont)),
+            onTap: () => _showFontPicker(context, settings),
+          ),
+          const Divider(),
+          const SectionHeader('LISTA ARTYKUŁÓW'),
+          ListTile(
+            leading: const Icon(Icons.view_agenda_outlined),
+            title: const Text('Układ listy artykułów'),
+            subtitle: Text(settings.articleListLayout == SettingsProvider.articleListLayoutCompact ? 'Kompaktowy' : 'Wygodny'),
+            onTap: () => _showLayoutPicker(context, settings),
+          ),
+          const Divider(),
+          const SectionHeader('OBRAZKI'),
+          ListTile(
+            leading: const Icon(Icons.image_outlined),
+            title: const Text('Wyświetlanie obrazków'),
+            subtitle: Text(_imageModeLabel(settings.imageDisplayMode)),
+            onTap: () => _showImageModePicker(context, settings),
+          ),
+          const Divider(),
+          const SectionHeader('OTWIERANIE ARTYKUŁÓW'),
+          SwitchListTile(
+            secondary: const Icon(Icons.open_in_browser_outlined),
+            title: const Text('Otwieraj w przeglądarce'),
+            subtitle: const Text('Artykuły otwierane będą w zewnętrznej przeglądarce zamiast wbudowanego czytnika.'),
+            value: settings.openArticlesInBrowser,
+            onChanged: (val) => settings.setOpenArticlesInBrowser(val),
+            activeThumbColor: AppTheme.accentFor(context),
           ),
         ],
       ),
@@ -95,6 +88,176 @@ class AppearanceSettingsPage extends StatelessWidget {
       default:
         return 'Systemowy';
     }
+  }
+
+  String _fontSizeLabel(int size) {
+    switch (size) {
+      case 14:
+        return 'Mały';
+      case 18:
+        return 'Duży';
+      default:
+        return 'Standardowy';
+    }
+  }
+
+  String _fontLabel(String font) {
+    switch (font) {
+      case SettingsProvider.readingFontSerif:
+        return 'Szeryfowy (Merriweather)';
+      case SettingsProvider.readingFontSans:
+        return 'Bezszeryfowy (Lato)';
+      default:
+        return 'Systemowy';
+    }
+  }
+
+  String _imageModeLabel(String mode) {
+    switch (mode) {
+      case SettingsProvider.imageDisplayWifiOnly:
+        return 'Tylko przez Wi-Fi';
+      case SettingsProvider.imageDisplayNever:
+        return 'Nigdy';
+      default:
+        return 'Zawsze';
+    }
+  }
+
+  void _showImageModePicker(BuildContext context, SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Wyświetlanie obrazków', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            _buildImageModeOption(context, settings, label: 'Zawsze', description: 'Ładuj obrazki na każdym połączeniu', value: SettingsProvider.imageDisplayAlways),
+            _buildImageModeOption(context, settings, label: 'Tylko przez Wi-Fi', description: 'Obrazki tylko przy połączeniu Wi-Fi — oszczędzasz dane', value: SettingsProvider.imageDisplayWifiOnly),
+            _buildImageModeOption(context, settings, label: 'Nigdy', description: 'Nie ładuj obrazków w listach ani w czytniku', value: SettingsProvider.imageDisplayNever),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageModeOption(BuildContext context, SettingsProvider settings, {required String label, required String description, required String value}) {
+    final isSelected = settings.imageDisplayMode == value;
+    return ListTile(
+      leading: Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? AppTheme.accentFor(context) : null),
+      title: Text(label),
+      subtitle: Text(description),
+      onTap: () {
+        settings.setImageDisplayMode(value);
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  void _showLayoutPicker(BuildContext context, SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Układ listy artykułów', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            _buildLayoutOption(context, settings, label: 'Wygodny', description: 'Duże karty ze zdjęciem i opisem', value: SettingsProvider.articleListLayoutComfortable),
+            _buildLayoutOption(context, settings, label: 'Kompaktowy', description: 'Mniejsze wiersze — więcej artykułów na ekranie', value: SettingsProvider.articleListLayoutCompact),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLayoutOption(BuildContext context, SettingsProvider settings, {required String label, required String description, required String value}) {
+    final isSelected = settings.articleListLayout == value;
+    return ListTile(
+      leading: Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? AppTheme.accentFor(context) : null),
+      title: Text(label),
+      subtitle: Text(description),
+      onTap: () {
+        settings.setArticleListLayout(value);
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  void _showFontPicker(BuildContext context, SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Czcionka artykułów', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            _buildFontOption(context, settings, label: 'Systemowy', font: SettingsProvider.readingFontSystem, sampleStyle: const TextStyle(fontSize: 15)),
+            _buildFontOption(context, settings, label: 'Szeryfowy (Merriweather)', font: SettingsProvider.readingFontSerif, sampleStyle: GoogleFonts.merriweather(fontSize: 15)),
+            _buildFontOption(context, settings, label: 'Bezszeryfowy (Lato)', font: SettingsProvider.readingFontSans, sampleStyle: GoogleFonts.lato(fontSize: 15)),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFontOption(BuildContext context, SettingsProvider settings, {required String label, required String font, required TextStyle sampleStyle}) {
+    final isSelected = settings.readingFont == font;
+    return ListTile(
+      leading: Icon(Icons.text_fields, color: isSelected ? AppTheme.accentFor(context) : null),
+      title: Text(label),
+      subtitle: Text('Przykładowy tekst artykułu', style: sampleStyle),
+      trailing: isSelected ? Icon(Icons.check, color: AppTheme.accentFor(context)) : null,
+      onTap: () {
+        settings.setReadingFont(font);
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  void _showFontSizePicker(BuildContext context, SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Rozmiar tekstu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            _buildFontSizeOption(context, settings, label: 'Mały', size: 14, sample: 'Mały'),
+            _buildFontSizeOption(context, settings, label: 'Standardowy', size: 16, sample: 'Standardowy'),
+            _buildFontSizeOption(context, settings, label: 'Duży', size: 18, sample: 'Duży'),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFontSizeOption(BuildContext context, SettingsProvider settings, {required String label, required int size, required String sample}) {
+    final isSelected = settings.readingFontSize == size;
+    return ListTile(
+      leading: Icon(Icons.text_fields, size: size.toDouble() + 6, color: isSelected ? AppTheme.accentFor(context) : null),
+      title: Text(label),
+      subtitle: Text('Przykładowy tekst artykułu', style: TextStyle(fontSize: size.toDouble())),
+      trailing: isSelected ? Icon(Icons.check, color: AppTheme.accentFor(context)) : null,
+      onTap: () {
+        settings.setReadingFontSize(size);
+        Navigator.pop(context);
+      },
+    );
   }
 
   void _showUnifiedThemePicker(BuildContext context, SettingsProvider settings) {

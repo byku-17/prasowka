@@ -8,6 +8,7 @@ import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/screens/article_detail_screen.dart';
 import 'package:prasowka/screens/notifications_screen.dart';
+import 'package:prasowka/widgets/scroll_to_top_wrapper.dart';
 import 'package:prasowka/screens/settings_screen.dart';
 import 'package:prasowka/services/notification_history.dart';
 import 'package:prasowka/theme/app_theme.dart';
@@ -16,7 +17,8 @@ import 'package:prasowka/widgets/empty_state_widget.dart';
 import 'package:prasowka/widgets/news_skeleton.dart';
 
 class TodayScreen extends StatefulWidget {
-  const TodayScreen({super.key});
+  final ValueNotifier<int>? refreshNotifier;
+  const TodayScreen({super.key, this.refreshNotifier});
 
   @override
   State<TodayScreen> createState() => _TodayScreenState();
@@ -24,7 +26,6 @@ class TodayScreen extends StatefulWidget {
 
 class _TodayScreenState extends State<TodayScreen> {
   final ScrollController _scrollController = ScrollController();
-  bool _showBackToTop = false;
   bool _hasFetched = false;
   final Set<String> _dismissedArticleIds = {};
   static const int _initialLoad = 20;
@@ -36,20 +37,22 @@ class _TodayScreenState extends State<TodayScreen> {
   void initState() {
     super.initState();
     _refreshUnread();
-    _scrollController.addListener(() {
-      if (_scrollController.offset > 600 && !_showBackToTop) {
-        setState(() => _showBackToTop = true);
-      } else if (_scrollController.offset <= 600 && _showBackToTop) {
-        setState(() => _showBackToTop = false);
-      }
-    });
+    widget.refreshNotifier?.addListener(_onRefreshTap);
     WidgetsBinding.instance.addPostFrameCallback((_) => _fetchIfNeeded());
   }
 
   @override
   void dispose() {
+    widget.refreshNotifier?.removeListener(_onRefreshTap);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onRefreshTap() {
+    _hasFetched = false;
+    setState(() => _visibleCount = _initialLoad);
+    _scrollController.animateTo(0, duration: const Duration(milliseconds: 600), curve: Curves.easeOutCubic);
+    _fetchIfNeeded();
   }
 
   void _refreshUnread() async {
@@ -83,14 +86,6 @@ class _TodayScreenState extends State<TodayScreen> {
       enabledSourceIds: enabledIds,
       keywords: settings.keywords,
       forceRefresh: true,
-    );
-  }
-
-  void _scrollToTop() {
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOutCubic,
     );
   }
 
@@ -169,6 +164,8 @@ class _TodayScreenState extends State<TodayScreen> {
           final articles = data.articles.where((a) => !_dismissedArticleIds.contains(a.url)).toList();
           final isLoading = data.isLoading;
           final hasEverLoaded = data.hasEverLoaded;
+          final provider = context.read<NewsProvider>();
+          final recommendedIds = provider.getRecommendedFrom(articles).map((a) => a.id).toSet();
 
           // Shimmer
           if (articles.isEmpty && (isLoading || !hasEverLoaded)) {
@@ -184,9 +181,14 @@ class _TodayScreenState extends State<TodayScreen> {
           }
 
           // Lista z rekomendacjami
-          return Stack(
-            children: [
-              RefreshIndicator(
+          final sortedArticles = [
+            ...articles.where((a) => recommendedIds.contains(a.id)),
+            ...articles.where((a) => !recommendedIds.contains(a.id)),
+          ];
+          final visibleArticles = sortedArticles.take(_visibleCount).toList();
+          return ScrollToTopWrapper(
+            scrollController: _scrollController,
+            child: RefreshIndicator(
                 color: AppTheme.accentGold,
                 onRefresh: () async {
                   _hasFetched = false;
@@ -197,28 +199,23 @@ class _TodayScreenState extends State<TodayScreen> {
                   controller: _scrollController,
                   padding: EdgeInsets.zero,
                   addRepaintBoundaries: true,
-                  itemCount: (articles.length < _visibleCount ? articles.length : _visibleCount) + 1 + (articles.length > _visibleCount ? 1 : 0),
+                  itemCount: (sortedArticles.length < _visibleCount ? sortedArticles.length : _visibleCount) + (sortedArticles.length > _visibleCount ? 1 : 0),
                   itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return _buildRecommendationsSection(
-                        context,
-                        data.recommended,
-                      );
-                    }
-                    final visibleArticles = articles.take(_visibleCount).toList();
-                    if (index <= visibleArticles.length) {
-                      final article = visibleArticles[index - 1];
+                    if (index < visibleArticles.length) {
+                      final article = visibleArticles[index];
+                      final isRec = recommendedIds.contains(article.id);
                       return LongPressDismissible(
                         onDismiss: () => _dismissArticle(article),
                         child: ArticleCard(
                           article: article,
+                          isRecommended: isRec,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ArticleDetailScreen(
                                 article: article,
                                 articles: visibleArticles,
-                                currentIndex: index - 1,
+                                currentIndex: index,
                               ),
                             ),
                           ),
@@ -226,113 +223,31 @@ class _TodayScreenState extends State<TodayScreen> {
                       );
                     }
                     // Load more button
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() => _visibleCount += _loadMoreStep);
-                          },
-                          icon: const Icon(Icons.expand_more, size: 18),
-                          label: Text('Pokaż więcej (${articles.length - _visibleCount})'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.accentFor(context),
-                            foregroundColor: Colors.white,
+                    if (sortedArticles.length > _visibleCount) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() => _visibleCount += _loadMoreStep);
+                            },
+                            icon: const Icon(Icons.expand_more, size: 18),
+                            label: Text('Pokaż więcej (${sortedArticles.length - _visibleCount})'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.accentFor(context),
+                              foregroundColor: Colors.white,
+                            ),
                           ),
                         ),
-                      ),
-                    );
+                      );
+                    }
+                    return const SizedBox.shrink();
                   },
                 ),
               ),
-              if (_showBackToTop)
-                Positioned(
-                  right: 16,
-                  bottom: 80,
-                  child: FloatingActionButton.small(
-                    onPressed: _scrollToTop,
-                    backgroundColor: AppTheme.accentGold,
-                    foregroundColor: Colors.black,
-                    elevation: 4,
-                    child: const Icon(Icons.arrow_upward),
-                  ),
-                ),
-            ],
-          );
+            );
         },
       ),
-    );
-  }
-
-  Widget _buildRecommendationsSection(BuildContext context, List<Article> recommended) {
-    final filtered = recommended.where((a) => !_dismissedArticleIds.contains(a.url)).toList();
-    final hasRecs = filtered.isNotEmpty;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (hasRecs) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Icon(Icons.auto_awesome, color: AppTheme.accentFor(context), size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'DLA CIEBIE',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                    color: AppTheme.accentFor(context),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 240,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final a = filtered[index];
-                return RepaintBoundary(
-                  child: LongPressDismissible(
-                    onDismiss: () => _dismissArticle(a),
-                    child: ArticleCard(
-                      article: a,
-                      isSmall: true,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ArticleDetailScreen(article: a),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-          child: Text(
-            'NAJNOWSZE WIADOMOŚCI',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
-              fontSize: 10,
-              color: isDark ? Colors.grey : Colors.grey.shade600,
-            ),
-          ),
-        ),
-        Divider(height: 1, thickness: 0.5, color: isDark ? Colors.white10 : Colors.grey.shade300),
-      ],
     );
   }
 

@@ -1,15 +1,20 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'package:flutter/gestures.dart' show PointerDeviceKind, VelocityTracker;
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/services/reader_service.dart';
 import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/services/reading_history.dart';
 import 'package:prasowka/services/image_cache_manager.dart';
@@ -34,10 +39,24 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   late int _currentIndex;
   late final PageController _pageController;
 
-  DateTime? _lastSwipeUpTime;
-  bool _showSwipeHint = false;
   double _pointerStartY = 0;
   DateTime? _pointerStartTime;
+  double? _pointerStartScrollOffset;
+  final VelocityTracker _pointerVelocityTracker =
+      VelocityTracker.withKind(PointerDeviceKind.touch);
+
+  final List<String> _contentChunks = [];
+  String? _chunksKey;
+  int _revealedChunks = 0;
+
+  void _openInBrowser(Article art) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
+    ));
+  }
+
+  final FlutterTts _tts = FlutterTts();
+  bool _isSpeaking = false;
 
   @override
   void initState() {
@@ -49,9 +68,37 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
-
+    _initTts();
     _recordHistory(widget.article);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybeAutoFetch(_currentArticle);
+    });
   }
+
+  void _maybeAutoFetch(Article art) {
+    if (_hasUsableContent(art)) return;
+    if (RssService.isGoogleNewsUrl(art.url)) return;
+    final provider = context.read<NewsProvider>();
+    if (provider.isFetchingFor(art.id)) return;
+    provider.fetchFullArticleContent(art);
+  }
+
+  void _initTts() {
+    _tts.setLanguage('pl-PL');
+    _tts.setSpeechRate(0.45);
+    _tts.setVolume(1.0);
+    _tts.setPitch(1.05);
+    _tts.setCompletionHandler(() {
+      if (_ttsQueue.isNotEmpty) {
+        _tts.speak(_ttsQueue.removeAt(0));
+      } else {
+        if (mounted) setState(() => _isSpeaking = false);
+      }
+    });
+  }
+
+  final List<String> _ttsQueue = [];
 
   Article get _currentArticle {
     final articles = widget.articles;
@@ -73,72 +120,97 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     );
   }
 
-  bool get _canFetch {
-    final provider = context.read<NewsProvider>();
-    final article = _currentArticle;
-    final hasFullContent = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
-    return !hasFullContent && !provider.isFetchingFullContent && !RssService.isGoogleNewsUrl(article.url);
-  }
-
-  void _showFontSizePicker(BuildContext context) {
+  void _cycleFontSize() {
     final settings = context.read<SettingsProvider>();
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Rozmiar czcionki', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
-            _buildFontSizeOption(context, settings, 'Mały', 14),
-            _buildFontSizeOption(context, settings, 'Średni', 16),
-            _buildFontSizeOption(context, settings, 'Duży', 18),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
+    final current = settings.readingFontSize;
+    final next = current == 14 ? 16 : current == 16 ? 18 : 14;
+    settings.setReadingFontSize(next);
   }
 
-  Widget _buildFontSizeOption(BuildContext context, SettingsProvider settings, String label, int size) {
-    final isSelected = settings.readingFontSize == size;
-    return ListTile(
-      leading: Icon(
-        isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-        color: isSelected ? AppTheme.accentFor(context) : Colors.grey,
-      ),
-      title: Text(label, style: TextStyle(fontSize: size.toDouble() - 2, fontWeight: FontWeight.w500)),
-      onTap: () {
-        settings.setReadingFontSize(size);
-        Navigator.pop(context);
-      },
-    );
+  Future<void> _toggleTts() async {
+    if (_isSpeaking) {
+      await _tts.stop();
+      _ttsQueue.clear();
+      setState(() => _isSpeaking = false);
+      return;
+    }
+    final article = _currentArticle;
+    if (!_hasUsableContent(article)) return;
+    final raw = article.translatedFullContent ?? article.fullContent!;
+    final text = cleanForTts(raw);
+    if (text.isEmpty) return;
+    _ttsQueue.clear();
+    const chunkSize = 3500;
+    for (int i = 0; i < text.length; i += chunkSize) {
+      _ttsQueue.add(text.substring(i, (i + chunkSize).clamp(0, text.length)));
+    }
+    setState(() => _isSpeaking = true);
+    await _tts.speak(_ttsQueue.removeAt(0));
+  }
+
+  bool get _canTts {
+    return _hasUsableContent(_currentArticle);
   }
 
   void _handleSwipeUp() {
-    if (!_canFetch) return;
-    final now = DateTime.now();
-    if (_lastSwipeUpTime != null && now.difference(_lastSwipeUpTime!) < const Duration(milliseconds: 800)) {
-      setState(() {
-        _showSwipeHint = false;
-        _lastSwipeUpTime = null;
-      });
-      context.read<NewsProvider>().fetchFullArticleContent(_currentArticle);
-    } else {
-      _lastSwipeUpTime = now;
-      setState(() => _showSwipeHint = true);
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted && _showSwipeHint) setState(() => _showSwipeHint = false);
-      });
+    final article = _currentArticle;
+    if (RssService.isGoogleNewsUrl(article.url)) {
+      _showSwipeFeedback('Link Google News — treść dostępna tylko w zewnętrznej przeglądarce.');
+      return;
     }
+    if (_hasUsableContent(article)) {
+      _showSwipeFeedback('Treść artykułu jest już załadowana.');
+      return;
+    }
+    final provider = context.read<NewsProvider>();
+    if (provider.isFetchingFor(article.id)) {
+      _showSwipeFeedback('Treść jest już pobierana...');
+      return;
+    }
+    provider.fetchFullArticleContent(article);
+    _showSwipeFeedback('Pobieram treść artykułu...');
+  }
+
+  void _handleSwipeDown() {
+    final article = _currentArticle;
+    if (RssService.isGoogleNewsUrl(article.url)) {
+      _showSwipeFeedback('Link Google News — pobranie treści niedostępne.');
+      return;
+    }
+    final provider = context.read<NewsProvider>();
+    if (provider.isFetchingFor(article.id)) {
+      _showSwipeFeedback('Pobieranie już trwa...');
+      return;
+    }
+    provider.fetchFullArticleContent(article);
+    _showSwipeFeedback('Odświeżam / pobieram treść...');
+  }
+
+  void _showSwipeFeedback(String message) {
+    ScaffoldMessenger.of(context)
+      ..removeCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+    final pixels = _scrollController.position.pixels;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+
+    if (pixels >= maxScroll - 100) {
       if (!widget.article.isRead) {
         context.read<NewsProvider>().markArticleRead(widget.article);
+      }
+    }
+
+    if (_contentChunks.isNotEmpty && _revealedChunks < _contentChunks.length) {
+      if (pixels >= maxScroll - 150) {
+        setState(() => _revealedChunks++);
       }
     }
   }
@@ -146,19 +218,58 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   void _onPointerDown(PointerDownEvent event) {
     _pointerStartY = event.position.dy;
     _pointerStartTime = DateTime.now();
+    _pointerStartScrollOffset = _scrollController.hasClients
+        ? _scrollController.position.pixels
+        : null;
+    _pointerVelocityTracker.addPosition(event.timeStamp, event.position);
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    _pointerVelocityTracker.addPosition(event.timeStamp, event.position);
   }
 
   void _onPointerUp(PointerUpEvent event) {
     if (_pointerStartTime == null) return;
+    _pointerVelocityTracker.addPosition(event.timeStamp, event.position);
+    final velocityEstimate = _pointerVelocityTracker.getVelocityEstimate();
+
     final dy = event.position.dy - _pointerStartY;
     final dt = DateTime.now().difference(_pointerStartTime!).inMilliseconds;
-    if (dt < 500 && dy < -25) {
+    _pointerStartTime = null;
+    if (dt > 700) return;
+
+    // Swipe wymaga szybkiego, gwałtownego ruchu. Wolne przewijanie przy
+    // czytaniu (nawet o dużej amplitudzie) nie jest swipe'em.
+    final velocityY = velocityEstimate?.pixelsPerSecond.dy ?? 0;
+
+    // Jeśli w trakcie gestu treść faktycznie się przewinęła, to było
+    // czytanie, a nie swipe.
+    final startOffset = _pointerStartScrollOffset;
+    final currentOffset = _scrollController.hasClients
+        ? _scrollController.position.pixels
+        : null;
+    _pointerStartScrollOffset = null;
+    if (startOffset != null &&
+        currentOffset != null &&
+        (currentOffset - startOffset).abs() > 30) {
+      return;
+    }
+
+    const minSwipeVelocity = 350.0;
+    final pos = _scrollController.hasClients ? _scrollController.position : null;
+    if (dy < -40 && velocityY < -minSwipeVelocity) {
       _handleSwipeUp();
+    } else if (dy > 40 && velocityY > minSwipeVelocity) {
+      if (pos == null || pos.pixels <= 1) {
+        _handleSwipeDown();
+      }
     }
   }
 
   @override
   void dispose() {
+    _tts.stop();
+    _ttsQueue.clear();
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _pageController.dispose();
@@ -186,14 +297,22 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     if (_hasNavigation) {
       return PageView(
         controller: _pageController,
+        physics: const _CalmPageScrollPhysics(),
         onPageChanged: (index) {
           _stopwatch.stop();
           _markReadIfEnough(_stopwatch.elapsed.inSeconds);
+          // Zmiana artykułu przerywa czytanie lektora.
+          final wasSpeaking = _isSpeaking;
+          if (wasSpeaking) {
+            _tts.stop();
+            _ttsQueue.clear();
+          }
           setState(() {
             _currentIndex = index;
-            _showSwipeHint = false;
-            _lastSwipeUpTime = null;
+            if (wasSpeaking) _isSpeaking = false;
           });
+          // Pobierz treść nowego artykułu, żeby TTS stał się dostępny.
+          _maybeAutoFetch(_currentArticle);
           _stopwatch.reset();
           _stopwatch.start();
           _recordHistory(_currentArticle);
@@ -209,17 +328,20 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   Widget _buildArticlePage(BuildContext context, Article art) {
     return Scaffold(
-      body: Listener(
-        onPointerDown: _onPointerDown,
-        onPointerUp: _onPointerUp,
-        child: CustomScrollView(
+      body: Stack(
+        children: [
+          Listener(
+            onPointerDown: _onPointerDown,
+            onPointerMove: _onPointerMove,
+            onPointerUp: _onPointerUp,
+            child: CustomScrollView(
           controller: _scrollController,
           slivers: [
             SliverAppBar(
               expandedHeight: 250,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
-                background: art.imageUrl != null
+                background: context.read<SettingsProvider>().showImagesNow && art.imageUrl != null
                     ? Hero(
                         tag: 'article-image-${art.id}',
                         child: CachedNetworkImage(imageUrl: art.imageUrl!, fit: BoxFit.cover, cacheManager: AppImageCacheManager.instance),
@@ -227,11 +349,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     : Container(color: const Color(0xFF1E2126)),
               ),
               actions: [
-                if (art.isRead)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 4),
-                    child: Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
-                  ),
                 Consumer<NewsProvider>(
                   builder: (context, provider, child) {
                     final isPolish = provider.isArticlePolish(art);
@@ -250,21 +367,28 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   },
                 ),
                 IconButton(
+                  icon: Icon(_isSpeaking ? Icons.stop_circle : Icons.volume_up),
+                  onPressed: _canTts ? _toggleTts : null,
+                  tooltip: _canTts ? (_isSpeaking ? 'Zatrzymaj' : 'Czytaj artykuł') : 'Pobierz artykuł, żeby odtworzyć',
+                  color: _canTts ? Colors.red : Colors.grey,
+                ),
+                IconButton(
                   icon: const Icon(Icons.text_fields),
-                  onPressed: () => _showFontSizePicker(context),
+                  onPressed: _cycleFontSize,
                   tooltip: 'Rozmiar czcionki',
                 ),
                 IconButton(
                   icon: const Icon(Icons.share),
                   onPressed: () => SharePlus.instance.share(ShareParams(text: '${art.title}\n\n${art.url}')),
+                  tooltip: 'Udostępnij',
                 ),
-                IconButton(
-                  icon: const Icon(Icons.open_in_browser),
-                  onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
-                    ));
-                  },
+                // Pulsuje zawsze, gdy pełna treść nie jest jeszcze
+                // dostępna — zarówno przy błędzie, jak i przy braku
+                // załadowania artykułu.
+                _PulsingBrowserButton(
+                  article: art,
+                  pulse: !_hasUsableContent(art),
+                  onPressed: () => _openInBrowser(art),
                 ),
               ],
             ),
@@ -277,12 +401,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          art.sourceName.toUpperCase(),
-                          style: TextStyle(
-                            color: AppTheme.accentFor(context),
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
+                        Flexible(
+                          child: Text(
+                            art.sourceName.toUpperCase(),
+                            style: TextStyle(
+                              color: AppTheme.accentFor(context),
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -295,7 +422,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     const SizedBox(height: 16),
                     Text(
                       art.translatedTitle ?? art.title,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(height: 1.2),
+                      style: _readingFontStyle(context, Theme.of(context).textTheme.headlineMedium?.copyWith(height: 1.2)),
                     ),
                     const SizedBox(height: 24),
                     const Divider(),
@@ -303,14 +430,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
                     Consumer<NewsProvider>(
                       builder: (context, provider, child) {
-                        final hasFullContent = art.fullContent != null && art.fullContent!.trim().isNotEmpty;
-
-                        return AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 400),
-                          switchInCurve: Curves.easeIn,
-                          switchOutCurve: Curves.easeOut,
-                          child: _buildContentBody(context, provider, hasFullContent, art),
-                        );
+                        return _buildContentBody(context, provider, art);
                       },
                     ),
 
@@ -319,212 +439,260 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 ),
               ),
             ),
+
           ],
         ),
       ),
-    );
+
+      _buildFloatingReactionButtons(context, art),
+    ],
+  ),
+);
   }
 
-  Widget _buildContentBody(BuildContext context, NewsProvider provider, bool hasFullContent, Article art) {
-    if (provider.isFetchingFullContent || provider.isTranslating) {
+  bool _hasUsableContent(Article art) {
+    final fc = art.fullContent;
+    if (fc == null) return false;
+    // Zwiększono próg do 350 znaków dla spójności z NewsProvider
+    return fc.trim().length >= 350;
+  }
+
+  List<String> _chunksFor(Article art) {
+    final content = art.translatedFullContent ?? art.fullContent;
+    if (content == null) return const [];
+    final key = '${art.id}|${content.length}';
+    if (key != _chunksKey) {
+      _chunksKey = key;
+      _contentChunks
+        ..clear()
+        ..addAll(_splitContentIntoChunks(content));
+      _revealedChunks = math.min(1, _contentChunks.length);
+    }
+    return _contentChunks;
+  }
+
+  static List<String> _splitContentIntoChunks(String html, {int chunkCount = 5}) {
+    if (html.trim().isEmpty) return [html];
+    final normalized = ReaderService.normalizeHtml(html);
+    final parts = normalized.split(RegExp(r'(?=</(?:p|h[1-6]|li|blockquote|div|figure)>)'));
+    if (parts.length <= chunkCount) return parts;
+    final targetLen = (normalized.length / chunkCount).ceil();
+    final chunks = <String>[];
+    final buf = StringBuffer();
+    for (final part in parts) {
+      if (buf.isNotEmpty && buf.length + part.length >= targetLen) {
+        chunks.add(buf.toString());
+        buf.clear();
+      }
+      buf.write(part);
+    }
+    if (buf.isNotEmpty) chunks.add(buf.toString());
+    return chunks;
+  }
+
+  TextStyle? _readingFontStyle(BuildContext context, TextStyle? base) {
+    final font = context.read<SettingsProvider>().readingFont;
+    if (font == SettingsProvider.readingFontSerif) return GoogleFonts.merriweather(textStyle: base);
+    if (font == SettingsProvider.readingFontSans) return GoogleFonts.lato(textStyle: base);
+    return base;
+  }
+
+  Widget _buildContentBody(BuildContext context, NewsProvider provider, Article art) {
+    final hasFullContent = _hasUsableContent(art);
+    final isFetching = provider.isFetchingFor(art.id);
+    final fetchFailed = provider.fetchFailedIds.contains(art.id);
+
+    final settings = context.read<SettingsProvider>();
+    final textStyle = _readingFontStyle(context, Theme.of(context).textTheme.bodyLarge?.copyWith(
+      fontSize: settings.readingFontSize.toDouble(),
+      height: 1.6,
+    ));
+
+    final Widget description = HtmlWidget(
+      art.translatedDescription ?? (art.description.isNotEmpty ? art.description : ''),
+      textStyle: textStyle,
+      onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+    );
+
+    if (hasFullContent) {
+      final chunks = _chunksFor(art);
+      final visible = _revealedChunks.clamp(1, chunks.length);
       return Column(
-        key: const ValueKey('loading'),
+        key: const ValueKey('progressive'),
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!hasFullContent)
+          description,
+          const SizedBox(height: 16),
+          for (int i = 0; i < visible; i++) ...[
             HtmlWidget(
-              art.translatedDescription ?? (art.description.isNotEmpty ? art.description : ''),
-              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
+              chunks[i],
+              textStyle: textStyle,
               onTapUrl: (url) async { await _launchUrl(context, url); return true; },
             ),
-          const SizedBox(height: 32),
-          const CircularProgressIndicator(),
-          const SizedBox(height: 12),
-          Text(
-            provider.isTranslating ? 'Sowa tłumaczy dla Ciebie...' : 'Sowa czyta artykuł dla Ciebie...',
-            style: const TextStyle(fontStyle: FontStyle.italic),
-          ),
+            if (i < visible - 1) const SizedBox(height: 12),
+          ],
+          if (visible < chunks.length) ...[
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 8),
+                Text(
+                  'Sowa doładowuje treść...',
+                  style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13),
+                ),
+              ],
+            ),
+          ],
         ],
       );
     }
 
-    if (!hasFullContent) {
+    if (isFetching) {
       return Column(
-        key: const ValueKey('snippet'),
+        key: const ValueKey('loading'),
         children: [
-          HtmlWidget(
-            art.translatedDescription ?? (art.description.isNotEmpty ? art.description : 'Brak treści artykułu.'),
-            textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
-            onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+          description,
+          const SizedBox(height: 24),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 12),
+          Text(
+            'Sowa pobiera artykuł...',
+            style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
-          if (_showSwipeHint) ...[
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E3238),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Column(
-                children: [
-                  Icon(Icons.keyboard_arrow_up, color: Colors.white70, size: 28),
-                  SizedBox(height: 4),
-                  Text(
-                    'Przesuń jeszcze raz,\naby pobrać artykuł',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 32),
-          _buildActionButtons(context, provider, art),
         ],
       );
     }
 
     return Column(
-      key: const ValueKey('full'),
-      crossAxisAlignment: CrossAxisAlignment.start,
+      key: const ValueKey('snippet'),
       children: [
-        HtmlWidget(
-          art.translatedFullContent ?? art.fullContent!,
-          textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
-          onTapUrl: (url) async { await _launchUrl(context, url); return true; },
-        ),
-        const SizedBox(height: 32),
-        _buildActionButtons(context, provider, art),
+        description,
+        const SizedBox(height: 24),
+        if (fetchFailed) ...[
+          GestureDetector(
+            onTap: () => _openInBrowser(art),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Colors.red.shade300, size: 20),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Błąd pobierania, otwórz w zewnętrznej przeglądarce.',
+                    style: TextStyle(color: Colors.red.shade300, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ] else ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.swipe_up, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Treść załaduje się podczas czytania.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
       ],
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, NewsProvider provider, Article art) {
-    if (RssService.isGoogleNewsUrl(art.url)) {
-      return Center(
-        child: ElevatedButton.icon(
-          onPressed: () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
-            ));
-          },
-          icon: const Icon(Icons.auto_stories),
-          label: const Text('CZYTAJ ARTYKUŁ'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.accentFor(context),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          ),
-        ),
-      );
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        children: [
-          ElevatedButton.icon(
-            onPressed: provider.isFetchingFullContent
-                ? null
-                : () => provider.fetchFullArticleContent(art),
-            icon: provider.isFetchingFullContent
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.auto_stories, size: 16),
-            label: Text(
-              provider.fetchFailedIds.contains(art.id) ? 'SPRÓBUJ PONOWNIE' : 'PEŁNA TREŚĆ',
-              style: const TextStyle(fontSize: 12),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accentFor(context),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
-              ));
-            },
-            icon: const Icon(Icons.open_in_browser, size: 16),
-            label: const Text('W APLIKACJI', style: TextStyle(fontSize: 12)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.accentFor(context),
-              side: BorderSide(color: AppTheme.accentFor(context)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => provider.toggleLike(art),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: art.isLiked ? AppTheme.accentFor(context) : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
+  Widget _buildFloatingReactionButtons(BuildContext context, Article art) {
+    final provider = context.read<NewsProvider>();
+    return Positioned(
+      bottom: 16,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-              child: Icon(
-                art.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                color: art.isLiked ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                size: 20,
-              ),
-            ),
+            ],
           ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => provider.toggleDislike(art),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: art.isDisliked ? Colors.red : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () => provider.toggleLike(art),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: art.isLiked ? AppTheme.accentFor(context) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    art.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                    color: art.isLiked ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                    size: 20,
+                  ),
+                ),
               ),
-              child: Icon(
-                art.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
-                color: art.isDisliked ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                size: 20,
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => provider.toggleDislike(art),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: art.isDisliked ? Colors.red : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    art.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
+                    color: art.isDisliked ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                    size: 20,
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () async {
-              if (!art.isSaved) {
-                await provider.toggleSaved(art);
-                if (context.mounted) {
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () {
+                  if (!art.isSaved) {
+                    provider.toggleSaved(art);
+                  }
                   showModalBottomSheet(
                     context: context,
                     backgroundColor: Colors.transparent,
                     builder: (_) => TagPickerBottomSheet(article: art),
                   );
-                }
-              } else {
-                await provider.toggleSaved(art);
-              }
-            },
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: art.isSaved ? Colors.blue : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: art.isSaved ? Colors.blue : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    art.isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    color: art.isSaved ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                    size: 20,
+                  ),
+                ),
               ),
-              child: Icon(
-                art.isSaved ? Icons.bookmark : Icons.bookmark_border,
-                color: art.isSaved ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                size: 20,
-              ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -546,5 +714,98 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         );
       }
     }
+  }
+}
+
+class _CalmPageScrollPhysics extends PageScrollPhysics {
+  const _CalmPageScrollPhysics({super.parent});
+
+  // Lekki dotyk / przypadkowy ruch nie rozpoczyna przeciągania —
+  // palec musi najpierw pokonać próg dystansu.
+  @override
+  double get dragStartDistanceMotionThreshold => 15.0;
+
+  // Zmniejsza czułość przeciągnięcia — trzeba pociągnąć dalej,
+  // zanim strona zacznie się przesuwać.
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) {
+    return offset * 0.3;
+  }
+
+  // Wymaga wyraźnego flingu do zmiany strony.
+  @override
+  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
+    if (velocity.abs() < minFlingVelocity * 2.5) {
+      return super.createBallisticSimulation(position, 0);
+    }
+    return super.createBallisticSimulation(position, velocity);
+  }
+
+  @override
+  _CalmPageScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return _CalmPageScrollPhysics(parent: buildParent(ancestor));
+  }
+}
+
+// Przycisk "otwórz w przeglądarce" w pasku górnym — pulsuje (skala +
+// kolor) tylko wtedy, gdy pobranie artykułu nie powiodło się i widoczny
+// jest komunikat o błędzie.
+class _PulsingBrowserButton extends StatefulWidget {
+  final Article article;
+  final VoidCallback onPressed;
+  final bool pulse;
+
+  const _PulsingBrowserButton({
+    required this.article,
+    required this.onPressed,
+    required this.pulse,
+  });
+
+  @override
+  State<_PulsingBrowserButton> createState() => _PulsingBrowserButtonState();
+}
+
+class _PulsingBrowserButtonState extends State<_PulsingBrowserButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    )..repeat(reverse: true);
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        // Przy powiększaniu ikonka zmienia kolor na czerwony.
+        final color = widget.pulse
+            ? Color.lerp(Colors.white, Colors.red, _animation.value)!
+            : Colors.white;
+        final scale = widget.pulse ? 1.0 + 0.25 * _animation.value : 1.0;
+        return Transform.scale(
+          scale: scale,
+          child: IconButton(
+            icon: Icon(Icons.open_in_browser, color: color),
+            onPressed: widget.onPressed,
+          ),
+        );
+      },
+    );
   }
 }

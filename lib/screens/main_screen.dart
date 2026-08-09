@@ -12,6 +12,8 @@ import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/services/background_service.dart';
 import 'package:prasowka/services/notification_history.dart';
+import 'package:prasowka/services/auth_service.dart';
+import 'package:prasowka/services/sync_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -20,11 +22,14 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   late int _currentIndex;
   late final PageController _pageController;
   DateTime? _lastBackPressTime;
   StreamSubscription? _notificationSubscription;
+  final ValueNotifier<int> refreshNotifier = ValueNotifier<int>(0);
+  Timer? _autoRefreshTimer;
+  bool _autoSyncInProgress = false;
 
   List<Widget> _screens = [];
   List<_TabDef> _tabs = [];
@@ -43,6 +48,14 @@ class _MainScreenState extends State<MainScreen> {
     _notificationSubscription = BackgroundService().notificationStream.listen((url) {
       if (url != null) _handleNotificationUrl(url);
     });
+
+    // Auto-odświeżanie treści
+    settings.addListener(_onSettingsChanged);
+    _scheduleAutoRefresh(settings.refreshFrequencyHours);
+
+    // Automatyczna synchronizacja
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoSync());
 
     // Obsługa Cold Startu
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -81,12 +94,41 @@ class _MainScreenState extends State<MainScreen> {
     ];
 
     _screens = [
-      const TodayScreen(),
-      CategoryTabScreen(categoryId: settings.mainTabSlot1),
-      CategoryTabScreen(categoryId: settings.mainTabSlot2),
+      TodayScreen(refreshNotifier: refreshNotifier),
+      CategoryTabScreen(categoryId: settings.mainTabSlot1, refreshNotifier: refreshNotifier),
+      CategoryTabScreen(categoryId: settings.mainTabSlot2, refreshNotifier: refreshNotifier),
       const TopicsScreen(),
       const SavedScreen(),
     ];
+  }
+
+  void _onSettingsChanged() {
+    _scheduleAutoRefresh(context.read<SettingsProvider>().refreshFrequencyHours);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _maybeAutoSync();
+  }
+
+  void _maybeAutoSync() {
+    final settings = context.read<SettingsProvider>();
+    if (!settings.autoSyncEnabled) return;
+    if (!context.read<AuthService>().isLoggedIn) return;
+    if (_autoSyncInProgress) return;
+    _autoSyncInProgress = true;
+    context.read<SyncService>().pushAll().whenComplete(() {
+      _autoSyncInProgress = false;
+    });
+  }
+
+  void _scheduleAutoRefresh(int hours) {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = null;
+    if (hours <= 0) return;
+    _autoRefreshTimer = Timer.periodic(Duration(hours: hours), (_) {
+      refreshNotifier.value++;
+    });
   }
 
   void _handleNotificationUrl(String url) {
@@ -105,11 +147,20 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _notificationSubscription?.cancel();
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = null;
+    WidgetsBinding.instance.removeObserver(this);
+    context.read<SettingsProvider>().removeListener(_onSettingsChanged);
     _pageController.dispose();
+    refreshNotifier.dispose();
     super.dispose();
   }
 
   void _onTabTapped(int index) {
+    if (index == _currentIndex) {
+      refreshNotifier.value++;
+      return;
+    }
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 250),

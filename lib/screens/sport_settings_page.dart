@@ -1,57 +1,90 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/models/sport_league.dart';
+import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/providers/sports_provider.dart';
-import 'package:prasowka/theme/app_theme.dart';
+import 'package:prasowka/widgets/section_header.dart';
 
-class SportSettingsScreen extends StatelessWidget {
-  const SportSettingsScreen({super.key});
+class SportSettingsPage extends StatelessWidget {
+  const SportSettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('MOJE SPORTY'),
-        actions: [
-          if (settings.selectedLeagueIds.isNotEmpty)
-            TextButton(
-              onPressed: () => settings.setSelectedLeagues([]),
-              child: const Text('Wyczyść', style: TextStyle(color: Colors.redAccent)),
-            ),
+      appBar: AppBar(title: const Text('SPORT')),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 32),
+        children: [
+          const SectionHeader('PASEK WYNIKÓW'),
+          SwitchListTile(
+            secondary: const Icon(Icons.sports_score_outlined),
+            title: const Text('Tylko moi faworyci', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Pokazuje wyłącznie mecze klubów i lig wpisanych w zainteresowaniach.', style: TextStyle(fontSize: 11)),
+            value: settings.onlyFavoriteTeams,
+            onChanged: (val) => settings.setOnlyFavoriteTeams(val),
+            activeThumbColor: AppTheme.accentFor(context),
+            dense: true,
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.flag_outlined),
+            title: const Text('Pokazuj wyniki zakończonych spotkań', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Mecze, które już się skończyły, widoczne są na pasku.', style: TextStyle(fontSize: 11)),
+            value: settings.showFinished,
+            onChanged: (val) => settings.setShowFinished(val),
+            activeThumbColor: AppTheme.accentFor(context),
+            dense: true,
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.schedule_outlined),
+            title: const Text('Pokazuj nadchodzące mecze', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Planowane spotkania pojawiają się przed startem.', style: TextStyle(fontSize: 11)),
+            value: settings.showUpcoming,
+            onChanged: (val) => settings.setShowUpcoming(val),
+            activeThumbColor: AppTheme.accentFor(context),
+            dense: true,
+          ),
+          const Divider(height: 32),
+          const SectionHeader('POWIADOMIENIA SPORTOWE'),
+          SwitchListTile(
+            secondary: const Icon(Icons.notifications_active_outlined),
+            title: const Text('Powiadomienia o wyniku', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Gole i zmiany wyniku meczów Twoich drużyn (np. „⚽ GOL!").', style: TextStyle(fontSize: 11)),
+            value: settings.sportResultNotifications,
+            onChanged: (val) => settings.setSportResultNotifications(val),
+            activeThumbColor: AppTheme.accentFor(context),
+            dense: true,
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.alarm_on_outlined),
+            title: const Text('Powiadomienia o rozpoczęciu meczu', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Przypomnienia przed startem meczu Twojej drużyny.', style: TextStyle(fontSize: 11)),
+            value: settings.sportStartNotifications,
+            onChanged: (val) => settings.setSportStartNotifications(val),
+            activeThumbColor: AppTheme.accentFor(context),
+            dense: true,
+          ),
+          const Divider(height: 32),
+          // Wybrane ligi
+          _buildLeagueSection(context, settings),
+          const Divider(height: 32),
+          // Ulubione drużyny
+          _buildFavoriteTeamsSection(context, settings),
+          const SizedBox(height: 8),
+          // Pasek informacyjny
+          _buildInfoBar(context, settings),
+          // Debug
+          _buildDebugToggle(context),
         ],
       ),
-      body: settings.selectedLeagueIds.isEmpty
-          ? _buildEmptyState(context)
-          : _buildFullBody(context, settings),
-    );
-  }
-
-  // ─── PEŁNE CIAŁO (scrollowane) ───
-
-  Widget _buildFullBody(BuildContext context, SettingsProvider settings) {
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 32),
-      children: [
-        // Wybrane ligi
-        _buildSelectedSummary(context, settings),
-        const Divider(height: 32),
-        // Ulubione drużyny
-        _buildFavoriteTeamsSection(context, settings),
-        const SizedBox(height: 8),
-        // Pasek informacyjny
-        _buildInfoBar(context, settings),
-        // Debug (ukryty)
-        _buildDebugToggle(context),
-      ],
     );
   }
 
   // ─── WYBRANE LIGI ───
 
-  Widget _buildSelectedSummary(BuildContext context, SettingsProvider settings) {
+  Widget _buildLeagueSection(BuildContext context, SettingsProvider settings) {
     final selected = settings.selectedLeagueIds
         .map((id) => SportLeague.findById(id))
         .whereType<SportLeague>()
@@ -80,21 +113,37 @@ class SportSettingsScreen extends StatelessWidget {
             ),
           ),
         ),
-        for (final entry in grouped.entries) ...[
+        if (selected.isEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-            child: Text(
-              '${entry.key.emoji}  ${entry.key.displayName.toUpperCase()}',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.accentFor(context),
-                letterSpacing: 1.0,
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: Column(
+              children: [
+                Icon(Icons.sports_soccer, size: 48, color: Colors.grey.withValues(alpha: 0.5)),
+                const SizedBox(height: 12),
+                const Text(
+                  'Nie wybrano żadnych lig.\nKliknij "Wybierz Ligi" powyżej.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+              ],
+            ),
+          )
+        else
+          for (final entry in grouped.entries) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+              child: Text(
+                '${entry.key.emoji}  ${entry.key.displayName.toUpperCase()}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.accentFor(context),
+                  letterSpacing: 1.0,
+                ),
               ),
             ),
-          ),
-          ...entry.value.map((league) => _buildLeagueTile(context, league, settings)),
-        ],
+            ...entry.value.map((league) => _buildLeagueTile(context, league, settings)),
+          ],
       ],
     );
   }
@@ -187,7 +236,7 @@ class SportSettingsScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'Dodaj drużyny (np. "Wisła"), zawodników (np. "Świątek") lub kierowców F1 (np. "Verstappen").',
+                'Dodaj drużyny (np. "Wisła"), zawodników (np. "Świątek") lub kierowców F1.',
                 style: TextStyle(fontSize: 12, color: Colors.grey.withValues(alpha: 0.7)),
               ),
             )
@@ -270,7 +319,7 @@ class SportSettingsScreen extends StatelessWidget {
     );
   }
 
-  // ─── DEBUG (UKRYTY POD PRZYCISKIEM) ───
+  // ─── DEBUG ───
 
   Widget _buildDebugToggle(BuildContext context) {
     return Consumer<SportsProvider>(
@@ -323,44 +372,16 @@ class SportSettingsScreen extends StatelessWidget {
     );
   }
 
-  // ─── EMPTY STATE ───
-
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.sports_soccer, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text('Nie wybrano żadnych lig', style: TextStyle(fontSize: 18, color: Colors.grey)),
-          const SizedBox(height: 8),
-          const Text(
-            'Kliknij "Wybierz Ligi" poniżej,\naby dodać wyniki do paska sportowego.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => _showLeaguePicker(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accentFor(context),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('WYBIERZ LIGI', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
+  // ─── LEAGUE PICKER ───
 
   void _showLeaguePicker(BuildContext context) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => const _LeaguePickerScreen()));
   }
 }
 
-// ─── PEŁNA LISTA LIG DO WYBORU ───
+// ═══════════════════════════════════════════
+//  LEAGUE PICKER — pełna lista lig do wyboru
+// ═══════════════════════════════════════════
 
 class _LeaguePickerScreen extends StatefulWidget {
   const _LeaguePickerScreen();
