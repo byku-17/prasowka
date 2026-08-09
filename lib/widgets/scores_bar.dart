@@ -152,8 +152,8 @@ class _ScoresBarState extends State<ScoresBar> {
     todayMatches.sort((a, b) => a.date.compareTo(b.date));
     upcomingMatches.sort((a, b) => a.date.compareTo(b.date));
 
-    // 2. Dodaj kafelki LIVE (max 3)
-    for (final event in liveMatches.take(3)) {
+    // 2. Dodaj kafelki LIVE (max 5)
+    for (final event in liveMatches.take(5)) {
       tiles.add(_MatchScoreTile(
         event: event,
         onTap: () => _showMatchDetailBottomSheet(context, event, provider),
@@ -168,8 +168,8 @@ class _ScoresBarState extends State<ScoresBar> {
       ));
     }
 
-    // 4. Dodaj jutro (max 3)
-    for (final event in upcomingMatches.take(3)) {
+    // 4. Dodaj jutro (max 5)
+    for (final event in upcomingMatches.take(5)) {
       tiles.add(_MatchScoreTile(
         event: event,
         onTap: () => _showMatchDetailBottomSheet(context, event, provider),
