@@ -24,7 +24,7 @@ class NewsProvider with ChangeNotifier {
   
   List<Article> _recommendedArticles = [];
   final Set<String> _fetchFailedIds = {};
-  bool _isFetchingFullContent = false;
+  final Set<String> _fetchingArticleIds = {};
   bool _isTranslating = false;
   NewsCategory _selectedCategory = NewsCategory.defaultCategories.first;
   
@@ -36,9 +36,10 @@ class NewsProvider with ChangeNotifier {
   List<Article> get articles => _articlesMap[_selectedCategory.id] ?? [];
   List<Article> get recommendedArticles => _recommendedArticles;
   bool get isLoading => _loadingMap[_selectedCategory.id] ?? false;
-  bool get isFetchingFullContent => _isFetchingFullContent;
+  bool get isFetchingFullContent => _fetchingArticleIds.isNotEmpty;
   bool get isTranslating => _isTranslating;
   Set<String> get fetchFailedIds => _fetchFailedIds;
+  bool isFetchingFor(String id) => _fetchingArticleIds.contains(id);
 
   List<Article> getArticlesForCategory(String categoryId) => _articlesMap[categoryId] ?? [];
   bool isCategoryLoading(String categoryId) => _loadingMap[categoryId] ?? false;
@@ -438,7 +439,7 @@ class NewsProvider with ChangeNotifier {
   Future<void> fetchFullArticleContent(Article article) async {
     if (RssService.isGoogleNewsUrl(article.url)) return;
     if (article.fullContent != null && article.fullContent!.trim().isNotEmpty) return;
-    _isFetchingFullContent = true;
+    _fetchingArticleIds.add(article.id);
     _fetchFailedIds.remove(article.id);
     notifyListeners();
     try {
@@ -457,7 +458,7 @@ class NewsProvider with ChangeNotifier {
     } catch (e) {
       _fetchFailedIds.add(article.id);
     } finally {
-      _isFetchingFullContent = false;
+      _fetchingArticleIds.remove(article.id);
       notifyListeners();
     }
   }

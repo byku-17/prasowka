@@ -113,13 +113,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     );
   }
 
-  bool get _canFetch {
-    final provider = context.read<NewsProvider>();
-    final article = _currentArticle;
-    final hasFullContent = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
-    return !hasFullContent && !provider.isFetchingFullContent && !RssService.isGoogleNewsUrl(article.url);
-  }
-
   void _cycleFontSize() {
     final settings = context.read<SettingsProvider>();
     final current = settings.readingFontSize;
@@ -155,8 +148,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   }
 
   void _handleSwipeUp() {
-    if (!_canFetch) return;
-    context.read<NewsProvider>().fetchFullArticleContent(_currentArticle);
+    final article = _currentArticle;
+    if (article.fullContent != null && article.fullContent!.trim().isNotEmpty) return;
+    if (RssService.isGoogleNewsUrl(article.url)) return;
+    context.read<NewsProvider>().fetchFullArticleContent(article);
   }
 
   void _scrollListener() {
@@ -261,6 +256,21 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   ),
                 Consumer<NewsProvider>(
                   builder: (context, provider, child) {
+                    final hasFullContent = art.fullContent != null && art.fullContent!.trim().isNotEmpty;
+                    if (hasFullContent) return const SizedBox.shrink();
+                    return IconButton(
+                      icon: provider.isFetchingFor(art.id)
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Icon(Icons.download, color: AppTheme.accentFor(context)),
+                      onPressed: provider.isFetchingFor(art.id)
+                          ? null
+                          : () => provider.fetchFullArticleContent(art),
+                      tooltip: 'Pobierz treść',
+                    );
+                  },
+                ),
+                Consumer<NewsProvider>(
+                  builder: (context, provider, child) {
                     final isPolish = provider.isArticlePolish(art);
                     final needsTranslation = !isPolish && (
                       art.translatedTitle == null ||
@@ -277,19 +287,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.text_fields),
-                  onPressed: _cycleFontSize,
-                  tooltip: 'Rozmiar czcionki',
-                ),
-                IconButton(
                   icon: Icon(_isSpeaking ? Icons.stop_circle : Icons.volume_up),
                   onPressed: _canTts ? _toggleTts : null,
                   tooltip: _canTts ? (_isSpeaking ? 'Zatrzymaj' : 'Czytaj artykuł') : 'Pobierz artykuł, żeby odtworzyć',
                   color: _canTts ? Colors.red : Colors.grey,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.share),
-                  onPressed: () => SharePlus.instance.share(ShareParams(text: '${art.title}\n\n${art.url}')),
                 ),
                 IconButton(
                   icon: const Icon(Icons.open_in_browser),
@@ -299,20 +300,22 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     ));
                   },
                 ),
-                Consumer<NewsProvider>(
-                  builder: (context, provider, child) {
-                    final hasFullContent = art.fullContent != null && art.fullContent!.trim().isNotEmpty;
-                    if (hasFullContent) return const SizedBox.shrink();
-                    return IconButton(
-                      icon: provider.isFetchingFullContent
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.refresh),
-                      onPressed: provider.isFetchingFullContent
-                          ? null
-                          : () => provider.fetchFullArticleContent(art),
-                      tooltip: 'Odśwież artykuł',
-                    );
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'font':
+                        _cycleFontSize();
+                        break;
+                      case 'share':
+                        SharePlus.instance.share(ShareParams(text: '${art.title}\n\n${art.url}'));
+                        break;
+                    }
                   },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'font', child: Text('Rozmiar czcionki')),
+                    const PopupMenuItem(value: 'share', child: Text('Udostępnij')),
+                  ],
                 ),
               ],
             ),
@@ -354,14 +357,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
                     Consumer<NewsProvider>(
                       builder: (context, provider, child) {
-                        final hasFullContent = art.fullContent != null && art.fullContent!.trim().isNotEmpty;
-
-                        return AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 400),
-                          switchInCurve: Curves.easeIn,
-                          switchOutCurve: Curves.easeOut,
-                          child: _buildContentBody(context, provider, hasFullContent, art),
-                        );
+                        return _buildContentBody(context, provider, art);
                       },
                     ),
 
@@ -381,8 +377,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 );
   }
 
-  Widget _buildContentBody(BuildContext context, NewsProvider provider, bool hasFullContent, Article art) {
-    if (provider.isFetchingFullContent || provider.isTranslating) {
+  Widget _buildContentBody(BuildContext context, NewsProvider provider, Article art) {
+    final hasFullContent = art.fullContent != null && art.fullContent!.trim().isNotEmpty;
+    final isFetching = provider.isFetchingFor(art.id);
+    final fetchFailed = provider.fetchFailedIds.contains(art.id);
+
+    if (isFetching) {
       return Column(
         key: const ValueKey('loading'),
         children: [
@@ -396,67 +396,83 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           const CircularProgressIndicator(),
           const SizedBox(height: 12),
           Text(
-            provider.isTranslating ? 'Sowa tłumaczy dla Ciebie...' : 'Sowa czyta artykuł dla Ciebie...',
-            style: const TextStyle(fontStyle: FontStyle.italic),
+            'Sowa pobiera artykuł...',
+            style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
         ],
       );
     }
 
-    if (!hasFullContent) {
-      final fetchFailed = provider.fetchFailedIds.contains(art.id);
+    if (hasFullContent) {
       return Column(
-        key: const ValueKey('snippet'),
+        key: const ValueKey('full'),
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           HtmlWidget(
-            art.translatedDescription ?? (art.description.isNotEmpty ? art.description : 'Brak treści artykułu.'),
+            art.translatedFullContent ?? art.fullContent!,
             textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
             onTapUrl: (url) async { await _launchUrl(context, url); return true; },
           ),
-          const SizedBox(height: 24),
-          if (fetchFailed) ...[
-            Icon(Icons.error_outline, color: Colors.red.shade300, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              'Nie udało się pobrać treści',
-              style: TextStyle(color: Colors.red.shade300, fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-          ],
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: provider.isFetchingFullContent
-                  ? null
-                  : () => provider.fetchFullArticleContent(art),
-              icon: provider.isFetchingFullContent
-                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Icon(Icons.refresh, size: 18, color: AppTheme.accentFor(context)),
-              label: Text(
-                fetchFailed ? 'SPRÓBUJ PONOWNIE' : 'POBIERZ TREŚĆ',
-                style: TextStyle(fontSize: 12, color: AppTheme.accentFor(context)),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.accentFor(context),
-                side: BorderSide(color: AppTheme.accentFor(context).withValues(alpha: 0.5)),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
         ],
       );
     }
 
     return Column(
-      key: const ValueKey('full'),
-      crossAxisAlignment: CrossAxisAlignment.start,
+      key: const ValueKey('snippet'),
       children: [
         HtmlWidget(
-          art.translatedFullContent ?? art.fullContent!,
+          art.translatedDescription ?? (art.description.isNotEmpty ? art.description : 'Brak treści artykułu.'),
           textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
           onTapUrl: (url) async { await _launchUrl(context, url); return true; },
         ),
+        const SizedBox(height: 24),
+        if (fetchFailed) ...[
+          Icon(Icons.error_outline, color: Colors.red.shade300, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            'Nie udało się pobrać treści',
+            style: TextStyle(color: Colors.red.shade300, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+        ],
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => provider.fetchFullArticleContent(art),
+            icon: Icon(Icons.download, size: 18, color: AppTheme.accentFor(context)),
+            label: Text(
+              fetchFailed ? 'SPRÓBUJ PONOWNIE' : 'POBIERZ TREŚĆ',
+              style: TextStyle(fontSize: 12, color: AppTheme.accentFor(context)),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.accentFor(context),
+              side: BorderSide(color: AppTheme.accentFor(context).withValues(alpha: 0.5)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
+              ));
+            },
+            icon: Icon(Icons.open_in_browser, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            label: Text(
+              'OTWÓRZ W PRZEGLĄDARCE',
+              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }
