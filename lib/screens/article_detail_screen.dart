@@ -92,14 +92,23 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     _tts.setCompletionHandler(() {
       if (!_isSpeaking) return;
       if (_ttsQueue.isNotEmpty) {
-        _tts.speak(_ttsQueue.removeAt(0));
+        _speakChunk(_ttsQueue.removeAt(0));
       } else {
+        _ttsCurrentChunk = null;
         if (mounted) setState(() => _isSpeaking = false);
       }
     });
   }
 
   final List<String> _ttsQueue = [];
+  String? _ttsCurrentChunk;
+
+  /// Odtwarza fragment i zapamiętuje go jako bieżący, żeby pauza mogła
+  /// wznowić dokładnie ten fragment (a nie następny w kolejce).
+  Future<void> _speakChunk(String chunk) async {
+    _ttsCurrentChunk = chunk;
+    await _tts.speak(chunk);
+  }
 
   Article get _currentArticle {
     final articles = widget.articles;
@@ -139,7 +148,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
     final article = _currentArticle;
     if (!_hasUsableContent(article)) return;
-    if (_ttsQueue.isEmpty) {
+    if (_ttsCurrentChunk != null) {
+      // Wznawianie po pauzie: wróć do przerwanego fragmentu (od jego początku).
+      _ttsQueue.insert(0, _ttsCurrentChunk!);
+      _ttsCurrentChunk = null;
+    } else if (_ttsQueue.isEmpty) {
       final raw = article.translatedFullContent ?? article.fullContent!;
       final text = cleanForTts(raw);
       if (text.isEmpty) return;
@@ -149,7 +162,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       }
     }
     setState(() => _isSpeaking = true);
-    await _tts.speak(_ttsQueue.removeAt(0));
+    await _speakChunk(_ttsQueue.removeAt(0));
   }
 
   bool get _canTts {
@@ -274,6 +287,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   void dispose() {
     _tts.stop();
     _ttsQueue.clear();
+    _ttsCurrentChunk = null;
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _pageController.dispose();
@@ -310,6 +324,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           if (wasSpeaking) {
             _tts.stop();
             _ttsQueue.clear();
+            _ttsCurrentChunk = null;
           }
           setState(() {
             _currentIndex = index;
@@ -376,7 +391,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   tooltip: _canTts
                       ? (_isSpeaking
                           ? 'Pauza'
-                          : _ttsQueue.isNotEmpty
+                          : (_ttsQueue.isNotEmpty || _ttsCurrentChunk != null)
                               ? 'Wznów'
                               : 'Czytaj artykuł')
                       : 'Pobierz artykuł, żeby odtworzyć',
