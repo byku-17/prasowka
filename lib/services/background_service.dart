@@ -29,6 +29,18 @@ String _todayKey() {
   return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 }
 
+/// Czy obecna godzina mieści się w oknie działania powiadomień.
+bool _isWithinNotificationWindow() {
+  if (!Hive.isBoxOpen('settings')) return true;
+  final box = Hive.box('settings');
+  final start = (box.get('notificationStartHour', defaultValue: 7) as num).toInt();
+  final end = (box.get('notificationEndHour', defaultValue: 21) as num).toInt();
+  final hour = DateTime.now().hour;
+  if (start <= end) return hour >= start && hour < end;
+  // Okno przechodzące przez północ (np. 22:00–06:00)
+  return hour >= start || hour < end;
+}
+
 Future<int> _getDailyCount() async {
   if (!Hive.isBoxOpen(_dailyCountBoxName)) {
     await Hive.openBox(_dailyCountBoxName);
@@ -65,6 +77,14 @@ void callbackDispatcher() {
       final dailyCount = await _getDailyCount();
       if (dailyCount >= _maxNotificationsPerDay) {
         debugPrint('Sowa Wartownik: Dzienny limit $_maxNotificationsPerDay osiągnięty ($dailyCount)');
+        return Future.value(true);
+      }
+
+      if (!Hive.isBoxOpen('settings')) {
+        await Hive.openBox('settings');
+      }
+      if (!_isWithinNotificationWindow()) {
+        debugPrint('Sowa Wartownik: Poza godzinami działania — pomijam cykl');
         return Future.value(true);
       }
 

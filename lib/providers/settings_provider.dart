@@ -37,6 +37,8 @@ class SettingsProvider with ChangeNotifier {
   static const String showUpcomingKey = 'showUpcoming';
   static const String sportResultNotificationsKey = 'sportResultNotifications';
   static const String sportStartNotificationsKey = 'sportStartNotifications';
+  static const String notificationStartHourKey = 'notificationStartHour';
+  static const String notificationEndHourKey = 'notificationEndHour';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -60,6 +62,8 @@ class SettingsProvider with ChangeNotifier {
   bool _showUpcoming = true;
   bool _sportResultNotifications = true;
   bool _sportStartNotifications = true;
+  int _notificationStartHour = 7;
+  int _notificationEndHour = 21;
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -86,6 +90,8 @@ class SettingsProvider with ChangeNotifier {
   bool get showUpcoming => _showUpcoming;
   bool get sportResultNotifications => _sportResultNotifications;
   bool get sportStartNotifications => _sportStartNotifications;
+  int get notificationStartHour => _notificationStartHour;
+  int get notificationEndHour => _notificationEndHour;
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -169,6 +175,8 @@ class SettingsProvider with ChangeNotifier {
     _showUpcoming = settingsBox.get(showUpcomingKey, defaultValue: true);
     _sportResultNotifications = settingsBox.get(sportResultNotificationsKey, defaultValue: true);
     _sportStartNotifications = settingsBox.get(sportStartNotificationsKey, defaultValue: true);
+    _notificationStartHour = _hourSetting(settingsBox, notificationStartHourKey, 7);
+    _notificationEndHour = _hourSetting(settingsBox, notificationEndHourKey, 21);
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -564,6 +572,21 @@ class SettingsProvider with ChangeNotifier {
     _sportStartNotifications = val;
     await Hive.box(settingsBoxName).put(sportStartNotificationsKey, val);
     notifyListeners();
+  }
+
+  Future<void> setNotificationHours(int startHour, int endHour) async {
+    _notificationStartHour = startHour;
+    _notificationEndHour = endHour;
+    final box = Hive.box(settingsBoxName);
+    await box.put(notificationStartHourKey, startHour);
+    await box.put(notificationEndHourKey, endHour);
+    notifyListeners();
+  }
+
+  int _hourSetting(Box settingsBox, String key, int defaultValue) {
+    final val = settingsBox.get(key);
+    if (val is int && val >= 0 && val < 24) return val;
+    return defaultValue;
   }
 
   Future<void> setMainTabSlot(int slot, String categoryId) async {

@@ -24,6 +24,16 @@ class NotificationSettingsPage extends StatelessWidget {
             onChanged: (val) => settings.toggleNotifications(val),
             activeThumbColor: AppTheme.accentFor(context),
           ),
+          if (settings.notificationsEnabled) ...[
+            const Divider(),
+            const SectionHeader('GODZINY DZIAŁANIA'),
+            ListTile(
+              leading: const Icon(Icons.schedule_outlined),
+              title: const Text('Godziny działania'),
+              subtitle: Text('${_formatHour(settings.notificationStartHour)} – ${_formatHour(settings.notificationEndHour)}'),
+              onTap: () => _showHoursPicker(context, settings),
+            ),
+          ],
           const Divider(),
           const SectionHeader('WIDOK SPORTOWY'),
           SwitchListTile(
@@ -35,6 +45,60 @@ class NotificationSettingsPage extends StatelessWidget {
             activeThumbColor: AppTheme.accentFor(context),
           ),
         ],
+      ),
+    );
+  }
+
+  String _formatHour(int hour) => '${hour.toString().padLeft(2, '0')}:00';
+
+  void _showHoursPicker(BuildContext context, SettingsProvider settings) {
+    var start = settings.notificationStartHour;
+    var end = settings.notificationEndHour;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          Widget hourDropdown(String label, int value, ValueChanged<int?> onChanged) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                DropdownButton<int>(
+                  value: value,
+                  isExpanded: true,
+                  items: [
+                    for (var h = 0; h < 24; h++)
+                      DropdownMenuItem(value: h, child: Text(_formatHour(h))),
+                  ],
+                  onChanged: onChanged,
+                ),
+              ],
+            );
+          }
+
+          return AlertDialog(
+            title: const Text('Godziny działania'),
+            content: Row(
+              children: [
+                Expanded(child: hourDropdown('Od', start, (v) => v != null ? setState(() => start = v) : null)),
+                const SizedBox(width: 16),
+                Expanded(child: hourDropdown('Do', end, (v) => v != null ? setState(() => end = v) : null)),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Anuluj')),
+              TextButton(
+                onPressed: () {
+                  settings.setNotificationHours(start, end);
+                  Navigator.pop(ctx);
+                },
+                child: Text('Zapisz', style: TextStyle(color: AppTheme.accentFor(context))),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
