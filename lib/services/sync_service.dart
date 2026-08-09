@@ -6,6 +6,20 @@ import 'package:prasowka/services/auth_service.dart';
 import 'package:prasowka/services/encryption_service.dart';
 
 class SyncService extends ChangeNotifier {
+  static const String scopeSettings = 'settings';
+  static const String scopeTags = 'tags';
+  static const String scopeArticles = 'articles';
+  static const String scopeInterests = 'interests';
+  static const String scopeCategories = 'categories';
+  static const String scopeSources = 'sources';
+  static const String scopeReading = 'reading';
+  static const String scopePinned = 'pinned';
+  static const Set<String> allScopes = {
+    scopeSettings, scopeTags, scopeArticles, scopeInterests,
+    scopeCategories, scopeSources, scopeReading, scopePinned,
+  };
+  static const String syncScopeKey = 'syncScope';
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final AuthService _auth;
   final EncryptionService _encryption = EncryptionService();
@@ -22,6 +36,14 @@ class SyncService extends ChangeNotifier {
 
   String? get _uid => _auth.user?.uid;
 
+  /// Które zakresy danych mają być synchronizowane.
+  Set<String> _getSyncScope() {
+    if (!Hive.isBoxOpen('settings')) return allScopes;
+    final stored = Hive.box('settings').get(syncScopeKey);
+    if (stored is List && stored.isNotEmpty) return stored.cast<String>().toSet();
+    return allScopes;
+  }
+
   CollectionReference<Map<String, dynamic>> _userDoc(String collection) =>
       _db.collection('users').doc(_uid!).collection(collection);
 
@@ -32,18 +54,19 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await Future.wait([
-        _pushSettings(),
-        _pushTags(),
-        _pushArticles(),
-        _pushInterests(),
-        _pushCategories(),
-        _pushSources(),
-        _pushReadingHistory(),
-        _pushPinnedMatches(),
-      ]);
+      final scope = _getSyncScope();
+      final futures = <Future<void>>[];
+      if (scope.contains(scopeSettings)) futures.add(_pushSettings());
+      if (scope.contains(scopeTags)) futures.add(_pushTags());
+      if (scope.contains(scopeArticles)) futures.add(_pushArticles());
+      if (scope.contains(scopeInterests)) futures.add(_pushInterests());
+      if (scope.contains(scopeCategories)) futures.add(_pushCategories());
+      if (scope.contains(scopeSources)) futures.add(_pushSources());
+      if (scope.contains(scopeReading)) futures.add(_pushReadingHistory());
+      if (scope.contains(scopePinned)) futures.add(_pushPinnedMatches());
+      await Future.wait(futures);
       _lastSync = DateTime.now();
-      debugPrint('Sync: push complete');
+      debugPrint('Sync: push complete (${futures.length} zakresów)');
     } catch (e) {
       debugPrint('Sync push error: $e');
     }
@@ -58,18 +81,19 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await Future.wait([
-        _pullSettings(),
-        _pullTags(),
-        _pullArticles(),
-        _pullInterests(),
-        _pullCategories(),
-        _pullSources(),
-        _pullReadingHistory(),
-        _pullPinnedMatches(),
-      ]);
+      final scope = _getSyncScope();
+      final futures = <Future<void>>[];
+      if (scope.contains(scopeSettings)) futures.add(_pullSettings());
+      if (scope.contains(scopeTags)) futures.add(_pullTags());
+      if (scope.contains(scopeArticles)) futures.add(_pullArticles());
+      if (scope.contains(scopeInterests)) futures.add(_pullInterests());
+      if (scope.contains(scopeCategories)) futures.add(_pullCategories());
+      if (scope.contains(scopeSources)) futures.add(_pullSources());
+      if (scope.contains(scopeReading)) futures.add(_pullReadingHistory());
+      if (scope.contains(scopePinned)) futures.add(_pullPinnedMatches());
+      await Future.wait(futures);
       _lastSync = DateTime.now();
-      debugPrint('Sync: pull complete');
+      debugPrint('Sync: pull complete (${futures.length} zakresów)');
     } catch (e) {
       debugPrint('Sync pull error: $e');
     }

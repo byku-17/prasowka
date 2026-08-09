@@ -6,6 +6,7 @@ import 'package:prasowka/models/news_source.dart';
 import 'package:prasowka/services/storage_service.dart';
 import 'package:prasowka/services/background_service.dart';
 import 'package:prasowka/services/weather_service.dart';
+import 'package:prasowka/services/sync_service.dart';
 
 enum AppThemeVariant { classic, elegantLight, royalPurple, medium, system }
 
@@ -52,6 +53,7 @@ class SettingsProvider with ChangeNotifier {
   static const String articleSortUnread = 'unread';
   static const String articleSortPopular = 'popular';
   static const String excludedWordsKey = 'excludedWords';
+  static const String syncScopeKey = 'syncScope';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -84,6 +86,7 @@ class SettingsProvider with ChangeNotifier {
   int _articleRetentionDays = 0;
   String _articleSortOrder = articleSortUnread;
   List<String> _excludedWords = [];
+  List<String> _syncScope = List<String>.from(SyncService.allScopes);
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -120,6 +123,8 @@ class SettingsProvider with ChangeNotifier {
   int get articleRetentionDays => _articleRetentionDays;
   String get articleSortOrder => _articleSortOrder;
   List<String> get excludedWords => List.unmodifiable(_excludedWords);
+  List<String> get syncScope => List.unmodifiable(_syncScope);
+  bool isSyncScopeEnabled(String scope) => _syncScope.contains(scope);
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -212,6 +217,12 @@ class SettingsProvider with ChangeNotifier {
     _articleRetentionDays = settingsBox.get(articleRetentionDaysKey, defaultValue: 0) as int;
     _articleSortOrder = settingsBox.get(articleSortOrderKey, defaultValue: articleSortUnread) as String;
     _excludedWords = List<String>.from(settingsBox.get(excludedWordsKey, defaultValue: <String>[]));
+    final storedScope = settingsBox.get(syncScopeKey);
+    if (storedScope is List && storedScope.isNotEmpty) {
+      _syncScope = List<String>.from(storedScope.cast<String>());
+    } else {
+      _syncScope = List<String>.from(SyncService.allScopes);
+    }
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -679,6 +690,17 @@ class SettingsProvider with ChangeNotifier {
   Future<void> removeExcludedWord(String word) async {
     _excludedWords.remove(word);
     await Hive.box(settingsBoxName).put(excludedWordsKey, _excludedWords);
+    notifyListeners();
+  }
+
+  /// Włącza/wyłącza zakres danych wysyłany do chmury.
+  Future<void> toggleSyncScope(String scope, bool enabled) async {
+    if (enabled) {
+      if (!_syncScope.contains(scope)) _syncScope.add(scope);
+    } else {
+      _syncScope.remove(scope);
+    }
+    await Hive.box(settingsBoxName).put(syncScopeKey, _syncScope);
     notifyListeners();
   }
 

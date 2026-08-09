@@ -15,6 +15,7 @@ import 'package:prasowka/screens/excluded_words_page.dart';
 import 'package:prasowka/screens/sport_settings_page.dart';
 import 'package:prasowka/screens/about_page.dart';
 import 'package:prasowka/screens/auth_screen.dart';
+import 'package:prasowka/screens/sync_scope_page.dart';
 import 'package:prasowka/services/auth_service.dart';
 import 'package:prasowka/services/sync_service.dart';
 import 'package:prasowka/providers/settings_provider.dart';
@@ -91,6 +92,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             );
           }
         },
+      ));
+      items.add(_SettingsItem(
+        icon: Icons.tune,
+        title: 'Co synchronizować',
+        subtitle: 'Zakres danych wysyłanych do chmury',
+        section: 'Konto',
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncScopePage())),
       ));
       items.add(_SettingsItem(
         icon: Icons.logout,
