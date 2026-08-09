@@ -103,13 +103,16 @@ class SportsService {
     // Ten sam mecz z SportDB/ESPN/TSDB dostaje ten sam klucz
     final Map<String, SportEvent> unique = {};
     final Map<String, SportEvent> canonicalToBest = {};
+    final Set<String> canonicalIds = {};
     for (var e in allEvents) {
       if (e is MatchEvent) {
         final key = CanonicalKey.generate(e);
         final existing = canonicalToBest[key];
         if (existing == null) {
           canonicalToBest[key] = e;
+          canonicalIds.add(e.id);
         } else {
+          canonicalIds.add(e.id);
           // Preferuj: live > finished > scheduled
           final priority = {EventStatus.live: 3, EventStatus.finished: 2, EventStatus.scheduled: 1};
           if ((priority[e.status] ?? 0) > (priority[existing.status] ?? 0)) {
@@ -120,6 +123,10 @@ class SportsService {
         // RaceEvent — dedup by id
         unique[e.id] = e;
       }
+    }
+    // Usuń oryginały which have canonical duplicates, then dodaj kanoniczne
+    for (final id in canonicalIds) {
+      unique.remove(id);
     }
     unique.addAll(canonicalToBest);
 
