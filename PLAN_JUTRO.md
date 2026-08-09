@@ -16,7 +16,7 @@
 - [x] Rozmiar tekstu artykułów (mały/standardowy/duży) — UI w Ustawieniach (~1h)
 - [x] Krój czcionki (~3h)
 - [x] Sposób otwierania artykułów: w aplikacji / zewnętrzna przeglądarka (~1h)
-- [ ] Układ listy artykułów: kompaktowy / wygodny (~4h)
+- [x] Układ listy artykułów: kompaktowy / wygodny (~4h)
 - [ ] Wyświetlanie obrazków: zawsze / tylko Wi-Fi / nigdy (~5h)
 
 ### POWIADOMIENIA (~12h)

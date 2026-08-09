@@ -45,6 +45,14 @@ class AppearanceSettingsPage extends StatelessWidget {
             onTap: () => _showFontPicker(context, settings),
           ),
           const Divider(),
+          const SectionHeader('LISTA ARTYKUŁÓW'),
+          ListTile(
+            leading: const Icon(Icons.view_agenda_outlined),
+            title: const Text('Układ listy artykułów'),
+            subtitle: Text(settings.articleListLayout == SettingsProvider.articleListLayoutCompact ? 'Kompaktowy' : 'Wygodny'),
+            onTap: () => _showLayoutPicker(context, settings),
+          ),
+          const Divider(),
           const SectionHeader('OTWIERANIE ARTYKUŁÓW'),
           SwitchListTile(
             secondary: const Icon(Icons.open_in_browser_outlined),
@@ -94,6 +102,39 @@ class AppearanceSettingsPage extends StatelessWidget {
       default:
         return 'Systemowy';
     }
+  }
+
+  void _showLayoutPicker(BuildContext context, SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Układ listy artykułów', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            _buildLayoutOption(context, settings, label: 'Wygodny', description: 'Duże karty ze zdjęciem i opisem', value: SettingsProvider.articleListLayoutComfortable),
+            _buildLayoutOption(context, settings, label: 'Kompaktowy', description: 'Mniejsze wiersze — więcej artykułów na ekranie', value: SettingsProvider.articleListLayoutCompact),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLayoutOption(BuildContext context, SettingsProvider settings, {required String label, required String description, required String value}) {
+    final isSelected = settings.articleListLayout == value;
+    return ListTile(
+      leading: Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? AppTheme.accentFor(context) : null),
+      title: Text(label),
+      subtitle: Text(description),
+      onTap: () {
+        settings.setArticleListLayout(value);
+        Navigator.pop(context);
+      },
+    );
   }
 
   void _showFontPicker(BuildContext context, SettingsProvider settings) {

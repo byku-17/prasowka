@@ -45,6 +45,11 @@ class ArticleCard extends StatelessWidget {
       return _buildSmallCard(context, mutedText, checkIconColor, cardBorderColor);
     }
 
+    final isCompact = context.read<SettingsProvider>().articleListLayout == SettingsProvider.articleListLayoutCompact;
+    if (isCompact) {
+      return _buildCompactCard(context, mutedText, checkIconColor, cardBorderColor);
+    }
+
     return Stack(
       children: [
         Container(
@@ -258,6 +263,132 @@ class ArticleCard extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildCompactCard(BuildContext context, Color mutedText, Color checkIconColor, Color borderColor) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: isRecommended ? BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFFF5B942).withValues(alpha: 0.7)
+              : const Color(0xFFC97B1A).withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+      ) : null,
+      child: InkWell(
+        onTap: () {
+          final settings = context.read<SettingsProvider>();
+          if (settings.openArticlesInBrowser && article.url.isNotEmpty) {
+            launchUrl(Uri.parse(article.url), mode: LaunchMode.externalApplication);
+          } else {
+            onTap();
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 76,
+                  height: 76,
+                  child: article.imageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: article.imageUrl!,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 300,
+                          cacheManager: AppImageCacheManager.instance,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey.withValues(alpha: 0.15),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey.withValues(alpha: 0.1),
+                            child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.shade400, size: 22),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          child: Icon(Icons.article_outlined, color: Colors.grey.shade400, size: 24),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            article.translatedTitle ?? article.title,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                              height: 1.25,
+                              color: article.isRead ? mutedText : null,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (article.isRead) ...[
+                          const SizedBox(width: 6),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Icon(Icons.check_circle, color: checkIconColor, size: 14),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Opacity(
+                      opacity: article.isRead ? 0.5 : 1.0,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              article.sourceName.toUpperCase(),
+                              style: TextStyle(
+                                color: AppTheme.accentFor(context),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 9.5,
+                                letterSpacing: 0.4,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatTimeAgo(article.publishedAt),
+                            style: const TextStyle(color: Colors.grey, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    _buildActionsSmall(context),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

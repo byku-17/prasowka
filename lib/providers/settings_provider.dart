@@ -57,6 +57,9 @@ class SettingsProvider with ChangeNotifier {
   static const String articleSortUnread = 'unread';
   static const String articleSortPopular = 'popular';
   static const String excludedWordsKey = 'excludedWords';
+  static const String articleListLayoutKey = 'articleListLayout';
+  static const String articleListLayoutCompact = 'compact';
+  static const String articleListLayoutComfortable = 'comfortable';
   static const String syncScopeKey = 'syncScope';
   static const String autoSyncEnabledKey = 'autoSyncEnabled';
   static const String mainTabSlot1Key = 'mainTabSlot1';
@@ -92,6 +95,7 @@ class SettingsProvider with ChangeNotifier {
   int _articleRetentionDays = 0;
   String _articleSortOrder = articleSortUnread;
   List<String> _excludedWords = [];
+  String _articleListLayout = articleListLayoutComfortable;
   List<String> _syncScope = List<String>.from(SyncService.allScopes);
   bool _autoSyncEnabled = false;
   int _lastTabIndex = 0;
@@ -131,6 +135,7 @@ class SettingsProvider with ChangeNotifier {
   int get articleRetentionDays => _articleRetentionDays;
   String get articleSortOrder => _articleSortOrder;
   List<String> get excludedWords => List.unmodifiable(_excludedWords);
+  String get articleListLayout => _articleListLayout;
   List<String> get syncScope => List.unmodifiable(_syncScope);
   bool isSyncScopeEnabled(String scope) => _syncScope.contains(scope);
   bool get autoSyncEnabled => _autoSyncEnabled;
@@ -227,6 +232,7 @@ class SettingsProvider with ChangeNotifier {
     _articleRetentionDays = settingsBox.get(articleRetentionDaysKey, defaultValue: 0) as int;
     _articleSortOrder = settingsBox.get(articleSortOrderKey, defaultValue: articleSortUnread) as String;
     _excludedWords = List<String>.from(settingsBox.get(excludedWordsKey, defaultValue: <String>[]));
+    _articleListLayout = settingsBox.get(articleListLayoutKey, defaultValue: articleListLayoutComfortable) as String;
     final storedScope = settingsBox.get(syncScopeKey);
     if (storedScope is List && storedScope.isNotEmpty) {
       _syncScope = List<String>.from(storedScope.cast<String>());
@@ -604,6 +610,12 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setReadingFont(String font) async {
     _readingFont = font;
     await Hive.box(settingsBoxName).put(readingFontKey, font);
+    notifyListeners();
+  }
+
+  Future<void> setArticleListLayout(String layout) async {
+    _articleListLayout = layout;
+    await Hive.box(settingsBoxName).put(articleListLayoutKey, layout);
     notifyListeners();
   }
 
