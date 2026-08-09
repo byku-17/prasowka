@@ -1,73 +1,52 @@
-# Plan na jutro — 08.08.2026
+# Plan na jutro — ustawienia (rozbudowa)
 
-## Priorytet 0: Nowe funkcje (dopisane w trakcie) 🚧
-- [ ] Rozmiar czcionki czytania (tłumacz z `readingFontSize`) — dodać UI w WYGLĄD
-- [ ] Wyszukiwarka ustawień z synonimami (np. "motyw", "wygląd", "skóra")
-- [x] Sekcja "O aplikacji" (wersja przez package_info_plus, polityka prywatności, kontakt, licencje)
-- [x] Wyczyść pamięć podręczną w DANE I NARZĘDZIA (`clearNewsCache`)
+## ✅ Już mamy (przegląd gotowych elementów)
+- [x] Główny przełącznik powiadomień (= Wartownik Sowy, włącz/wyłącz + rejestracja taska)
+- [x] Powiadomienia sportowe jako osobny kanał (`sowa_sport`): gol, LIVE, start meczu (dla przypiętych/faworytów)
+- [x] Rozmiar czcionki w czytniku (przycisk „+/–" w detail: 14/16/18) — brak ustawienia centralnego
+- [x] Otwieranie artykułów w aplikacji (WebView) + przycisk „otwórz w przeglądarce" (`launchUrl`)
+- [x] Sortowanie: nieprzeczytane najpierw, obrazki najpierw, najnowsze najpierw (hardcoded)
+- [x] Ostatnia synchronizacja widoczna w KONTO (`sync.lastSync`)
+- [x] Synchronizacja pełnego zakresu: ustawienia, tagi, artykuły, zainteresowania, kategorie, źródła, historia czytania, przypięte mecze
+- [x] Zakończone i nadchodzące mecze pokazywane na pasku (finished z TTL 12h) — bez przełączników
 
-## Priorytet 0b: Reorganizacja ustawień ✅
-- [x] KONTO — Zaloguj/Zarejestruj, Synchronizuj, Pobierz z chmury, Wyloguj
-- [x] WYGLĄD — tylko motyw (jasny/ciemny/fioletowy)
-- [x] POWIADOMIENIA — Wartownik Sowy + pasek sportowy włącz/wyłącz
-- [x] TREŚCI — Źródła RSS, Kategorie, Zainteresowania (słowa kluczowe), Tagi
-- [x] SPORT — ulubione drużyny/ligi, "tylko moi faworyci", diagnostyka
-- [x] DANE I NARZĘDZIA — Eksport, Import, Wyczyść cache
-- [x] O APLIKACJI — wersja, polityka prywatności, kontakt, licencje
+## 🚧 Nowe funkcje (do zrobienia)
 
-## Priorytet 1: Historia przeglądania ✅
-- [x] Ekran "Historia" lub sekcja w "Zapisane" z listą przeczytanych artykułów
-- [x] Sortowanie po czasie czytania (od najnowszego)
-- [x] Czyszczenie historii (automatyczne po 7/30 dni lub ręczne)
-- [x] Ręczne usuwanie pojedynczych wpisów
+### WYGLĄD (~14h)
+- [x] Rozmiar tekstu artykułów (mały/standardowy/duży) — UI w Ustawieniach (~1h)
+- [ ] Krój czcionki (~3h)
+- [ ] Sposób otwierania artykułów: w aplikacji / zewnętrzna przeglądarka (~1h)
+- [ ] Układ listy artykułów: kompaktowy / wygodny (~4h)
+- [ ] Wyświetlanie obrazków: zawsze / tylko Wi-Fi / nigdy (~5h)
 
-## Priorytet 2: Ustrukturyzowanie ustawień ✅
-- [x] Podział na sekcje: Konto, Motywy, Powiadomienia, Źródła, Sport, Prywatność
-- [x] Eksport/import ustawień (backup do pliku)
-- [x] Wyszukiwarka w ustawieniach
-- [ ] Toggle "tryb oszczędzania baterii" (rzadsze odświeżanie w tle) — do zrobienia
+### POWIADOMIENIA (~12h)
+- [ ] Godziny działania (np. 7:00–21:00) (~3h)
+- [ ] Częstotliwość sprawdzania: co godzinę / co 3 godziny / raz dziennie (~3h)
+- [ ] Rodzaje alertów: nowe artykuły / ważne wiadomości / podsumowanie (~4h)
+- [ ] Przełącznik powiadomień sportowych osobno od paska wyników (~2h)
 
-## Priorytet 3: Usprawnienia UI/UX ✅
-- [x] Pull-to-refresh na ekranie "Dzisiaj" (odśwież feed)
-- [x] Animacje przejść między ekranami (hero animations na zdjęciach)
-- [x] Ciemny motyw auto-sync z systemem (nie tylko ręczny toggle)
-- [x] Swipe do przodu/tyłu w artykule (poprzedni/następny artykuł z listy)
+### TREŚCI (~21h)
+- [ ] Częstotliwość odświeżania: ręcznie / co godzinę / co 6 godzin (~4h)
+- [ ] Odświeżanie tylko przez Wi-Fi (~3h)
+- [ ] Usuwanie starych artykułów: po 7 / 14 / 30 dniach (~3h)
+- [ ] Domyślna kolejność artykułów: najnowsze / nieprzeczytane / popularne (~3h)
+- [ ] Słowa wykluczające (filtrowanie artykułów) (~3h)
+- [ ] Domyślne zachowanie tagów (auto-przypisywanie) (~5h)
 
-## Priorytet 4: Sport — dalszy rozwój
-- Wykrywanie golu w meczach live (powiadomienie push)
-- Wykrywanie końca meczu (automatyczne odświeżenie wyniku)
-- Porównanie składów przed meczem (dane z API)
-- Statystyki H2H (head-to-head) w bottom sheet meczu
+### SPORT (~9h)
+- [ ] Kolejność drużyn i lig (~3h)
+- [ ] Pokazuj wyniki zakończonych spotkań (przełącznik) (~2h)
+- [ ] Pokazuj nadchodzące mecze (przełącznik) (~2h)
+- [ ] Powiadomienia o wyniku (przełącznik) (~1h)
+- [ ] Powiadomienia o rozpoczęciu meczu (przełącznik) (~1h)
 
-## Priorytet 5: Wydajność
-- Lazy loading artykułów w feed (paginacja zamiast ładowania wszystkiego)
-- Cache obrazków z TTL (automatyczne czyszczenie po 7 dniach)
-- Optymalizacja Hive — batch writes zamiast pojedynczych put
-- Redukcja rebuildów widgetów (Selector zamiast Consumer tam gdzie możliwe)
+### DANE I NARZĘDZIA (~13h)
+- [ ] Co synchronizować: wybór zakresu (źródła, kategorie, zainteresowania, tagi, przeczytane, ustawienia) (~4h)
+- [ ] Automatyczna synchronizacja włącz/wyłącz (~5h)
+- [ ] Resetuj ustawienia aplikacji (~2h)
+- [ ] Usuń lokalne dane (~2h)
 
-## Priorytet 6: nowe funkcje
-- Udostępnianie artykułów jako zrzut ekranu (share as image)
-- Tagowanie artykułów (własne tagi: "do przeczytania", "ważne", "inspiracja")
-- Tryb czytania (czcionka do wyboru: mała/średnia/duża)
-- Tłumaczenie artykułów offline (cache przetłumaczonych treści)
-- Widget ekranu głównego (ostatnie artykuły z news feed)
-
-## Priorytet 7: Stabilność
-- Automatyczne raportowanie błędów (crashlytics)
-- Testy integracyjne (płynność przejść między ekranami)
-- Monitorowanie zużycia baterii przez background service
-- Optymalizacja rozmiaru aplikacji (obrazki WebP, kompresja assets)
-
----
-
-## Zadania z "na jutro" (09.08.2026) ✅
-
-## 1. Odświeżanie strony po kliknięciu w nazwę zakładki/ekranu ✅
-- [x] Kliknięcie aktywnej zakładki w bottom nav odświeża feed (`refreshNotifier`)
-
-## 2. Zwiększenie udziału artykułów tech/motoryzacja itp. w zakładce "Dzisiaj" ✅
-- [x] Mix kategorii tech/science/automotive/travel/culture co 3–4 posty (boost po categoryId)
-
-## 3. Przyciski pod artykułami ✅
-- [x] Lista: łapka góra/dół + bookmark (tap = "do przeczytania", long-press = lista tagów)
-- [x] Detail: łapki + przycisk tagów otwierający listę od razu
+## Sugerowana kolejność (najwyższy stosunek wartości do czasu)
+1. Rozmiar tekstu (1h), sposób otwierania (1h), przełączniki sportowe (4h), reset/usuń dane (4h), godziny działania (3h) — razem ~13h
+2. Potem: częstotliwość odświeżania, kolejność artykułów, słowa wykluczające
+3. Na końcu (najcięższe): układ listy, obrazki Wi-Fi, auto-tagi, automatyczna synchronizacja
