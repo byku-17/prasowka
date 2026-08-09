@@ -27,6 +27,14 @@ class AppearanceSettingsPage extends StatelessWidget {
             subtitle: Text(currentLabel),
             onTap: () => _showUnifiedThemePicker(context, settings),
           ),
+          const Divider(),
+          const SectionHeader('ROZMIAR TEKSTU'),
+          ListTile(
+            leading: const Icon(Icons.text_fields),
+            title: const Text('Rozmiar tekstu artykułów'),
+            subtitle: Text(_fontSizeLabel(settings.readingFontSize)),
+            onTap: () => _showFontSizePicker(context, settings),
+          ),
         ],
       ),
     );
@@ -45,6 +53,52 @@ class AppearanceSettingsPage extends StatelessWidget {
       default:
         return 'Systemowy';
     }
+  }
+
+  String _fontSizeLabel(int size) {
+    switch (size) {
+      case 14:
+        return 'Mały';
+      case 18:
+        return 'Duży';
+      default:
+        return 'Standardowy';
+    }
+  }
+
+  void _showFontSizePicker(BuildContext context, SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Rozmiar tekstu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            _buildFontSizeOption(context, settings, label: 'Mały', size: 14, sample: 'Mały'),
+            _buildFontSizeOption(context, settings, label: 'Standardowy', size: 16, sample: 'Standardowy'),
+            _buildFontSizeOption(context, settings, label: 'Duży', size: 18, sample: 'Duży'),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFontSizeOption(BuildContext context, SettingsProvider settings, {required String label, required int size, required String sample}) {
+    final isSelected = settings.readingFontSize == size;
+    return ListTile(
+      leading: Icon(Icons.text_fields, size: size.toDouble() + 6, color: isSelected ? AppTheme.accentFor(context) : null),
+      title: Text(label),
+      subtitle: Text('Przykładowy tekst artykułu', style: TextStyle(fontSize: size.toDouble())),
+      trailing: isSelected ? Icon(Icons.check, color: AppTheme.accentFor(context)) : null,
+      onTap: () {
+        settings.setReadingFontSize(size);
+        Navigator.pop(context);
+      },
+    );
   }
 
   void _showUnifiedThemePicker(BuildContext context, SettingsProvider settings) {
