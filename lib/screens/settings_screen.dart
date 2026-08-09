@@ -11,6 +11,7 @@ import 'package:prasowka/screens/category_settings_page.dart';
 import 'package:prasowka/screens/source_settings_page.dart';
 import 'package:prasowka/screens/interests_settings_page.dart';
 import 'package:prasowka/screens/tag_settings_page.dart';
+import 'package:prasowka/screens/excluded_words_page.dart';
 import 'package:prasowka/screens/sport_settings_page.dart';
 import 'package:prasowka/screens/about_page.dart';
 import 'package:prasowka/screens/auth_screen.dart';
@@ -333,6 +334,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Sortowanie listy: ${_sortOrderLabel(settings)}',
         section: 'Treści',
         onTap: () => _showSortOrderPicker(settings),
+      ),
+      _SettingsItem(
+        icon: Icons.block,
+        title: 'Słowa wykluczające',
+        subtitle: settings.excludedWords.isEmpty
+            ? 'Brak filtrów — pokazuj wszystko'
+            : 'Ukryj: ${settings.excludedWords.join(', ')}',
+        section: 'Treści',
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExcludedWordsPage())),
       ),
       _SettingsItem(
         icon: Icons.rss_feed,

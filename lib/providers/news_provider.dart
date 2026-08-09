@@ -161,11 +161,24 @@ class NewsProvider with ChangeNotifier {
     list.removeWhere((a) => a.publishedAt.isBefore(cutoff));
   }
 
+  /// Usuwa z listy artykuły zawierające słowa wykluczające w tytule lub opisie.
+  void _applyExcludedWords(List<Article> list) {
+    if (!Hive.isBoxOpen('settings')) return;
+    final words = List<String>.from(Hive.box('settings').get('excludedWords', defaultValue: <String>[]));
+    if (words.isEmpty) return;
+    final lower = words.map((w) => w.toLowerCase()).toList();
+    list.removeWhere((a) {
+      final text = '${a.title} ${a.description}'.toLowerCase();
+      return lower.any((w) => text.contains(w));
+    });
+  }
+
   /// Sortuje, miesza i zapisuje do cache
   Future<List<Article>> _sortAndSave(
     String categoryId, List<Article> accumulated, List<String>? keywords, bool forceRefresh,
   ) async {
     _applyRetention(accumulated);
+    _applyExcludedWords(accumulated);
     _lastFetchTimes[categoryId] = DateTime.now();
     _articlesMap[categoryId] = accumulated;
 
@@ -215,6 +228,7 @@ class NewsProvider with ChangeNotifier {
     final cached = _storageService.getCategoryCache(categoryId);
     if (cached.isNotEmpty && !forceRefresh) {
       _applyRetention(cached);
+      _applyExcludedWords(cached);
       _articlesMap[categoryId] = cached;
       _hasEverLoadedMap[categoryId] = true;
       _calculateRecommendations();

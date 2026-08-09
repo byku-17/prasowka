@@ -51,6 +51,7 @@ class SettingsProvider with ChangeNotifier {
   static const String articleSortLatest = 'latest';
   static const String articleSortUnread = 'unread';
   static const String articleSortPopular = 'popular';
+  static const String excludedWordsKey = 'excludedWords';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -82,6 +83,7 @@ class SettingsProvider with ChangeNotifier {
   bool _wifiOnlyRefresh = false;
   int _articleRetentionDays = 0;
   String _articleSortOrder = articleSortUnread;
+  List<String> _excludedWords = [];
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -117,6 +119,7 @@ class SettingsProvider with ChangeNotifier {
   bool get wifiOnlyRefresh => _wifiOnlyRefresh;
   int get articleRetentionDays => _articleRetentionDays;
   String get articleSortOrder => _articleSortOrder;
+  List<String> get excludedWords => List.unmodifiable(_excludedWords);
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -208,6 +211,7 @@ class SettingsProvider with ChangeNotifier {
     _wifiOnlyRefresh = settingsBox.get(wifiOnlyRefreshKey, defaultValue: false) as bool;
     _articleRetentionDays = settingsBox.get(articleRetentionDaysKey, defaultValue: 0) as int;
     _articleSortOrder = settingsBox.get(articleSortOrderKey, defaultValue: articleSortUnread) as String;
+    _excludedWords = List<String>.from(settingsBox.get(excludedWordsKey, defaultValue: <String>[]));
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -660,6 +664,21 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setArticleSortOrder(String order) async {
     _articleSortOrder = order;
     await Hive.box(settingsBoxName).put(articleSortOrderKey, order);
+    notifyListeners();
+  }
+
+  Future<void> addExcludedWord(String word) async {
+    final w = word.trim().toLowerCase();
+    if (w.isEmpty || _excludedWords.length >= maxKeywords) return;
+    if (_excludedWords.any((e) => e.toLowerCase() == w)) return;
+    _excludedWords.add(word.trim());
+    await Hive.box(settingsBoxName).put(excludedWordsKey, _excludedWords);
+    notifyListeners();
+  }
+
+  Future<void> removeExcludedWord(String word) async {
+    _excludedWords.remove(word);
+    await Hive.box(settingsBoxName).put(excludedWordsKey, _excludedWords);
     notifyListeners();
   }
 
