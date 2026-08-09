@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/news_provider.dart';
+import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/widgets/tag_picker_bottom_sheet.dart';
 import 'package:prasowka/services/image_cache_manager.dart';
 import 'package:prasowka/providers/tag_provider.dart';
@@ -30,6 +32,15 @@ class ArticleCard extends StatelessWidget {
     final dividerColor = isDark ? Colors.white24 : Colors.grey.shade300;
     final cardBorderColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200;
 
+    void handleTap() {
+      final settings = context.read<SettingsProvider>();
+      if (settings.openArticlesInBrowser && article.url.isNotEmpty) {
+        launchUrl(Uri.parse(article.url), mode: LaunchMode.externalApplication);
+      } else {
+        onTap();
+      }
+    }
+
     if (isSmall) {
       return _buildSmallCard(context, mutedText, checkIconColor, cardBorderColor);
     }
@@ -47,7 +58,7 @@ class ArticleCard extends StatelessWidget {
             ),
           ) : null,
           child: InkWell(
-            onTap: onTap,
+            onTap: () => handleTap(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -263,7 +274,14 @@ class ArticleCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            final settings = context.read<SettingsProvider>();
+            if (settings.openArticlesInBrowser && article.url.isNotEmpty) {
+              launchUrl(Uri.parse(article.url), mode: LaunchMode.externalApplication);
+            } else {
+              onTap();
+            }
+          },
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

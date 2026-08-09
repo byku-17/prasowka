@@ -35,6 +35,16 @@ class AppearanceSettingsPage extends StatelessWidget {
             subtitle: Text(_fontSizeLabel(settings.readingFontSize)),
             onTap: () => _showFontSizePicker(context, settings),
           ),
+          const Divider(),
+          const SectionHeader('OTWIERANIE ARTYKUŁÓW'),
+          SwitchListTile(
+            secondary: const Icon(Icons.open_in_browser_outlined),
+            title: const Text('Otwieraj w przeglądarce'),
+            subtitle: const Text('Artykuły otwierane będą w zewnętrznej przeglądarce zamiast wbudowanego czytnika.'),
+            value: settings.openArticlesInBrowser,
+            onChanged: (val) => settings.setOpenArticlesInBrowser(val),
+            activeThumbColor: AppTheme.accentFor(context),
+          ),
         ],
       ),
     );

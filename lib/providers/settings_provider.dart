@@ -32,6 +32,7 @@ class SettingsProvider with ChangeNotifier {
   static const String selectedLeaguesKey = 'selectedLeagueIds';
   static const String showAllSourcesKey = 'showAllSources';
   static const String readingFontSizeKey = 'readingFontSize';
+  static const String openArticlesInBrowserKey = 'openArticlesInBrowser';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -50,6 +51,7 @@ class SettingsProvider with ChangeNotifier {
   bool _showSportsBar = true;
   bool _showAllSources = false;
   int _readingFontSize = 16;
+  bool _openArticlesInBrowser = false;
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -71,6 +73,7 @@ class SettingsProvider with ChangeNotifier {
   bool get showSportsBar => _showSportsBar;
   bool get showAllSources => _showAllSources;
   int get readingFontSize => _readingFontSize;
+  bool get openArticlesInBrowser => _openArticlesInBrowser;
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -145,6 +148,9 @@ class SettingsProvider with ChangeNotifier {
 
     // 4c. Rozmiar czcionki do czytania
     _readingFontSize = settingsBox.get(readingFontSizeKey, defaultValue: 16);
+
+    // 4c2. Otwieranie artykułów w zewnętrznej przeglądarce
+    _openArticlesInBrowser = settingsBox.get(openArticlesInBrowserKey, defaultValue: false);
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -461,6 +467,12 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setReadingFontSize(int size) async {
     _readingFontSize = size;
     await Hive.box(settingsBoxName).put(readingFontSizeKey, size);
+    notifyListeners();
+  }
+
+  Future<void> setOpenArticlesInBrowser(bool val) async {
+    _openArticlesInBrowser = val;
+    await Hive.box(settingsBoxName).put(openArticlesInBrowserKey, val);
     notifyListeners();
   }
 
