@@ -103,12 +103,12 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "assets/logo_icon.png"
 
 flutter_native_splash:
-  color: "#0D0D0D"
-  image: assets/logo.webp
+  color: "#1E2126"
+  image: assets/splash.png
   android_12:
-    image: assets/logo.webp
-    color: "#0D0D0D"
-    icon_background_color: "#0D0D0D"
+    image: assets/splash.png
+    color: "#1E2126"
+    icon_background_color: "#1E2126"
   fullscreen: true
   android_gravity: center
   ios_content_mode: center

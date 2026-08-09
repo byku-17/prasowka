@@ -280,11 +280,20 @@ class NewsProvider with ChangeNotifier {
     _recommendedArticles = scored.map((e) => e.key).take(3).toList();
   }
 
-  static const Set<String> _boostedSourceNames = {
-    'TechCrunch', "Spider's Web", 'Antyweb',
-    'Nauka w Polsce', 'Kwantowo.pl',
-    'WP Autokult', 'Elektrowóz',
+  /// Kategorie o podwyższonym udziale w zakładce „Dzisiaj” (co 3–4 posty).
+  static const Set<String> _boostedCategoryIds = {
+    'tech', 'science', 'automotive', 'travel', 'culture',
   };
+
+  /// Mapa: nazwa źródła -> id kategorii, zbudowana z listy domyślnych źródeł.
+  static final Map<String, String> _categoryBySourceName = {
+    for (final s in NewsSource.defaultSources) s.name: s.categoryId,
+  };
+
+  static bool _isBoostedArticle(Article a) {
+    final categoryId = _categoryBySourceName[a.sourceName];
+    return categoryId != null && _boostedCategoryIds.contains(categoryId);
+  }
 
   static List<Article> _sortAndMixArticlesStatic(Map<String, dynamic> params) {
     final List<Article> list = (params['list'] as List)
@@ -323,8 +332,8 @@ class NewsProvider with ChangeNotifier {
     }
 
     if (categoryId == 'all' && list.length > 8) {
-      final boosted = list.where((a) => _boostedSourceNames.contains(a.sourceName)).toList();
-      final regular = list.where((a) => !_boostedSourceNames.contains(a.sourceName)).toList();
+      final boosted = list.where(_isBoostedArticle).toList();
+      final regular = list.where((a) => !_isBoostedArticle(a)).toList();
       if (boosted.isNotEmpty) {
         final result = <Article>[];
         int bIdx = 0;
@@ -412,6 +421,16 @@ class NewsProvider with ChangeNotifier {
     article.isRead = true;
     _storageService.saveArticleState(article);
     article.cachedScore = null;
+    // Przesuń przeczytany artykuł na koniec każdej listy, w której
+    // występuje — tak jak robi to _sortAndMixArticlesStatic przy
+    // odświeżaniu.
+    for (final list in _articlesMap.values) {
+      final index = list.indexWhere((a) => a.id == article.id);
+      if (index >= 0) {
+        final item = list.removeAt(index);
+        list.add(item);
+      }
+    }
     _calculateRecommendations();
     notifyListeners();
   }

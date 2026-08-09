@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'package:flutter/gestures.dart' show PointerDeviceKind, VelocityTracker;
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
@@ -37,6 +39,19 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   double _pointerStartY = 0;
   DateTime? _pointerStartTime;
+  double? _pointerStartScrollOffset;
+  final VelocityTracker _pointerVelocityTracker =
+      VelocityTracker.withKind(PointerDeviceKind.touch);
+
+  final List<String> _contentChunks = [];
+  String? _chunksKey;
+  int _revealedChunks = 0;
+
+  void _openInBrowser(Article art) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
+    ));
+  }
 
   final FlutterTts _tts = FlutterTts();
   bool _isSpeaking = false;
@@ -53,6 +68,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     });
     _initTts();
     _recordHistory(widget.article);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybeAutoFetch(_currentArticle);
+    });
+  }
+
+  void _maybeAutoFetch(Article art) {
+    if (_hasUsableContent(art)) return;
+    if (RssService.isGoogleNewsUrl(art.url)) return;
+    final provider = context.read<NewsProvider>();
+    if (provider.isFetchingFor(art.id)) return;
+    provider.fetchFullArticleContent(art);
   }
 
   void _initTts() {
@@ -147,20 +174,63 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   void _handleSwipeUp() {
     final article = _currentArticle;
-    if (RssService.isGoogleNewsUrl(article.url)) return;
-    context.read<NewsProvider>().fetchFullArticleContent(article);
+    if (RssService.isGoogleNewsUrl(article.url)) {
+      _showSwipeFeedback('Link Google News — treść dostępna tylko w zewnętrznej przeglądarce.');
+      return;
+    }
+    if (_hasUsableContent(article)) {
+      _showSwipeFeedback('Treść artykułu jest już załadowana.');
+      return;
+    }
+    final provider = context.read<NewsProvider>();
+    if (provider.isFetchingFor(article.id)) {
+      _showSwipeFeedback('Treść jest już pobierana...');
+      return;
+    }
+    provider.fetchFullArticleContent(article);
+    _showSwipeFeedback('Pobieram treść artykułu...');
   }
 
   void _handleSwipeDown() {
     final article = _currentArticle;
-    if (RssService.isGoogleNewsUrl(article.url)) return;
-    context.read<NewsProvider>().fetchFullArticleContent(article);
+    if (RssService.isGoogleNewsUrl(article.url)) {
+      _showSwipeFeedback('Link Google News — pobranie treści niedostępne.');
+      return;
+    }
+    final provider = context.read<NewsProvider>();
+    if (provider.isFetchingFor(article.id)) {
+      _showSwipeFeedback('Pobieranie już trwa...');
+      return;
+    }
+    provider.fetchFullArticleContent(article);
+    _showSwipeFeedback('Odświeżam / pobieram treść...');
+  }
+
+  void _showSwipeFeedback(String message) {
+    ScaffoldMessenger.of(context)
+      ..removeCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+    final pixels = _scrollController.position.pixels;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+
+    if (pixels >= maxScroll - 100) {
       if (!widget.article.isRead) {
         context.read<NewsProvider>().markArticleRead(widget.article);
+      }
+    }
+
+    if (_contentChunks.isNotEmpty && _revealedChunks < _contentChunks.length) {
+      if (pixels >= maxScroll - 150) {
+        setState(() => _revealedChunks++);
       }
     }
   }
@@ -168,18 +238,51 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   void _onPointerDown(PointerDownEvent event) {
     _pointerStartY = event.position.dy;
     _pointerStartTime = DateTime.now();
+    _pointerStartScrollOffset = _scrollController.hasClients
+        ? _scrollController.position.pixels
+        : null;
+    _pointerVelocityTracker.addPosition(event.timeStamp, event.position);
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    _pointerVelocityTracker.addPosition(event.timeStamp, event.position);
   }
 
   void _onPointerUp(PointerUpEvent event) {
     if (_pointerStartTime == null) return;
-    if (_scrollController.hasClients && _scrollController.position.isScrollingNotifier.value) return;
+    _pointerVelocityTracker.addPosition(event.timeStamp, event.position);
+    final velocityEstimate = _pointerVelocityTracker.getVelocityEstimate();
+
     final dy = event.position.dy - _pointerStartY;
     final dt = DateTime.now().difference(_pointerStartTime!).inMilliseconds;
-    
-    if (dt < 700 && dy < -60) {
+    _pointerStartTime = null;
+    if (dt > 700) return;
+
+    // Swipe wymaga szybkiego, gwałtownego ruchu. Wolne przewijanie przy
+    // czytaniu (nawet o dużej amplitudzie) nie jest swipe'em.
+    final velocityY = velocityEstimate?.pixelsPerSecond.dy ?? 0;
+
+    // Jeśli w trakcie gestu treść faktycznie się przewinęła, to było
+    // czytanie, a nie swipe.
+    final startOffset = _pointerStartScrollOffset;
+    final currentOffset = _scrollController.hasClients
+        ? _scrollController.position.pixels
+        : null;
+    _pointerStartScrollOffset = null;
+    if (startOffset != null &&
+        currentOffset != null &&
+        (currentOffset - startOffset).abs() > 30) {
+      return;
+    }
+
+    const minSwipeVelocity = 350.0;
+    final pos = _scrollController.hasClients ? _scrollController.position : null;
+    if (dy < -40 && velocityY < -minSwipeVelocity) {
       _handleSwipeUp();
-    } else if (dt < 700 && dy > 60) {
-      _handleSwipeDown();
+    } else if (dy > 40 && velocityY > minSwipeVelocity) {
+      if (pos == null || pos.pixels <= 1) {
+        _handleSwipeDown();
+      }
     }
   }
 
@@ -214,12 +317,22 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     if (_hasNavigation) {
       return PageView(
         controller: _pageController,
+        physics: const _CalmPageScrollPhysics(),
         onPageChanged: (index) {
           _stopwatch.stop();
           _markReadIfEnough(_stopwatch.elapsed.inSeconds);
+          // Zmiana artykułu przerywa czytanie lektora.
+          final wasSpeaking = _isSpeaking;
+          if (wasSpeaking) {
+            _tts.stop();
+            _ttsQueue.clear();
+          }
           setState(() {
             _currentIndex = index;
+            if (wasSpeaking) _isSpeaking = false;
           });
+          // Pobierz treść nowego artykułu, żeby TTS stał się dostępny.
+          _maybeAutoFetch(_currentArticle);
           _stopwatch.reset();
           _stopwatch.start();
           _recordHistory(_currentArticle);
@@ -239,6 +352,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         children: [
           Listener(
             onPointerDown: _onPointerDown,
+            onPointerMove: _onPointerMove,
             onPointerUp: _onPointerUp,
             child: CustomScrollView(
           controller: _scrollController,
@@ -255,11 +369,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     : Container(color: const Color(0xFF1E2126)),
               ),
               actions: [
-                if (art.isRead)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 4),
-                    child: Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
-                  ),
                 Consumer<NewsProvider>(
                   builder: (context, provider, child) {
                     final isPolish = provider.isArticlePolish(art);
@@ -284,29 +393,22 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   color: _canTts ? Colors.red : Colors.grey,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.open_in_browser),
-                  onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
-                    ));
-                  },
+                  icon: const Icon(Icons.text_fields),
+                  onPressed: _cycleFontSize,
+                  tooltip: 'Rozmiar czcionki',
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'font':
-                        _cycleFontSize();
-                        break;
-                      case 'share':
-                        SharePlus.instance.share(ShareParams(text: '${art.title}\n\n${art.url}'));
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'font', child: Text('Rozmiar czcionki')),
-                    const PopupMenuItem(value: 'share', child: Text('Udostępnij')),
-                  ],
+                IconButton(
+                  icon: const Icon(Icons.share),
+                  onPressed: () => SharePlus.instance.share(ShareParams(text: '${art.title}\n\n${art.url}')),
+                  tooltip: 'Udostępnij',
+                ),
+                // Pulsuje zawsze, gdy pełna treść nie jest jeszcze
+                // dostępna — zarówno przy błędzie, jak i przy braku
+                // załadowania artykułu.
+                _PulsingBrowserButton(
+                  article: art,
+                  pulse: !_hasUsableContent(art),
+                  onPressed: () => _openInBrowser(art),
                 ),
               ],
             ),
@@ -375,22 +477,95 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     return fc.trim().length >= 350;
   }
 
+  List<String> _chunksFor(Article art) {
+    final content = art.translatedFullContent ?? art.fullContent;
+    if (content == null) return const [];
+    final key = '${art.id}|${content.length}';
+    if (key != _chunksKey) {
+      _chunksKey = key;
+      _contentChunks
+        ..clear()
+        ..addAll(_splitContentIntoChunks(content));
+      _revealedChunks = math.min(1, _contentChunks.length);
+    }
+    return _contentChunks;
+  }
+
+  static List<String> _splitContentIntoChunks(String html, {int chunkCount = 5}) {
+    if (html.trim().isEmpty) return [html];
+    final parts = html.split(RegExp(r'(?=</(?:p|h[1-6]|li|blockquote|div|figure)>)'));
+    if (parts.length <= chunkCount) return parts;
+    final targetLen = (html.length / chunkCount).ceil();
+    final chunks = <String>[];
+    final buf = StringBuffer();
+    for (final part in parts) {
+      if (buf.isNotEmpty && buf.length + part.length >= targetLen) {
+        chunks.add(buf.toString());
+        buf.clear();
+      }
+      buf.write(part);
+    }
+    if (buf.isNotEmpty) chunks.add(buf.toString());
+    return chunks;
+  }
+
   Widget _buildContentBody(BuildContext context, NewsProvider provider, Article art) {
     final hasFullContent = _hasUsableContent(art);
     final isFetching = provider.isFetchingFor(art.id);
     final fetchFailed = provider.fetchFailedIds.contains(art.id);
 
+    final textStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
+      fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(),
+      height: 1.6,
+    );
+
+    final Widget description = HtmlWidget(
+      art.translatedDescription ?? (art.description.isNotEmpty ? art.description : ''),
+      textStyle: textStyle,
+      onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+    );
+
+    if (hasFullContent) {
+      final chunks = _chunksFor(art);
+      final visible = _revealedChunks.clamp(1, chunks.length);
+      return Column(
+        key: const ValueKey('progressive'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          description,
+          const SizedBox(height: 16),
+          for (int i = 0; i < visible; i++) ...[
+            HtmlWidget(
+              chunks[i],
+              textStyle: textStyle,
+              onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+            ),
+            if (i < visible - 1) const SizedBox(height: 12),
+          ],
+          if (visible < chunks.length) ...[
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 8),
+                Text(
+                  'Sowa doładowuje treść...',
+                  style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13),
+                ),
+              ],
+            ),
+          ],
+        ],
+      );
+    }
+
     if (isFetching) {
       return Column(
         key: const ValueKey('loading'),
         children: [
-          if (!hasFullContent)
-            HtmlWidget(
-              art.translatedDescription ?? (art.description.isNotEmpty ? art.description : ''),
-              textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
-              onTapUrl: (url) async { await _launchUrl(context, url); return true; },
-            ),
-          const SizedBox(height: 32),
+          description,
+          const SizedBox(height: 24),
           const CircularProgressIndicator(),
           const SizedBox(height: 12),
           Text(
@@ -401,42 +576,27 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       );
     }
 
-    if (hasFullContent) {
-      return Column(
-        key: const ValueKey('full'),
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          HtmlWidget(
-            art.translatedFullContent ?? art.fullContent!,
-            textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
-            onTapUrl: (url) async { await _launchUrl(context, url); return true; },
-          ),
-        ],
-      );
-    }
-
     return Column(
       key: const ValueKey('snippet'),
       children: [
-        HtmlWidget(
-          art.translatedDescription ?? (art.description.isNotEmpty ? art.description : 'Brak treści artykułu.'),
-          textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(), height: 1.6),
-          onTapUrl: (url) async { await _launchUrl(context, url); return true; },
-        ),
+        description,
         const SizedBox(height: 24),
         if (fetchFailed) ...[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, color: Colors.red.shade300, size: 20),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  'Nie udało się pobrać treści. Przesuń w górę, aby spróbować ponownie.',
-                  style: TextStyle(color: Colors.red.shade300, fontSize: 13),
+          GestureDetector(
+            onTap: () => _openInBrowser(art),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Colors.red.shade300, size: 20),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Błąd pobierania, otwórz w zewnętrznej przeglądarce.',
+                    style: TextStyle(color: Colors.red.shade300, fontSize: 13),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
         ] else ...[
@@ -447,7 +607,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  'Przesuń w górę, aby pobrać pełną treść.',
+                  'Treść załaduje się podczas czytania.',
                   style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13),
                 ),
               ),
@@ -517,19 +677,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ),
               const SizedBox(width: 4),
               GestureDetector(
-                onTap: () async {
+                onTap: () {
                   if (!art.isSaved) {
-                    await provider.toggleSaved(art);
-                    if (context.mounted) {
-                      showModalBottomSheet(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => TagPickerBottomSheet(article: art),
-                      );
-                    }
-                  } else {
-                    await provider.toggleSaved(art);
+                    provider.toggleSaved(art);
                   }
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => TagPickerBottomSheet(article: art),
+                  );
                 },
                 child: Container(
                   width: 40,
@@ -569,5 +725,98 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         );
       }
     }
+  }
+}
+
+class _CalmPageScrollPhysics extends PageScrollPhysics {
+  const _CalmPageScrollPhysics({super.parent});
+
+  // Lekki dotyk / przypadkowy ruch nie rozpoczyna przeciągania —
+  // palec musi najpierw pokonać próg dystansu.
+  @override
+  double get dragStartDistanceMotionThreshold => 15.0;
+
+  // Zmniejsza czułość przeciągnięcia — trzeba pociągnąć dalej,
+  // zanim strona zacznie się przesuwać.
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) {
+    return offset * 0.3;
+  }
+
+  // Wymaga wyraźnego flingu do zmiany strony.
+  @override
+  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
+    if (velocity.abs() < minFlingVelocity * 2.5) {
+      return super.createBallisticSimulation(position, 0);
+    }
+    return super.createBallisticSimulation(position, velocity);
+  }
+
+  @override
+  _CalmPageScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return _CalmPageScrollPhysics(parent: buildParent(ancestor));
+  }
+}
+
+// Przycisk "otwórz w przeglądarce" w pasku górnym — pulsuje (skala +
+// kolor) tylko wtedy, gdy pobranie artykułu nie powiodło się i widoczny
+// jest komunikat o błędzie.
+class _PulsingBrowserButton extends StatefulWidget {
+  final Article article;
+  final VoidCallback onPressed;
+  final bool pulse;
+
+  const _PulsingBrowserButton({
+    required this.article,
+    required this.onPressed,
+    required this.pulse,
+  });
+
+  @override
+  State<_PulsingBrowserButton> createState() => _PulsingBrowserButtonState();
+}
+
+class _PulsingBrowserButtonState extends State<_PulsingBrowserButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    )..repeat(reverse: true);
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        // Przy powiększaniu ikonka zmienia kolor na czerwony.
+        final color = widget.pulse
+            ? Color.lerp(Colors.white, Colors.red, _animation.value)!
+            : Colors.white;
+        final scale = widget.pulse ? 1.0 + 0.25 * _animation.value : 1.0;
+        return Transform.scale(
+          scale: scale,
+          child: IconButton(
+            icon: Icon(Icons.open_in_browser, color: color),
+            onPressed: widget.onPressed,
+          ),
+        );
+      },
+    );
   }
 }

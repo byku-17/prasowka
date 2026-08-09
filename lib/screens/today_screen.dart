@@ -199,7 +199,7 @@ class _TodayScreenState extends State<TodayScreen> {
                   controller: _scrollController,
                   padding: EdgeInsets.zero,
                   addRepaintBoundaries: true,
-                  itemCount: (sortedArticles.length < _visibleCount ? sortedArticles.length : _visibleCount) + 1 + (sortedArticles.length > _visibleCount ? 1 : 0),
+                  itemCount: (sortedArticles.length < _visibleCount ? sortedArticles.length : _visibleCount) + (sortedArticles.length > _visibleCount ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index < visibleArticles.length) {
                       final article = visibleArticles[index];
