@@ -362,7 +362,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               expandedHeight: 250,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
-                background: art.imageUrl != null
+                background: context.read<SettingsProvider>().showImagesNow && art.imageUrl != null
                     ? Hero(
                         tag: 'article-image-${art.id}',
                         child: CachedNetworkImage(imageUrl: art.imageUrl!, fit: BoxFit.cover, cacheManager: AppImageCacheManager.instance),

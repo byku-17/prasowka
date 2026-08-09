@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/models/news_source.dart';
 import 'package:prasowka/services/storage_service.dart';
@@ -60,6 +62,10 @@ class SettingsProvider with ChangeNotifier {
   static const String articleListLayoutKey = 'articleListLayout';
   static const String articleListLayoutCompact = 'compact';
   static const String articleListLayoutComfortable = 'comfortable';
+  static const String imageDisplayModeKey = 'imageDisplayMode';
+  static const String imageDisplayAlways = 'always';
+  static const String imageDisplayWifiOnly = 'wifi';
+  static const String imageDisplayNever = 'never';
   static const String syncScopeKey = 'syncScope';
   static const String autoSyncEnabledKey = 'autoSyncEnabled';
   static const String mainTabSlot1Key = 'mainTabSlot1';
@@ -96,6 +102,8 @@ class SettingsProvider with ChangeNotifier {
   String _articleSortOrder = articleSortUnread;
   List<String> _excludedWords = [];
   String _articleListLayout = articleListLayoutComfortable;
+  String _imageDisplayMode = imageDisplayAlways;
+  bool _onWifi = true;
   List<String> _syncScope = List<String>.from(SyncService.allScopes);
   bool _autoSyncEnabled = false;
   int _lastTabIndex = 0;
@@ -136,6 +144,9 @@ class SettingsProvider with ChangeNotifier {
   String get articleSortOrder => _articleSortOrder;
   List<String> get excludedWords => List.unmodifiable(_excludedWords);
   String get articleListLayout => _articleListLayout;
+  String get imageDisplayMode => _imageDisplayMode;
+  bool get showImagesNow => _imageDisplayMode == imageDisplayAlways || (_imageDisplayMode == imageDisplayWifiOnly && _onWifi);
+  bool get isOnWifiNow => _onWifi;
   List<String> get syncScope => List.unmodifiable(_syncScope);
   bool isSyncScopeEnabled(String scope) => _syncScope.contains(scope);
   bool get autoSyncEnabled => _autoSyncEnabled;
@@ -233,6 +244,7 @@ class SettingsProvider with ChangeNotifier {
     _articleSortOrder = settingsBox.get(articleSortOrderKey, defaultValue: articleSortUnread) as String;
     _excludedWords = List<String>.from(settingsBox.get(excludedWordsKey, defaultValue: <String>[]));
     _articleListLayout = settingsBox.get(articleListLayoutKey, defaultValue: articleListLayoutComfortable) as String;
+    _imageDisplayMode = settingsBox.get(imageDisplayModeKey, defaultValue: imageDisplayAlways) as String;
     final storedScope = settingsBox.get(syncScopeKey);
     if (storedScope is List && storedScope.isNotEmpty) {
       _syncScope = List<String>.from(storedScope.cast<String>());
@@ -322,6 +334,17 @@ class SettingsProvider with ChangeNotifier {
     }
 
     await _ensureNewSourcesRegistered();
+
+    // 8. Śledzenie połączenia (dla trybu „obrazki tylko na Wi-Fi")
+    Connectivity().onConnectivityChanged.listen((results) {
+      _onWifi = results.any((r) => r == ConnectivityResult.wifi || r == ConnectivityResult.ethernet);
+      notifyListeners();
+    });
+    Connectivity().checkConnectivity().then((results) {
+      _onWifi = results.any((r) => r == ConnectivityResult.wifi || r == ConnectivityResult.ethernet);
+      notifyListeners();
+    });
+
     notifyListeners();
     debugPrint('Sowa Settings: Gotowe (V4.5 Clean)');
   }
@@ -616,6 +639,12 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setArticleListLayout(String layout) async {
     _articleListLayout = layout;
     await Hive.box(settingsBoxName).put(articleListLayoutKey, layout);
+    notifyListeners();
+  }
+
+  Future<void> setImageDisplayMode(String mode) async {
+    _imageDisplayMode = mode;
+    await Hive.box(settingsBoxName).put(imageDisplayModeKey, mode);
     notifyListeners();
   }
 

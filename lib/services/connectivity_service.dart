@@ -5,8 +5,8 @@ class ConnectivityService {
   /// (Wi-Fi lub Ethernet). Gdy pakiet nie działa — zwraca true, by nie blokować.
   Future<bool> isOnWifi() async {
     try {
-      final result = await Connectivity().checkConnectivity();
-      return result == ConnectivityResult.wifi || result == ConnectivityResult.ethernet;
+      final results = await Connectivity().checkConnectivity();
+      return results.any((r) => r == ConnectivityResult.wifi || r == ConnectivityResult.ethernet);
     } catch (e) {
       return true;
     }

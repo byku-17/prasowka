@@ -45,11 +45,13 @@ class ArticleCard extends StatelessWidget {
       return _buildSmallCard(context, mutedText, checkIconColor, cardBorderColor);
     }
 
-    final isCompact = context.read<SettingsProvider>().articleListLayout == SettingsProvider.articleListLayoutCompact;
+    final settings = context.read<SettingsProvider>();
+    final isCompact = settings.articleListLayout == SettingsProvider.articleListLayoutCompact;
     if (isCompact) {
       return _buildCompactCard(context, mutedText, checkIconColor, cardBorderColor);
     }
 
+    final showImage = settings.showImagesNow;
     return Stack(
       children: [
         Container(
@@ -68,51 +70,52 @@ class ArticleCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Zdjęcie — mniejszy aspect ratio
-                if (article.imageUrl != null)
-                  AspectRatio(
-                    aspectRatio: 2.2,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Hero(
-                          tag: 'article-image-${article.id}',
-                          child: ColorFiltered(
-                            colorFilter: ColorFilter.mode(
-                              article.isRead ? Colors.black.withValues(alpha: 0.4) : Colors.transparent,
-                              BlendMode.darken,
-                            ),
-                            child: CachedNetworkImage(
-                              imageUrl: article.imageUrl!,
-                              fit: BoxFit.cover,
-                              alignment: Alignment.center,
-                              memCacheWidth: 1080,
-                              cacheManager: AppImageCacheManager.instance,
-                              placeholder: (context, url) => Container(
-                                color: Colors.grey.withValues(alpha: 0.1),
-                                child: const Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                if (showImage)
+                  if (article.imageUrl != null)
+                    AspectRatio(
+                      aspectRatio: 2.2,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Hero(
+                            tag: 'article-image-${article.id}',
+                            child: ColorFiltered(
+                              colorFilter: ColorFilter.mode(
+                                article.isRead ? Colors.black.withValues(alpha: 0.4) : Colors.transparent,
+                                BlendMode.darken,
+                              ),
+                              child: CachedNetworkImage(
+                                imageUrl: article.imageUrl!,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.center,
+                                memCacheWidth: 1080,
+                                cacheManager: AppImageCacheManager.instance,
+                                placeholder: (context, url) => Container(
+                                  color: Colors.grey.withValues(alpha: 0.1),
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                color: Colors.grey.withValues(alpha: 0.05),
-                                child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                                errorWidget: (context, url, error) => Container(
+                                  color: Colors.grey.withValues(alpha: 0.05),
+                                  child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        _buildTranslationWatermark(),
-                      ],
+                          _buildTranslationWatermark(),
+                        ],
+                      ),
+                    )
+                  else
+                    AspectRatio(
+                      aspectRatio: 2.2,
+                      child: _buildSourcePlaceholder(context),
                     ),
-                  )
-                else
-                  AspectRatio(
-                    aspectRatio: 2.2,
-                    child: _buildSourcePlaceholder(context),
-                  ),
                 
                 // Treść — kompaktowa
                 Padding(
@@ -269,6 +272,7 @@ class ArticleCard extends StatelessWidget {
 
   Widget _buildCompactCard(BuildContext context, Color mutedText, Color checkIconColor, Color borderColor) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final showImage = context.read<SettingsProvider>().showImagesNow;
     return Container(
       decoration: isRecommended ? BoxDecoration(
         borderRadius: BorderRadius.circular(12),
@@ -288,45 +292,47 @@ class ArticleCard extends StatelessWidget {
             onTap();
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  width: 76,
-                  height: 76,
-                  child: article.imageUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: article.imageUrl!,
-                          fit: BoxFit.cover,
-                          memCacheWidth: 300,
-                          cacheManager: AppImageCacheManager.instance,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey.withValues(alpha: 0.15),
-                            child: const Center(
-                              child: SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showImage) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(
+                      width: 76,
+                      height: 76,
+                      child: article.imageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: article.imageUrl!,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 300,
+                              cacheManager: AppImageCacheManager.instance,
+                              placeholder: (context, url) => Container(
+                                color: Colors.grey.withValues(alpha: 0.15),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
                               ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey.withValues(alpha: 0.1),
+                                child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.shade400, size: 22),
+                              ),
+                            )
+                          : Container(
+                              color: Colors.grey.withValues(alpha: 0.1),
+                              child: Icon(Icons.article_outlined, color: Colors.grey.shade400, size: 24),
                             ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey.withValues(alpha: 0.1),
-                            child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.shade400, size: 22),
-                          ),
-                        )
-                      : Container(
-                          color: Colors.grey.withValues(alpha: 0.1),
-                          child: Icon(Icons.article_outlined, color: Colors.grey.shade400, size: 24),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -417,7 +423,7 @@ class ArticleCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (article.imageUrl != null)
+              if (context.read<SettingsProvider>().showImagesNow && article.imageUrl != null)
                 Expanded(
                   child: Stack(
                     fit: StackFit.expand,
@@ -449,7 +455,7 @@ class ArticleCard extends StatelessWidget {
                     ],
                   ),
                 ),
-              if (article.imageUrl == null)
+              if (context.read<SettingsProvider>().showImagesNow && article.imageUrl == null)
                 Expanded(
                   child: Container(
                     color: Colors.grey.withValues(alpha: 0.1),

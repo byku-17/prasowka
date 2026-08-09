@@ -53,6 +53,14 @@ class AppearanceSettingsPage extends StatelessWidget {
             onTap: () => _showLayoutPicker(context, settings),
           ),
           const Divider(),
+          const SectionHeader('OBRAZKI'),
+          ListTile(
+            leading: const Icon(Icons.image_outlined),
+            title: const Text('Wyświetlanie obrazków'),
+            subtitle: Text(_imageModeLabel(settings.imageDisplayMode)),
+            onTap: () => _showImageModePicker(context, settings),
+          ),
+          const Divider(),
           const SectionHeader('OTWIERANIE ARTYKUŁÓW'),
           SwitchListTile(
             secondary: const Icon(Icons.open_in_browser_outlined),
@@ -102,6 +110,51 @@ class AppearanceSettingsPage extends StatelessWidget {
       default:
         return 'Systemowy';
     }
+  }
+
+  String _imageModeLabel(String mode) {
+    switch (mode) {
+      case SettingsProvider.imageDisplayWifiOnly:
+        return 'Tylko przez Wi-Fi';
+      case SettingsProvider.imageDisplayNever:
+        return 'Nigdy';
+      default:
+        return 'Zawsze';
+    }
+  }
+
+  void _showImageModePicker(BuildContext context, SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Wyświetlanie obrazków', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            _buildImageModeOption(context, settings, label: 'Zawsze', description: 'Ładuj obrazki na każdym połączeniu', value: SettingsProvider.imageDisplayAlways),
+            _buildImageModeOption(context, settings, label: 'Tylko przez Wi-Fi', description: 'Obrazki tylko przy połączeniu Wi-Fi — oszczędzasz dane', value: SettingsProvider.imageDisplayWifiOnly),
+            _buildImageModeOption(context, settings, label: 'Nigdy', description: 'Nie ładuj obrazków w listach ani w czytniku', value: SettingsProvider.imageDisplayNever),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageModeOption(BuildContext context, SettingsProvider settings, {required String label, required String description, required String value}) {
+    final isSelected = settings.imageDisplayMode == value;
+    return ListTile(
+      leading: Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? AppTheme.accentFor(context) : null),
+      title: Text(label),
+      subtitle: Text(description),
+      onTap: () {
+        settings.setImageDisplayMode(value);
+        Navigator.pop(context);
+      },
+    );
   }
 
   void _showLayoutPicker(BuildContext context, SettingsProvider settings) {
