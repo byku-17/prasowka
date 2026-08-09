@@ -47,6 +47,10 @@ class SettingsProvider with ChangeNotifier {
   static const String alertTypeSummary = 'summary';
   static const String wifiOnlyRefreshKey = 'wifiOnlyRefresh';
   static const String articleRetentionDaysKey = 'articleRetentionDays';
+  static const String articleSortOrderKey = 'articleSortOrder';
+  static const String articleSortLatest = 'latest';
+  static const String articleSortUnread = 'unread';
+  static const String articleSortPopular = 'popular';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -77,6 +81,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> _alertTypes = [alertTypeImportant];
   bool _wifiOnlyRefresh = false;
   int _articleRetentionDays = 0;
+  String _articleSortOrder = articleSortUnread;
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -111,6 +116,7 @@ class SettingsProvider with ChangeNotifier {
   bool isAlertTypeEnabled(String type) => _alertTypes.contains(type);
   bool get wifiOnlyRefresh => _wifiOnlyRefresh;
   int get articleRetentionDays => _articleRetentionDays;
+  String get articleSortOrder => _articleSortOrder;
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -201,6 +207,7 @@ class SettingsProvider with ChangeNotifier {
     _alertTypes = List<String>.from(settingsBox.get(alertTypesKey, defaultValue: <String>[alertTypeImportant]));
     _wifiOnlyRefresh = settingsBox.get(wifiOnlyRefreshKey, defaultValue: false) as bool;
     _articleRetentionDays = settingsBox.get(articleRetentionDaysKey, defaultValue: 0) as int;
+    _articleSortOrder = settingsBox.get(articleSortOrderKey, defaultValue: articleSortUnread) as String;
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -646,6 +653,13 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setArticleRetentionDays(int days) async {
     _articleRetentionDays = days;
     await Hive.box(settingsBoxName).put(articleRetentionDaysKey, days);
+    notifyListeners();
+  }
+
+  /// Domyślna kolejność artykułów: latest / unread / popular.
+  Future<void> setArticleSortOrder(String order) async {
+    _articleSortOrder = order;
+    await Hive.box(settingsBoxName).put(articleSortOrderKey, order);
     notifyListeners();
   }
 

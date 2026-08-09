@@ -29,7 +29,7 @@
 - [x] Częstotliwość odświeżania: ręcznie / co godzinę / co 6 godzin (~4h)
 - [x] Odświeżanie tylko przez Wi-Fi (~3h)
 - [x] Usuwanie starych artykułów: po 7 / 14 / 30 dniach (~3h)
-- [ ] Domyślna kolejność artykułów: najnowsze / nieprzeczytane / popularne (~3h)
+- [x] Domyślna kolejność artykułów: najnowsze / nieprzeczytane / popularne (~3h)
 - [ ] Słowa wykluczające (filtrowanie artykułów) (~3h)
 - [ ] Domyślne zachowanie tagów (auto-przypisywanie) (~5h)
 

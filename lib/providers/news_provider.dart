@@ -169,6 +169,10 @@ class NewsProvider with ChangeNotifier {
     _lastFetchTimes[categoryId] = DateTime.now();
     _articlesMap[categoryId] = accumulated;
 
+    final sortOrder = Hive.isBoxOpen('settings')
+        ? Hive.box('settings').get('articleSortOrder', defaultValue: 'unread') as String
+        : 'unread';
+
     List<Article> finalList;
     if (accumulated.length > 50) {
       final transferList = accumulated.map((a) => a.toTransferMap()).toList();
@@ -177,11 +181,13 @@ class NewsProvider with ChangeNotifier {
         'teams': keywords ?? _lastKeywords,
         'categoryId': categoryId,
         'shuffle': forceRefresh,
+        'sortOrder': sortOrder,
       });
       _articlesMap[categoryId] = mixed;
       finalList = mixed;
     } else {
-      _sortAndMixArticlesSync(accumulated, keywords ?? _lastKeywords, categoryId, shuffle: forceRefresh);
+      _sortAndMixArticlesSync(accumulated, keywords ?? _lastKeywords, categoryId,
+          shuffle: forceRefresh, sortOrder: sortOrder);
       _articlesMap[categoryId] = accumulated;
       finalList = accumulated;
     }
@@ -326,12 +332,22 @@ class NewsProvider with ChangeNotifier {
     final List<String>? teams = params['teams'];
     final String categoryId = params['categoryId'];
     final bool shuffle = params['shuffle'] == true;
+    final String sortOrder = params['sortOrder'] as String? ?? 'unread';
 
     list.sort((a, b) {
       if (a.imageUrl != null && b.imageUrl == null) return -1;
       if (a.imageUrl == null && b.imageUrl != null) return 1;
       return b.publishedAt.compareTo(a.publishedAt);
     });
+
+    if (sortOrder == 'popular') {
+      list.sort((a, b) {
+        final sa = a.cachedScore ?? 0.0;
+        final sb = b.cachedScore ?? 0.0;
+        if (sa != sb) return sb.compareTo(sa);
+        return b.publishedAt.compareTo(a.publishedAt);
+      });
+    }
     
     list.removeWhere((a) => a.isDisliked);
     
@@ -400,20 +416,24 @@ class NewsProvider with ChangeNotifier {
       }
     }
 
-    final readArticles = list.where((a) => a.isRead).toList();
-    final unreadArticles = list.where((a) => !a.isRead).toList();
-    list.clear();
-    list.addAll([...unreadArticles, ...readArticles]);
+    if (sortOrder != 'latest') {
+      final readArticles = list.where((a) => a.isRead).toList();
+      final unreadArticles = list.where((a) => !a.isRead).toList();
+      list.clear();
+      list.addAll([...unreadArticles, ...readArticles]);
+    }
 
     return list;
   }
 
-  void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId, {bool shuffle = false}) {
+  void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId,
+      {bool shuffle = false, String sortOrder = 'unread'}) {
     final result = _sortAndMixArticlesStatic({
       'list': list,
       'teams': teams,
       'categoryId': categoryId,
       'shuffle': shuffle,
+      'sortOrder': sortOrder,
     });
     list.clear();
     list.addAll(result);

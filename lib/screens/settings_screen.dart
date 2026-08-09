@@ -195,6 +195,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  String _sortOrderLabel(SettingsProvider settings) {
+    switch (settings.articleSortOrder) {
+      case SettingsProvider.articleSortLatest:
+        return 'Najnowsze';
+      case SettingsProvider.articleSortPopular:
+        return 'Popularne';
+      default:
+        return 'Nieprzeczytane';
+    }
+  }
+
+  void _showSortOrderPicker(SettingsProvider settings) {
+    final options = <(String, String, String)>[
+      (SettingsProvider.articleSortLatest, 'Najnowsze', 'Najpierw najświeższe artykuły'),
+      (SettingsProvider.articleSortUnread, 'Nieprzeczytane', 'Nieprzeczytane artykuły na górze'),
+      (SettingsProvider.articleSortPopular, 'Popularne', 'Najważniejsze dla Ciebie na górze'),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Domyślna kolejność artykułów',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              for (final (order, label, desc) in options)
+                ListTile(
+                  leading: Icon(
+                    order == settings.articleSortOrder
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: AppTheme.accentFor(context),
+                  ),
+                  title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(desc, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  onTap: () {
+                    settings.setArticleSortOrder(order);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _showRetentionPicker(SettingsProvider settings) {
     final options = <(int, String, String)>[
       (0, 'Nigdy', 'Stare artykuły zostają w cache'),
@@ -270,6 +326,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Automatyczne sprzątanie cache: ${_retentionLabel(settings)}',
         section: 'Treści',
         onTap: () => _showRetentionPicker(settings),
+      ),
+      _SettingsItem(
+        icon: Icons.sort,
+        title: 'Domyślna kolejność artykułów',
+        subtitle: 'Sortowanie listy: ${_sortOrderLabel(settings)}',
+        section: 'Treści',
+        onTap: () => _showSortOrderPicker(settings),
       ),
       _SettingsItem(
         icon: Icons.rss_feed,
