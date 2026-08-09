@@ -388,6 +388,54 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resetuje tylko ustawienia aplikacji do domyślnych wartości.
+  Future<void> resetSettings() async {
+    await BackgroundService().cancelAllTasks();
+    await Hive.box(settingsBoxName).clear();
+    await init();
+    notifyListeners();
+  }
+
+  /// Usuwa wszystkie lokalne dane użytkownika (ustawienia, cache, artykuły,
+  /// tagi, zainteresowania, historię, sport) — powrót do stanu czystej instalacji.
+  Future<void> resetAllLocalData() async {
+    await BackgroundService().cancelAllTasks();
+    const boxNames = [
+      'settings',
+      'news_sources_dynamic',
+      'news_categories_dynamic',
+      'articles',
+      'news_cache',
+      'notified_ids',
+      'user_tags',
+      'user_interests',
+      'reading_history',
+      'notification_history',
+      'pinned_matches',
+      'pinned_match_scores',
+      'sports_notified_ids',
+      'match_reminders_notified',
+      'daily_notification_count',
+      'sports_cache',
+    ];
+    for (final name in boxNames) {
+      try {
+        if (Hive.isBoxOpen(name)) {
+          await Hive.box(name).clear();
+          await Hive.box(name).close();
+        }
+        if (!Hive.isBoxOpen(name)) {
+          await Hive.deleteBoxFromDisk(name);
+        }
+      } catch (_) {
+        // box mógł nie istnieć — pomiń
+      }
+    }
+    await StorageService().init();
+    await init();
+    notifyListeners();
+  }
+
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
     await Hive.box(settingsBoxName).put(themeKey, mode.index);

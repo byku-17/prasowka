@@ -221,7 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ─── SEKCJA DANE I NARZĘDZIA ───
 
-  List<_SettingsItem> _buildToolsItems() {
+  List<_SettingsItem> _buildToolsItems(SettingsProvider settings) {
     return [
       _SettingsItem(
         icon: Icons.download,
@@ -243,6 +243,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Usuń przechowane newsy i odśwież zawartość',
         section: 'Dane i narzędzia',
         onTap: _clearCache,
+      ),
+      _SettingsItem(
+        icon: Icons.restart_alt,
+        title: 'Resetuj ustawienia aplikacji',
+        subtitle: 'Przywróć ustawienia do domyślnych',
+        section: 'Dane i narzędzia',
+        onTap: _resetSettings,
+      ),
+      _SettingsItem(
+        icon: Icons.delete_forever_outlined,
+        title: 'Usuń lokalne dane',
+        subtitle: 'Wyczyść wszystkie dane z urządzenia',
+        section: 'Dane i narzędzia',
+        onTap: _resetAllData,
       ),
     ];
   }
@@ -363,6 +377,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _resetSettings() async {
+    final settingsProvider = context.read<SettingsProvider>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Zresetować ustawienia?'),
+        content: const Text('Wszystkie ustawienia (motyw, powiadomienia, sport, źródła itd.) wrócą do wartości domyślnych. Twoje artykuły i zapisane dane zostaną zachowane.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Zresetuj')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await settingsProvider.resetSettings();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ustawienia zresetowane')),
+      );
+    }
+  }
+
+  Future<void> _resetAllData() async {
+    final settingsProvider = context.read<SettingsProvider>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Usunąć wszystkie lokalne dane?'),
+        content: const Text('Usunięte zostaną: ustawienia, zapisane artykuły, tagi, zainteresowania, historia i dane sportowe. Tej operacji nie można cofnąć.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Usuń wszystko', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await settingsProvider.resetAllLocalData();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lokalne dane usunięte — uruchom aplikację ponownie')),
+      );
+    }
+  }
+
   // ─── BUILD ───
 
   @override
@@ -377,7 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ..._buildNotificationItems(settings),
       ..._buildContentItems(),
       ..._buildSportItems(settings),
-      ..._buildToolsItems(),
+      ..._buildToolsItems(settings),
       ..._buildAboutItems(),
     ];
 

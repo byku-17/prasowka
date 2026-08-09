@@ -43,8 +43,8 @@
 ### DANE I NARZĘDZIA (~13h)
 - [ ] Co synchronizować: wybór zakresu (źródła, kategorie, zainteresowania, tagi, przeczytane, ustawienia) (~4h)
 - [ ] Automatyczna synchronizacja włącz/wyłącz (~5h)
-- [ ] Resetuj ustawienia aplikacji (~2h)
-- [ ] Usuń lokalne dane (~2h)
+- [x] Resetuj ustawienia aplikacji (~2h)
+- [x] Usuń lokalne dane (~2h)
 
 ## Sugerowana kolejność (najwyższy stosunek wartości do czasu)
 1. Rozmiar tekstu (1h), sposób otwierania (1h), przełączniki sportowe (4h), reset/usuń dane (4h), godziny działania (3h) — razem ~13h
