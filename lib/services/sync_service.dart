@@ -235,7 +235,7 @@ class SyncService extends ChangeNotifier {
         existing.isLiked = data['isLiked'] ?? existing.isLiked;
         existing.isDisliked = data['isDisliked'] ?? existing.isDisliked;
         existing.tagIds = List<String>.from(data['tagIds'] ?? existing.tagIds);
-        existing.isRead = data['isRead'] ?? existing.isRead;
+        if (data['isRead'] == true) existing.isRead = true;
         await existing.save();
       } else {
         debugPrint('Sync: article ${entry.key} not in local cache, skipping');

@@ -257,8 +257,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final maxScroll = _scrollController.position.maxScrollExtent;
 
     if (pixels >= maxScroll - 100) {
-      if (!widget.article.isRead) {
-        context.read<NewsProvider>().markArticleRead(widget.article);
+      final current = _currentArticle;
+      if (!current.isRead) {
+        context.read<NewsProvider>().markArticleRead(current);
       }
     }
 
