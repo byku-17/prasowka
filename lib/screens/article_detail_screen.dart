@@ -98,28 +98,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     });
   }
 
-  String _cleanTextForTts(String raw) {
-    var text = raw;
-    text = text.replaceAll(RegExp(r'<[^>]*>'), ' ');
-    text = text.replaceAll(RegExp(r'https?://\S+'), '');
-    text = text.replaceAll(RegExp(r'www\.\S+'), '');
-    text = text.replaceAll(RegExp(r'Źródło:.*', multiLine: true), '');
-    text = text.replaceAll(RegExp(r'fot\.?.*', multiLine: true), '');
-    text = text.replaceAll(RegExp(r'photo:.*', caseSensitive: false, multiLine: true), '');
-    text = text.replaceAll(RegExp(r'source:.*', caseSensitive: false, multiLine: true), '');
-    text = text.replaceAll(RegExp(r'©.*', multiLine: true), '');
-    text = text.replaceAll(RegExp(r'Materiał partnera.*', multiLine: true), '');
-    text = text.replaceAll(RegExp(r'---.*---', multiLine: true), '');
-    text = text.replaceAll(RegExp(r'\[[^\]]*\]'), '');
-    text = text.replaceAll(RegExp(r'\(fot\.?\s*\)'), '');
-    text = text.replaceAll(RegExp(r'[•■●▪►►▶▷▸▹►]{2,}'), '');
-    text = text.replaceAll(RegExp(r'={3,}'), '');
-    text = text.replaceAll(RegExp(r'-{3,}'), '');
-    text = text.replaceAll(RegExp(r'\s{2,}'), ' ');
-    text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
-    return text.trim();
-  }
-
   final List<String> _ttsQueue = [];
 
   Article get _currentArticle {
@@ -159,7 +137,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final article = _currentArticle;
     if (!_hasUsableContent(article)) return;
     final raw = article.translatedFullContent ?? article.fullContent!;
-    final text = _cleanTextForTts(raw);
+    final text = cleanForTts(raw);
     if (text.isEmpty) return;
     _ttsQueue.clear();
     const chunkSize = 3500;

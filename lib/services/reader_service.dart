@@ -60,6 +60,10 @@ String? _extractMainContentCompute(String htmlBody) {
     final document = html_parser.parse(htmlBody);
     document.querySelectorAll('script, style, nav, footer, header, noscript, iframe, .ads, .social-share, source, picture, figure figcaption').forEach((e) => e.remove());
 
+    // Usuń podpisy pod zdjęciami i elementy-śmieci (caption/credit/byline),
+    // żeby nie trafiały do wyekstrahowanej treści (czytnik + lektor).
+    _removeCaptionElements(document);
+
     // 1) JSON-LD articleBody — najczęściej zawiera PEŁNĄ treść,
     //    podczas gdy DOM po usunięciu JS-owych elementów bywa okrojony.
     final jsonLdBody = _extractJsonLdBody(document);
@@ -172,6 +176,7 @@ String? _extractMergedParagraphs(dom.Document document) {
   const junkClassWords = {
     'sidebar', 'related', 'recommended', 'comments', 'menu',
     'share', 'social', 'newsletter', 'advert', 'banner', 'widget',
+    'caption', 'credit', 'byline', 'figcaption',
   };
   final blocks = <String>[];
   final seen = <String>{};
@@ -195,4 +200,59 @@ String? _extractMergedParagraphs(dom.Document document) {
   }
   if (blocks.isEmpty) return null;
   return blocks.join();
+}
+
+/// Usuwa z dokumentu podpisy pod zdjęciami i elementy oznaczone klasami
+/// caption/credit/byline (często pojawiają się na początku lub w środku
+/// wyekstrahowanego kontenera i psują start czytania).
+void _removeCaptionElements(dom.Document document) {
+  try {
+    const junkWords = ['caption', 'credit', 'byline', 'creditline', 'photocaption', 'imagecaption', 'figcaption'];
+    for (final el in document.querySelectorAll('figcaption, span, div, p, h1, h2, h3, h4, h5, h6, li')) {
+      final cls = ((el.attributes['class'] ?? '') + ' ' + (el.attributes['id'] ?? '')).toLowerCase();
+      if (el.localName == 'figcaption' ||
+          cls.split(RegExp(r'[\s_-]+')).any((w) => junkWords.contains(w))) {
+        el.remove();
+      }
+    }
+  } catch (_) {}
+}
+
+/// Czyści surowy HTML artykułu dla lektora TTS:
+/// - usuwa podpisy pod zdjęciami i elementy caption/credit/byline,
+/// - wyciąga czysty tekst (bez tagów),
+/// - usuwa URL-e, linie „Źródło:", „fot.", ©, „Materiał partnera" itd.
+/// Dzięki temu lektor zawsze zaczyna od właściwej treści, a nie od przypisu.
+String cleanForTts(String raw) {
+  if (raw.trim().isEmpty) return '';
+  try {
+    final doc = html_parser.parse(raw);
+    _removeCaptionElements(doc);
+    doc.querySelectorAll('script, style').forEach((e) => e.remove());
+    final text = doc.body?.text ?? '';
+    return _stripTtsJunk(text);
+  } catch (_) {
+    return _stripTtsJunk(raw.replaceAll(RegExp(r'<[^>]*>'), ' '));
+  }
+}
+
+String _stripTtsJunk(String text) {
+  var t = text;
+  t = t.replaceAll(RegExp(r'https?://\S+'), '');
+  t = t.replaceAll(RegExp(r'www\.\S+'), '');
+  t = t.replaceAll(RegExp(r'Źródło:.*', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'fot\.?.*', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'photo:.*', caseSensitive: false, multiLine: true), '');
+  t = t.replaceAll(RegExp(r'source:.*', caseSensitive: false, multiLine: true), '');
+  t = t.replaceAll(RegExp(r'©.*', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'Materiał partnera.*', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'---.*---', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'\[[^\]]*\]'), '');
+  t = t.replaceAll(RegExp(r'\(fot\.?\s*\)'), '');
+  t = t.replaceAll(RegExp(r'[•■●▪►▶▷▸▹]{2,}'), '');
+  t = t.replaceAll(RegExp(r'={3,}'), '');
+  t = t.replaceAll(RegExp(r'-{3,}'), '');
+  t = t.replaceAll(RegExp(r'\s{2,}'), ' ');
+  t = t.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+  return t.trim();
 }
