@@ -440,13 +440,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
+                : ListView(
                     padding: const EdgeInsets.only(bottom: 80),
-                    itemCount: sections.length * 2,
-                    itemBuilder: (context, index) {
-                      if (index.isOdd) {
-                        final section = sections[index ~/ 2];
-                        return Padding(
+                    children: [
+                      for (final section in sections) ...[
+                        Padding(
                           padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
                           child: Text(
                             section.toUpperCase(),
@@ -457,15 +455,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               letterSpacing: 1,
                             ),
                           ),
-                        );
-                      } else {
-                        final section = sections[index ~/ 2];
-                        final items = filteredItems.where((item) => item.section == section).toList();
-                        return Column(
-                          children: items.map((item) => _buildTile(item)).toList(),
-                        );
-                      }
-                    },
+                        ),
+                        ...filteredItems
+                            .where((item) => item.section == section)
+                            .map(_buildTile),
+                      ],
+                    ],
                   ),
           ),
         ],
