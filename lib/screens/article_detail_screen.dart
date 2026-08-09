@@ -90,6 +90,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     _tts.setVolume(1.0);
     _tts.setPitch(1.05);
     _tts.setCompletionHandler(() {
+      if (!_isSpeaking) return;
       if (_ttsQueue.isNotEmpty) {
         _tts.speak(_ttsQueue.removeAt(0));
       } else {
@@ -129,20 +130,23 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   Future<void> _toggleTts() async {
     if (_isSpeaking) {
-      await _tts.stop();
-      _ttsQueue.clear();
+      // Pauza: zatrzymaj lektora, ale zachowaj kolejkę — ponowny tap
+      // wznawia od początku bieżącego kawałka (flutter_tts nie wspiera
+      // pauzy w środku fragmentu).
       setState(() => _isSpeaking = false);
+      await _tts.stop();
       return;
     }
     final article = _currentArticle;
     if (!_hasUsableContent(article)) return;
-    final raw = article.translatedFullContent ?? article.fullContent!;
-    final text = cleanForTts(raw);
-    if (text.isEmpty) return;
-    _ttsQueue.clear();
-    const chunkSize = 3500;
-    for (int i = 0; i < text.length; i += chunkSize) {
-      _ttsQueue.add(text.substring(i, (i + chunkSize).clamp(0, text.length)));
+    if (_ttsQueue.isEmpty) {
+      final raw = article.translatedFullContent ?? article.fullContent!;
+      final text = cleanForTts(raw);
+      if (text.isEmpty) return;
+      const chunkSize = 3500;
+      for (int i = 0; i < text.length; i += chunkSize) {
+        _ttsQueue.add(text.substring(i, (i + chunkSize).clamp(0, text.length)));
+      }
     }
     setState(() => _isSpeaking = true);
     await _tts.speak(_ttsQueue.removeAt(0));
@@ -369,7 +373,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 IconButton(
                   icon: Icon(_isSpeaking ? Icons.stop_circle : Icons.volume_up),
                   onPressed: _canTts ? _toggleTts : null,
-                  tooltip: _canTts ? (_isSpeaking ? 'Zatrzymaj' : 'Czytaj artykuł') : 'Pobierz artykuł, żeby odtworzyć',
+                  tooltip: _canTts
+                      ? (_isSpeaking
+                          ? 'Pauza'
+                          : _ttsQueue.isNotEmpty
+                              ? 'Wznów'
+                              : 'Czytaj artykuł')
+                      : 'Pobierz artykuł, żeby odtworzyć',
                   color: _canTts ? Colors.red : Colors.grey,
                 ),
                 IconButton(
