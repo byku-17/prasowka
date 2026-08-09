@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
@@ -442,7 +443,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     const SizedBox(height: 16),
                     Text(
                       art.translatedTitle ?? art.title,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(height: 1.2),
+                      style: _readingFontStyle(context, Theme.of(context).textTheme.headlineMedium?.copyWith(height: 1.2)),
                     ),
                     const SizedBox(height: 24),
                     const Divider(),
@@ -509,15 +510,23 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     return chunks;
   }
 
+  TextStyle? _readingFontStyle(BuildContext context, TextStyle? base) {
+    final font = context.read<SettingsProvider>().readingFont;
+    if (font == SettingsProvider.readingFontSerif) return GoogleFonts.merriweather(textStyle: base);
+    if (font == SettingsProvider.readingFontSans) return GoogleFonts.lato(textStyle: base);
+    return base;
+  }
+
   Widget _buildContentBody(BuildContext context, NewsProvider provider, Article art) {
     final hasFullContent = _hasUsableContent(art);
     final isFetching = provider.isFetchingFor(art.id);
     final fetchFailed = provider.fetchFailedIds.contains(art.id);
 
-    final textStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
-      fontSize: context.read<SettingsProvider>().readingFontSize.toDouble(),
+    final settings = context.read<SettingsProvider>();
+    final textStyle = _readingFontStyle(context, Theme.of(context).textTheme.bodyLarge?.copyWith(
+      fontSize: settings.readingFontSize.toDouble(),
       height: 1.6,
-    );
+    ));
 
     final Widget description = HtmlWidget(
       art.translatedDescription ?? (art.description.isNotEmpty ? art.description : ''),

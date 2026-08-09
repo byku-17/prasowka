@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/settings_provider.dart';
@@ -34,6 +35,14 @@ class AppearanceSettingsPage extends StatelessWidget {
             title: const Text('Rozmiar tekstu artykułów'),
             subtitle: Text(_fontSizeLabel(settings.readingFontSize)),
             onTap: () => _showFontSizePicker(context, settings),
+          ),
+          const Divider(),
+          const SectionHeader('KRÓJ CZIONKI'),
+          ListTile(
+            leading: const Icon(Icons.font_download_outlined),
+            title: const Text('Czcionka artykułów'),
+            subtitle: Text(_fontLabel(settings.readingFont)),
+            onTap: () => _showFontPicker(context, settings),
           ),
           const Divider(),
           const SectionHeader('OTWIERANIE ARTYKUŁÓW'),
@@ -74,6 +83,52 @@ class AppearanceSettingsPage extends StatelessWidget {
       default:
         return 'Standardowy';
     }
+  }
+
+  String _fontLabel(String font) {
+    switch (font) {
+      case SettingsProvider.readingFontSerif:
+        return 'Szeryfowy (Merriweather)';
+      case SettingsProvider.readingFontSans:
+        return 'Bezszeryfowy (Lato)';
+      default:
+        return 'Systemowy';
+    }
+  }
+
+  void _showFontPicker(BuildContext context, SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('Czcionka artykułów', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            _buildFontOption(context, settings, label: 'Systemowy', font: SettingsProvider.readingFontSystem, sampleStyle: const TextStyle(fontSize: 15)),
+            _buildFontOption(context, settings, label: 'Szeryfowy (Merriweather)', font: SettingsProvider.readingFontSerif, sampleStyle: GoogleFonts.merriweather(fontSize: 15)),
+            _buildFontOption(context, settings, label: 'Bezszeryfowy (Lato)', font: SettingsProvider.readingFontSans, sampleStyle: GoogleFonts.lato(fontSize: 15)),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFontOption(BuildContext context, SettingsProvider settings, {required String label, required String font, required TextStyle sampleStyle}) {
+    final isSelected = settings.readingFont == font;
+    return ListTile(
+      leading: Icon(Icons.text_fields, color: isSelected ? AppTheme.accentFor(context) : null),
+      title: Text(label),
+      subtitle: Text('Przykładowy tekst artykułu', style: sampleStyle),
+      trailing: isSelected ? Icon(Icons.check, color: AppTheme.accentFor(context)) : null,
+      onTap: () {
+        settings.setReadingFont(font);
+        Navigator.pop(context);
+      },
+    );
   }
 
   void _showFontSizePicker(BuildContext context, SettingsProvider settings) {

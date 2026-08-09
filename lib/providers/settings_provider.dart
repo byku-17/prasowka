@@ -33,6 +33,10 @@ class SettingsProvider with ChangeNotifier {
   static const String selectedLeaguesKey = 'selectedLeagueIds';
   static const String showAllSourcesKey = 'showAllSources';
   static const String readingFontSizeKey = 'readingFontSize';
+  static const String readingFontKey = 'readingFont';
+  static const String readingFontSystem = 'system';
+  static const String readingFontSerif = 'serif';
+  static const String readingFontSans = 'sans';
   static const String openArticlesInBrowserKey = 'openArticlesInBrowser';
   static const String showFinishedKey = 'showFinished';
   static const String showUpcomingKey = 'showUpcoming';
@@ -73,6 +77,7 @@ class SettingsProvider with ChangeNotifier {
   bool _showSportsBar = true;
   bool _showAllSources = false;
   int _readingFontSize = 16;
+  String _readingFont = readingFontSystem;
   bool _openArticlesInBrowser = false;
   bool _showFinished = true;
   bool _showUpcoming = true;
@@ -110,6 +115,7 @@ class SettingsProvider with ChangeNotifier {
   bool get showSportsBar => _showSportsBar;
   bool get showAllSources => _showAllSources;
   int get readingFontSize => _readingFontSize;
+  String get readingFont => _readingFont;
   bool get openArticlesInBrowser => _openArticlesInBrowser;
   bool get showFinished => _showFinished;
   bool get showUpcoming => _showUpcoming;
@@ -202,6 +208,7 @@ class SettingsProvider with ChangeNotifier {
 
     // 4c. Rozmiar czcionki do czytania
     _readingFontSize = settingsBox.get(readingFontSizeKey, defaultValue: 16);
+    _readingFont = settingsBox.get(readingFontKey, defaultValue: readingFontSystem) as String;
 
     // 4c2. Otwieranie artykułów w zewnętrznej przeglądarce
     _openArticlesInBrowser = settingsBox.get(openArticlesInBrowserKey, defaultValue: false);
@@ -591,6 +598,12 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setReadingFontSize(int size) async {
     _readingFontSize = size;
     await Hive.box(settingsBoxName).put(readingFontSizeKey, size);
+    notifyListeners();
+  }
+
+  Future<void> setReadingFont(String font) async {
+    _readingFont = font;
+    await Hive.box(settingsBoxName).put(readingFontKey, font);
     notifyListeners();
   }
 
