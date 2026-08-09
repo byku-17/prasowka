@@ -10,6 +10,7 @@ import 'package:prasowka/services/storage_service.dart';
 import 'package:prasowka/services/sports_service.dart';
 import 'package:prasowka/services/user_interest_service.dart';
 import 'package:prasowka/services/notification_history.dart';
+import 'package:prasowka/services/connectivity_service.dart';
 import 'package:prasowka/utils/text_utils.dart';
 import 'package:flutter/foundation.dart';
 
@@ -86,6 +87,18 @@ void callbackDispatcher() {
       if (!_isWithinNotificationWindow()) {
         debugPrint('Sowa Wartownik: Poza godzinami działania — pomijam cykl');
         return Future.value(true);
+      }
+      final wifiOnly = Hive.box('settings').get('wifiOnlyRefresh', defaultValue: false) == true;
+      if (wifiOnly) {
+        try {
+          final onWifi = await ConnectivityService().isOnWifi();
+          if (!onWifi) {
+            debugPrint('Sowa Wartownik: Odświeżanie tylko po Wi-Fi — pomijam cykl');
+            return Future.value(true);
+          }
+        } catch (e) {
+          debugPrint('Sowa Wartownik: Błąd sprawdzania Wi-Fi: $e');
+        }
       }
 
       notifiedCount += await _handleRssNotifications(storage, interest, rss, notifiedCount);

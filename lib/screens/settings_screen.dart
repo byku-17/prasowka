@@ -24,6 +24,7 @@ class _SettingsItem {
   final String subtitle;
   final String section;
   final VoidCallback onTap;
+  final Widget? trailing;
 
   const _SettingsItem({
     required this.icon,
@@ -31,6 +32,7 @@ class _SettingsItem {
     required this.subtitle,
     required this.section,
     required this.onTap,
+    this.trailing,
   });
 }
 
@@ -188,6 +190,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Automatyczne aktualizacje treści: ${_refreshLabel(settings)}',
         section: 'Treści',
         onTap: () => _showRefreshFrequencyPicker(settings),
+      ),
+      _SettingsItem(
+        icon: Icons.wifi,
+        title: 'Odświeżaj tylko po Wi-Fi',
+        subtitle: settings.wifiOnlyRefresh
+            ? 'Treści pobierane wyłącznie po Wi-Fi'
+            : 'Treści pobierane też po danych komórkowych',
+        section: 'Treści',
+        onTap: () => settings.setWifiOnlyRefresh(!settings.wifiOnlyRefresh),
+        trailing: Switch(
+          value: settings.wifiOnlyRefresh,
+          onChanged: (val) => settings.setWifiOnlyRefresh(val),
+          activeThumbColor: AppTheme.accentFor(context),
+        ),
       ),
       _SettingsItem(
         icon: Icons.rss_feed,
@@ -607,7 +623,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(item.subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      trailing: const Icon(Icons.chevron_right, size: 20),
+      trailing: item.trailing ?? const Icon(Icons.chevron_right, size: 20),
       onTap: item.onTap,
     );
   }

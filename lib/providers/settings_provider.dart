@@ -45,6 +45,7 @@ class SettingsProvider with ChangeNotifier {
   static const String alertTypeImportant = 'important';
   static const String alertTypeNew = 'new';
   static const String alertTypeSummary = 'summary';
+  static const String wifiOnlyRefreshKey = 'wifiOnlyRefresh';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -73,6 +74,7 @@ class SettingsProvider with ChangeNotifier {
   int _refreshFrequencyHours = 0;
   int _notificationCheckFrequencyHours = 1;
   List<String> _alertTypes = [alertTypeImportant];
+  bool _wifiOnlyRefresh = false;
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -105,6 +107,7 @@ class SettingsProvider with ChangeNotifier {
   int get notificationCheckFrequencyHours => _notificationCheckFrequencyHours;
   List<String> get alertTypes => List.unmodifiable(_alertTypes);
   bool isAlertTypeEnabled(String type) => _alertTypes.contains(type);
+  bool get wifiOnlyRefresh => _wifiOnlyRefresh;
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -193,6 +196,7 @@ class SettingsProvider with ChangeNotifier {
     _refreshFrequencyHours = settingsBox.get(refreshFrequencyHoursKey, defaultValue: 0);
     _notificationCheckFrequencyHours = settingsBox.get(notificationCheckFrequencyHoursKey, defaultValue: 1);
     _alertTypes = List<String>.from(settingsBox.get(alertTypesKey, defaultValue: <String>[alertTypeImportant]));
+    _wifiOnlyRefresh = settingsBox.get(wifiOnlyRefreshKey, defaultValue: false) as bool;
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -624,6 +628,13 @@ class SettingsProvider with ChangeNotifier {
       _alertTypes.remove(type);
     }
     await Hive.box(settingsBoxName).put(alertTypesKey, _alertTypes);
+    notifyListeners();
+  }
+
+  /// Odświeżanie treści wyłącznie po Wi-Fi.
+  Future<void> setWifiOnlyRefresh(bool enabled) async {
+    _wifiOnlyRefresh = enabled;
+    await Hive.box(settingsBoxName).put(wifiOnlyRefreshKey, enabled);
     notifyListeners();
   }
 

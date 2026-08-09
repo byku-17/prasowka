@@ -8,6 +8,8 @@ import 'package:prasowka/services/reader_service.dart';
 import 'package:prasowka/services/user_interest_service.dart';
 import 'package:prasowka/services/translation_service.dart';
 import 'package:prasowka/services/news_api_service.dart';
+import 'package:prasowka/services/connectivity_service.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class NewsProvider with ChangeNotifier {
   final RssService _rssService = RssService();
@@ -204,6 +206,15 @@ class NewsProvider with ChangeNotifier {
       }
     } else if (cached.isNotEmpty) {
       _hasEverLoadedMap[categoryId] = true;
+    }
+
+    final wifiOnly = Hive.isBoxOpen('settings') &&
+        Hive.box('settings').get('wifiOnlyRefresh', defaultValue: false) == true;
+    if (wifiOnly && !(await ConnectivityService().isOnWifi())) {
+      _loadingMap[categoryId] = false;
+      _errorMap[categoryId] = 'Odświeżanie wymaga połączenia z Wi-Fi. Pokażę zapisane artykuły.';
+      notifyListeners();
+      return;
     }
 
     _loadingMap[categoryId] = true;

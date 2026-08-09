@@ -27,7 +27,7 @@
 
 ### TREŚCI (~21h)
 - [x] Częstotliwość odświeżania: ręcznie / co godzinę / co 6 godzin (~4h)
-- [ ] Odświeżanie tylko przez Wi-Fi (~3h)
+- [x] Odświeżanie tylko przez Wi-Fi (~3h)
 - [ ] Usuwanie starych artykułów: po 7 / 14 / 30 dniach (~3h)
 - [ ] Domyślna kolejność artykułów: najnowsze / nieprzeczytane / popularne (~3h)
 - [ ] Słowa wykluczające (filtrowanie artykułów) (~3h)
