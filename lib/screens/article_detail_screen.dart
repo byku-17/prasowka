@@ -97,20 +97,35 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       if (_ttsQueue.isNotEmpty) {
         _speakChunk(_ttsQueue.removeAt(0));
       } else {
-        _ttsCurrentChunk = null;
+        _ttsCurrentText = null;
+        _ttsChunkOffset = 0;
         if (mounted) setState(() => _isSpeaking = false);
+      }
+    });
+    // Android: onRangeStart co słowo. Dzięki temu pauza może wznowić
+    // dokładnie od bieżącego słowa, a nie od początku fragmentu.
+    _tts.setProgressHandler((text, start, end, word) {
+      if (_isSpeaking && text == _ttsCurrentText) {
+        _ttsChunkOffset = start;
       }
     });
   }
 
   final List<String> _ttsQueue = [];
-  String? _ttsCurrentChunk;
 
-  /// Odtwarza fragment i zapamiętuje go jako bieżący, żeby pauza mogła
-  /// wznowić dokładnie ten fragment (a nie następny w kolejce).
-  Future<void> _speakChunk(String chunk) async {
-    _ttsCurrentChunk = chunk;
-    await _tts.speak(chunk);
+  /// Tekst aktualnie odtwarzany przez lektora (może być resztą
+  /// fragmentu po wznowieniu).
+  String? _ttsCurrentText;
+
+  /// Pozycja (offset znaków) w [_ttsCurrentText], do której dotarł lektor.
+  int _ttsChunkOffset = 0;
+
+  /// Odtwarza tekst i zapamiętuje go jako bieżący, żeby pauza mogła
+  /// wznowić dokładnie od tej pozycji.
+  Future<void> _speakChunk(String text) async {
+    _ttsCurrentText = text;
+    _ttsChunkOffset = 0;
+    await _tts.speak(text);
   }
 
   Article get _currentArticle {
@@ -142,20 +157,37 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   Future<void> _toggleTts() async {
     if (_isSpeaking) {
-      // Pauza: zatrzymaj lektora, ale zachowaj kolejkę — ponowny tap
-      // wznawia od początku bieżącego kawałka (flutter_tts nie wspiera
-      // pauzy w środku fragmentu).
+      // Pauza: zatrzymaj lektora, ale zachowaj bieżący tekst i pozycję
+      // (word-level przez setProgressHandler). Kolejka pozostaje nietknięta.
       setState(() => _isSpeaking = false);
       await _tts.stop();
       return;
     }
     final article = _currentArticle;
     if (!_hasUsableContent(article)) return;
-    if (_ttsCurrentChunk != null) {
-      // Wznawianie po pauzie: wróć do przerwanego fragmentu (od jego początku).
-      _ttsQueue.insert(0, _ttsCurrentChunk!);
-      _ttsCurrentChunk = null;
-    } else if (_ttsQueue.isEmpty) {
+    if (_ttsCurrentText != null) {
+      // Wznów od zapamiętanej pozycji w bieżącym tekście.
+      final current = _ttsCurrentText!;
+      final offset = _ttsChunkOffset.clamp(0, current.length);
+      final remainder = current.substring(offset).trim();
+      if (remainder.isEmpty) {
+        // Bieżący tekst był już dograny do końca — przejdź do następnego
+        // fragmentu albo zakończ czytanie.
+        _ttsCurrentText = null;
+        _ttsChunkOffset = 0;
+        if (_ttsQueue.isEmpty) {
+          setState(() => _isSpeaking = false);
+          return;
+        }
+        setState(() => _isSpeaking = true);
+        _speakChunk(_ttsQueue.removeAt(0));
+      } else {
+        setState(() => _isSpeaking = true);
+        await _speakChunk(remainder);
+      }
+      return;
+    }
+    if (_ttsQueue.isEmpty) {
       final raw = article.translatedFullContent ?? article.fullContent!;
       final text = cleanForTts(raw);
       if (text.isEmpty) return;
@@ -325,7 +357,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   void dispose() {
     _tts.stop();
     _ttsQueue.clear();
-    _ttsCurrentChunk = null;
+    _ttsCurrentText = null;
+    _ttsChunkOffset = 0;
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _pageController.dispose();
@@ -357,16 +390,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         onPageChanged: (index) {
           _stopwatch.stop();
           _markReadIfEnough(_stopwatch.elapsed.inSeconds);
-          // Zmiana artykułu przerywa czytanie lektora.
-          final wasSpeaking = _isSpeaking;
-          if (wasSpeaking) {
-            _tts.stop();
-            _ttsQueue.clear();
-            _ttsCurrentChunk = null;
-          }
+          // Zmiana artykułu przerywa czytanie lektora (także po pauzie).
+          _tts.stop();
+          _ttsQueue.clear();
+          _ttsCurrentText = null;
+          _ttsChunkOffset = 0;
           setState(() {
             _currentIndex = index;
-            if (wasSpeaking) _isSpeaking = false;
+            _isSpeaking = false;
           });
           // Pobierz treść nowego artykułu, żeby TTS stał się dostępny.
           _maybeAutoFetch(_currentArticle);
@@ -424,12 +455,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   },
                 ),
                 IconButton(
-                  icon: Icon(_isSpeaking ? Icons.stop_circle : Icons.volume_up),
+                  icon: Icon(_isSpeaking ? Icons.pause_circle_filled : Icons.play_circle_outline),
                   onPressed: _canTts ? _toggleTts : null,
                   tooltip: _canTts
                       ? (_isSpeaking
                           ? 'Pauza'
-                          : (_ttsQueue.isNotEmpty || _ttsCurrentChunk != null)
+                          : (_ttsQueue.isNotEmpty || _ttsCurrentText != null)
                               ? 'Wznów'
                               : 'Czytaj artykuł')
                       : 'Pobierz artykuł, żeby odtworzyć',
