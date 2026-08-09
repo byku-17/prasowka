@@ -4,7 +4,7 @@ import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/models/sport_league.dart';
 import 'package:prasowka/providers/sports_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
-import 'package:prasowka/screens/interests_settings_page.dart';
+import 'package:prasowka/screens/sport_settings_page.dart';
 import 'package:prasowka/screens/article_webview_screen.dart';
 import 'package:prasowka/services/sports_service.dart';
 import 'package:prasowka/theme/app_theme.dart';
@@ -250,7 +250,7 @@ class _ScoresBarState extends State<ScoresBar> {
     }
 
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InterestsSettingsPage())),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SportSettingsPage())),
       child: Container(
         height: 85,
         width: double.infinity,

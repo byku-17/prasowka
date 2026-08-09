@@ -17,7 +17,7 @@ class AppearanceSettingsPage extends StatelessWidget {
     String currentLabel = _getCurrentLabel(currentVariant, currentMode);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('WYGLĄD I ALERTY')),
+      appBar: AppBar(title: const Text('WYGLĄD')),
       body: ListView(
         children: [
           const SectionHeader('MOTYW'),
@@ -26,56 +26,6 @@ class AppearanceSettingsPage extends StatelessWidget {
             title: const Text('Tryb wyświetlania'),
             subtitle: Text(currentLabel),
             onTap: () => _showUnifiedThemePicker(context, settings),
-          ),
-          const Divider(),
-          const SectionHeader('POWIADOMIENIA (WARTOWNIK SOWY)'),
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications_active_outlined),
-            title: const Text('Powiadamiaj o ważnych tematach'),
-            subtitle: const Text('Sowa będzie szukać newsów w tle i da znać o tych, które pasują do Twoich polubień.'),
-            value: settings.notificationsEnabled,
-            onChanged: (val) => settings.toggleNotifications(val),
-            activeThumbColor: AppTheme.accentFor(context),
-          ),
-          const SectionHeader('WIDOK SPORTOWY'),
-          SwitchListTile(
-            secondary: const Icon(Icons.sports_score_outlined),
-            title: const Text('Pokaż wyniki meczów'),
-            subtitle: const Text('Wyświetla pasek z wynikami na górze sekcji Sport.'),
-            value: settings.showSportsBar,
-            onChanged: (val) => settings.toggleSportsBar(val),
-            activeThumbColor: AppTheme.accentFor(context),
-          ),
-          if (settings.showSportsBar)
-            SwitchListTile(
-              title: const Text('Tylko moi faworyci', style: TextStyle(fontSize: 14)),
-              subtitle: const Text('Pokazuje wyłącznie mecze klubów i lig wpisanych w zainteresowaniach.', style: TextStyle(fontSize: 11)),
-              value: settings.onlyFavoriteTeams,
-              onChanged: (val) => settings.setOnlyFavoriteTeams(val),
-              activeThumbColor: AppTheme.accentFor(context),
-              dense: true,
-            ),
-          const Divider(),
-          const SectionHeader('ŹRÓDŁA NEWSÓW'),
-          SwitchListTile(
-            secondary: const Icon(Icons.dynamic_feed_outlined),
-            title: const Text('Wszystkie źródła na "Dzisiaj"'),
-            subtitle: const Text('Pokazuje artykuły ze wszystkich aktywnych źródeł zamiast tylko wybranych portali.'),
-            value: settings.showAllSources,
-            onChanged: (val) => settings.toggleShowAllSources(val),
-            activeThumbColor: AppTheme.accentFor(context),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.cleaning_services_outlined),
-            title: const Text('Wyczyść pamięć cache'),
-            subtitle: const Text('Usuwa pobrane wcześniej artykuły i obrazy.'),
-            onTap: () async {
-              await settings.clearNewsCache();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cache wyczyszczony.')));
-              }
-            },
           ),
         ],
       ),

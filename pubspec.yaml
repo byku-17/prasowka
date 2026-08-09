@@ -65,6 +65,7 @@ dependencies:
   flutter_widget_from_html: ^0.15.3
   url_launcher: ^6.2.5
   share_plus: ^13.3.0
+  package_info_plus: ^10.2.1
   intl: ^0.19.0
   flutter_local_notifications: ^22.2.0
   workmanager: ^0.10.7
