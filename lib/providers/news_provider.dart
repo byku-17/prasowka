@@ -150,10 +150,22 @@ class NewsProvider with ChangeNotifier {
     return accumulated;
   }
 
+  /// Usuwa z listy artykuły starsze niż ustawiony okres retencji (0 = nigdy).
+  void _applyRetention(List<Article> list) {
+    int days = 0;
+    if (Hive.isBoxOpen('settings')) {
+      days = Hive.box('settings').get('articleRetentionDays', defaultValue: 0) as int;
+    }
+    if (days <= 0) return;
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    list.removeWhere((a) => a.publishedAt.isBefore(cutoff));
+  }
+
   /// Sortuje, miesza i zapisuje do cache
   Future<List<Article>> _sortAndSave(
     String categoryId, List<Article> accumulated, List<String>? keywords, bool forceRefresh,
   ) async {
+    _applyRetention(accumulated);
     _lastFetchTimes[categoryId] = DateTime.now();
     _articlesMap[categoryId] = accumulated;
 
@@ -196,6 +208,7 @@ class NewsProvider with ChangeNotifier {
 
     final cached = _storageService.getCategoryCache(categoryId);
     if (cached.isNotEmpty && !forceRefresh) {
+      _applyRetention(cached);
       _articlesMap[categoryId] = cached;
       _hasEverLoadedMap[categoryId] = true;
       _calculateRecommendations();

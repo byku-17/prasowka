@@ -182,6 +182,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  String _retentionLabel(SettingsProvider settings) {
+    switch (settings.articleRetentionDays) {
+      case 7:
+        return 'Po 7 dniach';
+      case 14:
+        return 'Po 14 dniach';
+      case 30:
+        return 'Po 30 dniach';
+      default:
+        return 'Nigdy';
+    }
+  }
+
+  void _showRetentionPicker(SettingsProvider settings) {
+    final options = <(int, String, String)>[
+      (0, 'Nigdy', 'Stare artykuły zostają w cache'),
+      (7, 'Po 7 dniach', 'Artykuły starsze niż 7 dni są usuwane'),
+      (14, 'Po 14 dniach', 'Artykuły starsze niż 14 dni są usuwane'),
+      (30, 'Po 30 dniach', 'Artykuły starsze niż 30 dni są usuwane'),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Usuwanie starych artykułów',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              for (final (days, label, desc) in options)
+                ListTile(
+                  leading: Icon(
+                    days == settings.articleRetentionDays
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: AppTheme.accentFor(context),
+                  ),
+                  title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(desc, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  onTap: () {
+                    settings.setArticleRetentionDays(days);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   List<_SettingsItem> _buildContentItems(SettingsProvider settings) {
     return [
       _SettingsItem(
@@ -204,6 +263,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onChanged: (val) => settings.setWifiOnlyRefresh(val),
           activeThumbColor: AppTheme.accentFor(context),
         ),
+      ),
+      _SettingsItem(
+        icon: Icons.delete_outline,
+        title: 'Usuwanie starych artykułów',
+        subtitle: 'Automatyczne sprzątanie cache: ${_retentionLabel(settings)}',
+        section: 'Treści',
+        onTap: () => _showRetentionPicker(settings),
       ),
       _SettingsItem(
         icon: Icons.rss_feed,

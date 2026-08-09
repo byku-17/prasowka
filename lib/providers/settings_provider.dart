@@ -46,6 +46,7 @@ class SettingsProvider with ChangeNotifier {
   static const String alertTypeNew = 'new';
   static const String alertTypeSummary = 'summary';
   static const String wifiOnlyRefreshKey = 'wifiOnlyRefresh';
+  static const String articleRetentionDaysKey = 'articleRetentionDays';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -75,6 +76,7 @@ class SettingsProvider with ChangeNotifier {
   int _notificationCheckFrequencyHours = 1;
   List<String> _alertTypes = [alertTypeImportant];
   bool _wifiOnlyRefresh = false;
+  int _articleRetentionDays = 0;
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -108,6 +110,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> get alertTypes => List.unmodifiable(_alertTypes);
   bool isAlertTypeEnabled(String type) => _alertTypes.contains(type);
   bool get wifiOnlyRefresh => _wifiOnlyRefresh;
+  int get articleRetentionDays => _articleRetentionDays;
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -197,6 +200,7 @@ class SettingsProvider with ChangeNotifier {
     _notificationCheckFrequencyHours = settingsBox.get(notificationCheckFrequencyHoursKey, defaultValue: 1);
     _alertTypes = List<String>.from(settingsBox.get(alertTypesKey, defaultValue: <String>[alertTypeImportant]));
     _wifiOnlyRefresh = settingsBox.get(wifiOnlyRefreshKey, defaultValue: false) as bool;
+    _articleRetentionDays = settingsBox.get(articleRetentionDaysKey, defaultValue: 0) as int;
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -635,6 +639,13 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setWifiOnlyRefresh(bool enabled) async {
     _wifiOnlyRefresh = enabled;
     await Hive.box(settingsBoxName).put(wifiOnlyRefreshKey, enabled);
+    notifyListeners();
+  }
+
+  /// Po ilu dniach usuwać stare artykuły z cache (0 = nigdy).
+  Future<void> setArticleRetentionDays(int days) async {
+    _articleRetentionDays = days;
+    await Hive.box(settingsBoxName).put(articleRetentionDaysKey, days);
     notifyListeners();
   }
 
