@@ -128,8 +128,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       return;
     }
     final article = _currentArticle;
-    final hasFull = article.fullContent != null && article.fullContent!.trim().isNotEmpty;
-    if (!hasFull) return;
+    if (!_hasUsableContent(article)) return;
     final raw = article.translatedFullContent ?? article.fullContent!;
     final text = _cleanTextForTts(raw);
     if (text.isEmpty) return;
@@ -143,13 +142,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   }
 
   bool get _canTts {
-    final article = _currentArticle;
-    return article.fullContent != null && article.fullContent!.trim().isNotEmpty;
+    return _hasUsableContent(_currentArticle);
   }
 
   void _handleSwipeUp() {
     final article = _currentArticle;
-    if (article.fullContent != null && article.fullContent!.trim().isNotEmpty) return;
+    if (_hasUsableContent(article)) return;
     if (RssService.isGoogleNewsUrl(article.url)) return;
     context.read<NewsProvider>().fetchFullArticleContent(article);
   }
@@ -256,8 +254,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   ),
                 Consumer<NewsProvider>(
                   builder: (context, provider, child) {
-                    final hasFullContent = art.fullContent != null && art.fullContent!.trim().isNotEmpty;
-                    if (hasFullContent) return const SizedBox.shrink();
+                    if (_hasUsableContent(art)) return const SizedBox.shrink();
                     return IconButton(
                       icon: provider.isFetchingFor(art.id)
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -377,8 +374,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 );
   }
 
+  bool _hasUsableContent(Article art) {
+    final fc = art.fullContent;
+    if (fc == null) return false;
+    return fc.trim().length >= 200;
+  }
+
   Widget _buildContentBody(BuildContext context, NewsProvider provider, Article art) {
-    final hasFullContent = art.fullContent != null && art.fullContent!.trim().isNotEmpty;
+    final hasFullContent = _hasUsableContent(art);
     final isFetching = provider.isFetchingFor(art.id);
     final fetchFailed = provider.fetchFailedIds.contains(art.id);
 

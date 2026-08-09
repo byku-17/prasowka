@@ -62,11 +62,16 @@ class NewsProvider with ChangeNotifier {
       article.isSaved = stored.isSaved;
       article.isLiked = stored.isLiked;
       article.isDisliked = stored.isDisliked;
-      article.fullContent = stored.fullContent;
+      if (_hasUsableContent(stored)) article.fullContent = stored.fullContent;
       article.tagIds = stored.tagIds;
       article.isRead = stored.isRead;
       article.readTimeSeconds = stored.readTimeSeconds;
     }
+  }
+
+  static bool _hasUsableContent(Article a) {
+    final fc = a.fullContent;
+    return fc != null && fc.trim().length >= 200;
   }
 
   /// Buduje listę źródeł do pobrania dla danej kategorii
@@ -438,13 +443,13 @@ class NewsProvider with ChangeNotifier {
 
   Future<void> fetchFullArticleContent(Article article) async {
     if (RssService.isGoogleNewsUrl(article.url)) return;
-    if (article.fullContent != null && article.fullContent!.trim().isNotEmpty) return;
+    if (_hasUsableContent(article)) return;
     _fetchingArticleIds.add(article.id);
     _fetchFailedIds.remove(article.id);
     notifyListeners();
     try {
       final full = await _readerService.extractFullContent(article.url);
-      if (full != null && full.trim().length > 50) {
+      if (full != null && full.trim().length >= 200) {
         article.fullContent = full;
         final s = _storageService.getStoredArticle(article.id);
         if (s != null) { s.fullContent = full; await s.save(); }

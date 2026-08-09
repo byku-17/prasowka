@@ -72,7 +72,7 @@ class StorageService {
         if (existing.isSaved) a.isSaved = true;
         if (existing.isLiked) a.isLiked = true;
         if (existing.isDisliked) a.isDisliked = true;
-        if (existing.fullContent != null) a.fullContent = existing.fullContent;
+        if (existing.fullContent != null && existing.fullContent!.trim().length >= 200) a.fullContent = existing.fullContent;
         if (existing.translatedTitle != null) a.translatedTitle = existing.translatedTitle;
         if (existing.translatedDescription != null) a.translatedDescription = existing.translatedDescription;
         if (existing.translatedFullContent != null) a.translatedFullContent = existing.translatedFullContent;
