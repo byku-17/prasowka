@@ -71,7 +71,8 @@ class NewsProvider with ChangeNotifier {
 
   static bool _hasUsableContent(Article a) {
     final fc = a.fullContent;
-    return fc != null && fc.trim().length >= 200;
+    // Zwiększono próg do 350 znaków, aby uniknąć uznawania komunikatów o cookies za treść
+    return fc != null && fc.trim().length >= 350;
   }
 
   /// Buduje listę źródeł do pobrania dla danej kategorii
@@ -443,13 +444,16 @@ class NewsProvider with ChangeNotifier {
 
   Future<void> fetchFullArticleContent(Article article) async {
     if (RssService.isGoogleNewsUrl(article.url)) return;
-    if (_hasUsableContent(article)) return;
+    // Usunięto blokadę _hasUsableContent, aby umożliwić ręczne odświeżenie/ponowne pobranie
+    if (isFetchingFor(article.id)) return;
+    
     _fetchingArticleIds.add(article.id);
     _fetchFailedIds.remove(article.id);
     notifyListeners();
     try {
       final full = await _readerService.extractFullContent(article.url);
-      if (full != null && full.trim().length >= 200) {
+      // Synchronizacja progu z _hasUsableContent
+      if (full != null && full.trim().length >= 350) {
         article.fullContent = full;
         final s = _storageService.getStoredArticle(article.id);
         if (s != null) { s.fullContent = full; await s.save(); }

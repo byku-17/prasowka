@@ -147,7 +147,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   void _handleSwipeUp() {
     final article = _currentArticle;
-    if (_hasUsableContent(article)) return;
+    if (RssService.isGoogleNewsUrl(article.url)) return;
+    context.read<NewsProvider>().fetchFullArticleContent(article);
+  }
+
+  void _handleSwipeDown() {
+    final article = _currentArticle;
     if (RssService.isGoogleNewsUrl(article.url)) return;
     context.read<NewsProvider>().fetchFullArticleContent(article);
   }
@@ -170,8 +175,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     if (_scrollController.hasClients && _scrollController.position.isScrollingNotifier.value) return;
     final dy = event.position.dy - _pointerStartY;
     final dt = DateTime.now().difference(_pointerStartTime!).inMilliseconds;
-    if (dt < 700 && dy < -20) {
+    
+    if (dt < 700 && dy < -60) {
       _handleSwipeUp();
+    } else if (dt < 700 && dy > 60) {
+      _handleSwipeDown();
     }
   }
 
@@ -252,20 +260,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     padding: EdgeInsets.only(right: 4),
                     child: Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
                   ),
-                Consumer<NewsProvider>(
-                  builder: (context, provider, child) {
-                    if (_hasUsableContent(art)) return const SizedBox.shrink();
-                    return IconButton(
-                      icon: provider.isFetchingFor(art.id)
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : Icon(Icons.download, color: AppTheme.accentFor(context)),
-                      onPressed: provider.isFetchingFor(art.id)
-                          ? null
-                          : () => provider.fetchFullArticleContent(art),
-                      tooltip: 'Pobierz treść',
-                    );
-                  },
-                ),
                 Consumer<NewsProvider>(
                   builder: (context, provider, child) {
                     final isPolish = provider.isArticlePolish(art);
@@ -377,7 +371,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   bool _hasUsableContent(Article art) {
     final fc = art.fullContent;
     if (fc == null) return false;
-    return fc.trim().length >= 200;
+    // Zwiększono próg do 350 znaków dla spójności z NewsProvider
+    return fc.trim().length >= 350;
   }
 
   Widget _buildContentBody(BuildContext context, NewsProvider provider, Article art) {
@@ -430,52 +425,36 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         ),
         const SizedBox(height: 24),
         if (fetchFailed) ...[
-          Icon(Icons.error_outline, color: Colors.red.shade300, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            'Nie udało się pobrać treści',
-            style: TextStyle(color: Colors.red.shade300, fontSize: 13),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.red.shade300, size: 20),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Nie udało się pobrać treści. Przesuń w górę, aby spróbować ponownie.',
+                  style: TextStyle(color: Colors.red.shade300, fontSize: 13),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+        ] else ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.swipe_up, size: 20, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Przesuń w górę, aby pobrać pełną treść.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
         ],
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => provider.fetchFullArticleContent(art),
-            icon: Icon(Icons.download, size: 18, color: AppTheme.accentFor(context)),
-            label: Text(
-              fetchFailed ? 'SPRÓBUJ PONOWNIE' : 'POBIERZ TREŚĆ',
-              style: TextStyle(fontSize: 12, color: AppTheme.accentFor(context)),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.accentFor(context),
-              side: BorderSide(color: AppTheme.accentFor(context).withValues(alpha: 0.5)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ArticleWebViewScreen(url: art.url, title: art.title),
-              ));
-            },
-            icon: Icon(Icons.open_in_browser, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-            label: Text(
-              'OTWÓRZ W PRZEGLĄDARCE',
-              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
       ],
     );
   }
