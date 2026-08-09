@@ -39,6 +39,7 @@ class SettingsProvider with ChangeNotifier {
   static const String sportStartNotificationsKey = 'sportStartNotifications';
   static const String notificationStartHourKey = 'notificationStartHour';
   static const String notificationEndHourKey = 'notificationEndHour';
+  static const String refreshFrequencyHoursKey = 'refreshFrequencyHours';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -64,6 +65,7 @@ class SettingsProvider with ChangeNotifier {
   bool _sportStartNotifications = true;
   int _notificationStartHour = 7;
   int _notificationEndHour = 21;
+  int _refreshFrequencyHours = 0;
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -92,6 +94,7 @@ class SettingsProvider with ChangeNotifier {
   bool get sportStartNotifications => _sportStartNotifications;
   int get notificationStartHour => _notificationStartHour;
   int get notificationEndHour => _notificationEndHour;
+  int get refreshFrequencyHours => _refreshFrequencyHours;
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -177,6 +180,7 @@ class SettingsProvider with ChangeNotifier {
     _sportStartNotifications = settingsBox.get(sportStartNotificationsKey, defaultValue: true);
     _notificationStartHour = _hourSetting(settingsBox, notificationStartHourKey, 7);
     _notificationEndHour = _hourSetting(settingsBox, notificationEndHourKey, 21);
+    _refreshFrequencyHours = settingsBox.get(refreshFrequencyHoursKey, defaultValue: 0);
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -580,6 +584,13 @@ class SettingsProvider with ChangeNotifier {
     final box = Hive.box(settingsBoxName);
     await box.put(notificationStartHourKey, startHour);
     await box.put(notificationEndHourKey, endHour);
+    notifyListeners();
+  }
+
+  /// 0 = ręcznie, inaczej co [hours] godzin.
+  Future<void> setRefreshFrequencyHours(int hours) async {
+    _refreshFrequencyHours = hours;
+    await Hive.box(settingsBoxName).put(refreshFrequencyHoursKey, hours);
     notifyListeners();
   }
 

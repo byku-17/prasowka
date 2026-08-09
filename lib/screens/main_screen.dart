@@ -26,6 +26,7 @@ class _MainScreenState extends State<MainScreen> {
   DateTime? _lastBackPressTime;
   StreamSubscription? _notificationSubscription;
   final ValueNotifier<int> refreshNotifier = ValueNotifier<int>(0);
+  Timer? _autoRefreshTimer;
 
   List<Widget> _screens = [];
   List<_TabDef> _tabs = [];
@@ -44,6 +45,10 @@ class _MainScreenState extends State<MainScreen> {
     _notificationSubscription = BackgroundService().notificationStream.listen((url) {
       if (url != null) _handleNotificationUrl(url);
     });
+
+    // Auto-odświeżanie treści
+    settings.addListener(_onSettingsChanged);
+    _scheduleAutoRefresh(settings.refreshFrequencyHours);
 
     // Obsługa Cold Startu
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -90,6 +95,19 @@ class _MainScreenState extends State<MainScreen> {
     ];
   }
 
+  void _onSettingsChanged() {
+    _scheduleAutoRefresh(context.read<SettingsProvider>().refreshFrequencyHours);
+  }
+
+  void _scheduleAutoRefresh(int hours) {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = null;
+    if (hours <= 0) return;
+    _autoRefreshTimer = Timer.periodic(Duration(hours: hours), (_) {
+      refreshNotifier.value++;
+    });
+  }
+
   void _handleNotificationUrl(String url) {
     if (!mounted) return;
     NotificationHistory().markReadByUrl(url);
@@ -106,6 +124,9 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _notificationSubscription?.cancel();
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = null;
+    context.read<SettingsProvider>().removeListener(_onSettingsChanged);
     _pageController.dispose();
     refreshNotifier.dispose();
     super.dispose();

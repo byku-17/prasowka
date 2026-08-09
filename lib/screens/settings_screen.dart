@@ -169,8 +169,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ─── SEKCJA TREŚCI ───
 
-  List<_SettingsItem> _buildContentItems() {
+  String _refreshLabel(SettingsProvider settings) {
+    switch (settings.refreshFrequencyHours) {
+      case 1:
+        return 'Co godzinę';
+      case 6:
+        return 'Co 6 godzin';
+      default:
+        return 'Ręcznie';
+    }
+  }
+
+  List<_SettingsItem> _buildContentItems(SettingsProvider settings) {
     return [
+      _SettingsItem(
+        icon: Icons.refresh,
+        title: 'Częstotliwość odświeżania',
+        subtitle: 'Automatyczne aktualizacje treści: ${_refreshLabel(settings)}',
+        section: 'Treści',
+        onTap: () => _showRefreshFrequencyPicker(settings),
+      ),
       _SettingsItem(
         icon: Icons.rss_feed,
         title: 'Źródła RSS',
@@ -200,6 +218,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TagSettingsPage())),
       ),
     ];
+  }
+
+  void _showRefreshFrequencyPicker(SettingsProvider settings) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      builder: (ctx) {
+        final options = <(int, String, String)>[
+          (0, 'Ręcznie', 'Odświeżaj tylko przyciskiem lub pociągnięciem w dół'),
+          (1, 'Co godzinę', 'Automatycznie aktualizuj treści co godzinę'),
+          (6, 'Co 6 godzin', 'Automatycznie aktualizuj treści co 6 godzin'),
+        ];
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Częstotliwość odświeżania',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              for (final (hours, label, desc) in options)
+                ListTile(
+                  leading: Icon(
+                    hours == settings.refreshFrequencyHours
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: AppTheme.accentFor(context),
+                  ),
+                  title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(desc, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  onTap: () {
+                    settings.setRefreshFrequencyHours(hours);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // ─── SEKCJA SPORT ───
@@ -436,7 +498,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ..._buildAccountItems(auth, sync),
       ..._buildAppearanceItems(settings),
       ..._buildNotificationItems(settings),
-      ..._buildContentItems(),
+      ..._buildContentItems(settings),
       ..._buildSportItems(settings),
       ..._buildToolsItems(settings),
       ..._buildAboutItems(),
