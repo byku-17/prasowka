@@ -14,6 +14,7 @@ import 'package:prasowka/models/article.dart';
 import 'package:prasowka/theme/app_theme.dart';
 import 'package:prasowka/providers/news_provider.dart';
 import 'package:prasowka/providers/settings_provider.dart';
+import 'package:prasowka/services/reader_service.dart';
 import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/services/reading_history.dart';
 import 'package:prasowka/services/image_cache_manager.dart';
@@ -494,9 +495,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   static List<String> _splitContentIntoChunks(String html, {int chunkCount = 5}) {
     if (html.trim().isEmpty) return [html];
-    final parts = html.split(RegExp(r'(?=</(?:p|h[1-6]|li|blockquote|div|figure)>)'));
+    final normalized = ReaderService.normalizeHtml(html);
+    final parts = normalized.split(RegExp(r'(?=</(?:p|h[1-6]|li|blockquote|div|figure)>)'));
     if (parts.length <= chunkCount) return parts;
-    final targetLen = (html.length / chunkCount).ceil();
+    final targetLen = (normalized.length / chunkCount).ceil();
     final chunks = <String>[];
     final buf = StringBuffer();
     for (final part in parts) {

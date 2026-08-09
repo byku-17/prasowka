@@ -18,11 +18,30 @@ class ReaderService {
         decodedBody = latin1.decode(response.bodyBytes);
       }
 
-      return await compute(_extractMainContentCompute, decodedBody);
+      final extracted = await compute(_extractMainContentCompute, decodedBody);
+      if (extracted == null) return null;
+      return normalizeHtml(extracted);
     } catch (e) {
       debugPrint('ReaderService Error: $e');
       return null;
     }
+  }
+
+  /// Usuwa zbędne odstępy z treści HTML:
+  /// - serie 2+ znaczników <br> zamienia na jeden,
+  /// - usuwa puste akapity (<p></p>, <p><br></p> itd.),
+  /// - zwija 3+ nowe linie do dwóch (na wypadek treści tekstowej).
+  static String normalizeHtml(String html) {
+    if (html.isEmpty) return html;
+    var s = html;
+    s = s.replaceAll(RegExp(r'(?:<br\s*/?>\s*){2,}', caseSensitive: false), '<br>');
+    s = s.replaceAll(
+      RegExp(r'<p\b[^>]*>\s*(?:<br\s*/?>\s*)*</p>', caseSensitive: false),
+      '',
+    );
+    s = s.replaceAll(RegExp(r'[ \t]+\n'), '\n');
+    s = s.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return s;
   }
 
   Future<String> _resolveUrl(String url) async {
