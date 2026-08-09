@@ -30,6 +30,9 @@ class ArticleDetailScreen extends StatefulWidget {
   const ArticleDetailScreen({super.key, required this.article, this.articles, this.currentIndex});
   @override
   State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
+
+  @visibleForTesting
+  static List<String> debugSpeechChunks(String text) => _ArticleDetailScreenState._buildSpeechChunks(text);
 }
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
@@ -156,13 +159,47 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       final raw = article.translatedFullContent ?? article.fullContent!;
       final text = cleanForTts(raw);
       if (text.isEmpty) return;
-      const chunkSize = 3500;
-      for (int i = 0; i < text.length; i += chunkSize) {
-        _ttsQueue.add(text.substring(i, (i + chunkSize).clamp(0, text.length)));
-      }
+      _ttsQueue.addAll(_buildSpeechChunks(text));
     }
     setState(() => _isSpeaking = true);
     await _speakChunk(_ttsQueue.removeAt(0));
+  }
+
+  /// Dzieli tekst lektora na zdania (każde zdanie = osobny kawałek), żeby
+  /// wznawianie po pauzie cofało się tylko o jedno zdanie, a nie o cały
+  /// fragment 3500 znaków. Długie zdania (powyżej [maxSentenceChars])
+  /// są dodatkowo pocięte, by lektor nie czytał ich w nieskończoność.
+  static List<String> _buildSpeechChunks(String text, {int maxSentenceChars = 600}) {
+    final chunks = <String>[];
+    final current = StringBuffer();
+    void flush() {
+      final s = current.toString().trim();
+      current.clear();
+      if (s.isEmpty) return;
+      if (s.length <= maxSentenceChars) {
+        chunks.add(s);
+        return;
+      }
+      for (int i = 0; i < s.length; i += maxSentenceChars) {
+        final part = s.substring(i, (i + maxSentenceChars).clamp(0, s.length)).trim();
+        if (part.isNotEmpty) chunks.add(part);
+      }
+    }
+    for (int i = 0; i < text.length; i++) {
+      final c = text[i];
+      current.write(c);
+      final isTerminal = c == '!' || c == '?' || c == '\n';
+      final isDotTerminal = c == '.' &&
+          (i + 1 >= text.length || (text[i + 1] == ' ' && _isSentenceStart(text, i + 2)));
+      if (isTerminal || isDotTerminal) flush();
+    }
+    flush();
+    return chunks;
+  }
+
+  static bool _isSentenceStart(String text, int index) {
+    if (index >= text.length) return true;
+    return RegExp(r'[A-ZĄĆĘŁŃÓŚŹŻ0-9„"\u2026]').hasMatch(text[index]);
   }
 
   bool get _canTts {
