@@ -116,34 +116,15 @@ class SportsProvider with ChangeNotifier {
     final allEvents = _allCachedEvents();
 
     if (_currentFavorites != null && _currentFavorites!.isNotEmpty) {
-      final favEvents = _filterAndSortEvents(allEvents, _currentFavorites, _currentOnlyFavorites);
-      if (_currentOnlyFavorites) {
-        // Pokaż ulubione + wypełnij top ligami żeby pasek nie był pusty
-        final topEvents = _filterTopLeagues(allEvents);
-        final favIds = favEvents.map((e) => e.id).toSet();
-        final combined = <SportEvent>[...favEvents];
-        for (final e in topEvents) {
-          if (!favIds.contains(e.id)) combined.add(e);
-        }
-        _filteredEvents = combined;
-      } else {
-        _filteredEvents = favEvents;
-      }
+      _filteredEvents = _filterAndSortEvents(allEvents, _currentFavorites, _currentOnlyFavorites);
     } else if (_currentOnlyFavorites) {
       _filteredEvents = _filterTopLeagues(allEvents);
     } else {
       _filteredEvents = allEvents;
     }
 
-    // Discovery mode
-    if (_filteredEvents.isEmpty && allEvents.isNotEmpty) {
-      final topMatches = _filterTopLeagues(allEvents).take(5).toList();
-      if (topMatches.isNotEmpty) {
-        _filteredEvents = topMatches;
-      } else {
-        _filteredEvents = allEvents.take(10).toList();
-      }
-    }
+    // Gdy ulubione nie pasują do żadnego meczu — pasek jest pusty
+    // UI wyświetla "Brak meczów"
   }
   /// Zbiór ID przypiętych meczów
   Set<String> get pinnedMatchIds {
