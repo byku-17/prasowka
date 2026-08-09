@@ -41,6 +41,10 @@ class SettingsProvider with ChangeNotifier {
   static const String notificationEndHourKey = 'notificationEndHour';
   static const String refreshFrequencyHoursKey = 'refreshFrequencyHours';
   static const String notificationCheckFrequencyHoursKey = 'notificationCheckFrequencyHours';
+  static const String alertTypesKey = 'alertTypes';
+  static const String alertTypeImportant = 'important';
+  static const String alertTypeNew = 'new';
+  static const String alertTypeSummary = 'summary';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -68,6 +72,7 @@ class SettingsProvider with ChangeNotifier {
   int _notificationEndHour = 21;
   int _refreshFrequencyHours = 0;
   int _notificationCheckFrequencyHours = 1;
+  List<String> _alertTypes = [alertTypeImportant];
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -98,6 +103,8 @@ class SettingsProvider with ChangeNotifier {
   int get notificationEndHour => _notificationEndHour;
   int get refreshFrequencyHours => _refreshFrequencyHours;
   int get notificationCheckFrequencyHours => _notificationCheckFrequencyHours;
+  List<String> get alertTypes => List.unmodifiable(_alertTypes);
+  bool isAlertTypeEnabled(String type) => _alertTypes.contains(type);
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -185,6 +192,7 @@ class SettingsProvider with ChangeNotifier {
     _notificationEndHour = _hourSetting(settingsBox, notificationEndHourKey, 21);
     _refreshFrequencyHours = settingsBox.get(refreshFrequencyHoursKey, defaultValue: 0);
     _notificationCheckFrequencyHours = settingsBox.get(notificationCheckFrequencyHoursKey, defaultValue: 1);
+    _alertTypes = List<String>.from(settingsBox.get(alertTypesKey, defaultValue: <String>[alertTypeImportant]));
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -605,6 +613,17 @@ class SettingsProvider with ChangeNotifier {
     if (_notificationsEnabled) {
       await BackgroundService().registerPeriodicTask(frequencyHours: hours);
     }
+    notifyListeners();
+  }
+
+  /// Włącza/wyłącza rodzaj alertu (ważne / nowe / podsumowanie).
+  Future<void> toggleAlertType(String type, bool enabled) async {
+    if (enabled) {
+      if (!_alertTypes.contains(type)) _alertTypes.add(type);
+    } else {
+      _alertTypes.remove(type);
+    }
+    await Hive.box(settingsBoxName).put(alertTypesKey, _alertTypes);
     notifyListeners();
   }
 

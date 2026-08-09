@@ -89,6 +89,7 @@ void callbackDispatcher() {
       }
 
       notifiedCount += await _handleRssNotifications(storage, interest, rss, notifiedCount);
+      notifiedCount += await _handleDailySummary(storage, interest, rss, notifiedCount);
 
       List<SportEvent> sportEvents = [];
       try {
@@ -114,6 +115,13 @@ void callbackDispatcher() {
 
 Future<int> _handleRssNotifications(StorageService storage, UserInterestService interest, RssService rss, int startCount) async {
   int count = 0;
+  if (!Hive.isBoxOpen('settings')) return 0;
+  final settingsBox = Hive.box('settings');
+  final alertTypes = List<String>.from(settingsBox.get('alertTypes', defaultValue: <String>['important']));
+  final wantNew = alertTypes.contains('new');
+  final wantImportant = alertTypes.contains('important');
+  if (!wantNew && !wantImportant) return 0;
+
   final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
 
   for (var source in sources) {
@@ -122,7 +130,7 @@ Future<int> _handleRssNotifications(StorageService storage, UserInterestService 
       for (var article in articles) {
         if (!storage.wasNotified(article.id)) {
           final score = interest.calculateScore(article);
-          if (score >= 3.0) {
+          if (wantNew || (wantImportant && score >= 3.0)) {
             await _showNotification(article);
             await storage.markAsNotified(article.id);
             count++;
@@ -135,6 +143,48 @@ Future<int> _handleRssNotifications(StorageService storage, UserInterestService 
     }
   }
   return count;
+}
+
+/// Podsumowanie dnia — wysyła raz dziennie przegląd najważniejszych tematów.
+Future<int> _handleDailySummary(StorageService storage, UserInterestService interest, RssService rss, int startCount) async {
+  if (!Hive.isBoxOpen('settings')) return 0;
+  final settingsBox = Hive.box('settings');
+  final alertTypes = List<String>.from(settingsBox.get('alertTypes', defaultValue: <String>['important']));
+  if (!alertTypes.contains('summary')) return 0;
+
+  if (!Hive.isBoxOpen(_dailyCountBoxName)) {
+    await Hive.openBox(_dailyCountBoxName);
+  }
+  final countBox = Hive.box(_dailyCountBoxName);
+  final summaryKey = 'summary_sent_${_todayKey()}';
+  if (countBox.get(summaryKey, defaultValue: false) == true) return 0;
+
+  final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
+  final scored = <Article>[];
+  for (var source in sources) {
+    try {
+      final articles = await rss.fetchArticles(source);
+      for (var article in articles) {
+        if (storage.wasNotified(article.id)) continue;
+        final score = interest.calculateScore(article);
+        if (score >= 3.0) scored.add(article);
+      }
+    } catch (e) {
+      debugPrint('Sowa Wartownik: Błąd podsumowania źródła ${source.name}: $e');
+    }
+  }
+  if (scored.isEmpty) {
+    await countBox.put(summaryKey, true);
+    return 0;
+  }
+
+  scored.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+  final top = scored.take(3).toList();
+
+  if (startCount >= _maxNotificationsPerRun) return 0;
+  await _showSummaryNotification(top);
+  await countBox.put(summaryKey, true);
+  return 1;
 }
 
 Future<int> _handleFavoriteNotifications(List<SportEvent> sportEvents, int startCount) async {
@@ -309,6 +359,48 @@ Future<void> _showNotification(Article article) async {
     url: article.url,
     timestamp: DateTime.now(),
     type: 'article',
+  ));
+  await _incrementDailyCount();
+}
+
+Future<void> _showSummaryNotification(List<Article> articles) async {
+  final dailyCount = await _getDailyCount();
+  if (dailyCount >= _maxNotificationsPerDay) return;
+
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+    'sowa_summary',
+    'Sowa — Podsumowanie dnia',
+    channelDescription: 'Codzienne podsumowanie najważniejszych tematów',
+    importance: Importance.high,
+    priority: Priority.high,
+    showWhen: true,
+    groupKey: _groupArticle,
+  );
+
+  const NotificationDetails platformChannelSpecifics =
+      NotificationDetails(android: androidPlatformChannelSpecifics);
+
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  final body = articles.map((a) => '• ${a.title}').join('\n');
+
+  await flutterLocalNotificationsPlugin.show(
+    id: ('summary_${_todayKey()}').hashCode.abs(),
+    title: '📰 Podsumowanie dnia 🦉',
+    body: body,
+    notificationDetails: platformChannelSpecifics,
+    payload: articles.first.url,
+  );
+
+  await NotificationHistory().add(NotificationEntry(
+    id: 'summary_${_todayKey()}',
+    title: '📰 Podsumowanie dnia 🦉',
+    body: body,
+    url: articles.first.url,
+    timestamp: DateTime.now(),
+    type: 'summary',
   ));
   await _incrementDailyCount();
 }
