@@ -23,7 +23,7 @@
 - [x] Godziny działania (np. 7:00–21:00) (~3h)
 - [x] Częstotliwość sprawdzania: co godzinę / co 3 godziny / raz dziennie (~3h)
 - [x] Rodzaje alertów: nowe artykuły / ważne wiadomości / podsumowanie (~4h)
-- [ ] Przełącznik powiadomień sportowych osobno od paska wyników (~2h)
+- [x] Przełącznik powiadomień sportowych osobno od paska wyników (~2h)
 
 ### TREŚCI (~21h)
 - [x] Częstotliwość odświeżania: ręcznie / co godzinę / co 6 godzin (~4h)
