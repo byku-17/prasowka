@@ -40,6 +40,7 @@ class SettingsProvider with ChangeNotifier {
   static const String notificationStartHourKey = 'notificationStartHour';
   static const String notificationEndHourKey = 'notificationEndHour';
   static const String refreshFrequencyHoursKey = 'refreshFrequencyHours';
+  static const String notificationCheckFrequencyHoursKey = 'notificationCheckFrequencyHours';
   static const String mainTabSlot1Key = 'mainTabSlot1';
   static const String mainTabSlot2Key = 'mainTabSlot2';
 
@@ -66,6 +67,7 @@ class SettingsProvider with ChangeNotifier {
   int _notificationStartHour = 7;
   int _notificationEndHour = 21;
   int _refreshFrequencyHours = 0;
+  int _notificationCheckFrequencyHours = 1;
   int _lastTabIndex = 0;
   String _mainTabSlot1 = 'warsaw';
   String _mainTabSlot2 = 'sport';
@@ -95,6 +97,7 @@ class SettingsProvider with ChangeNotifier {
   int get notificationStartHour => _notificationStartHour;
   int get notificationEndHour => _notificationEndHour;
   int get refreshFrequencyHours => _refreshFrequencyHours;
+  int get notificationCheckFrequencyHours => _notificationCheckFrequencyHours;
   int get lastTabIndex => _lastTabIndex;
   String get mainTabSlot1 => _mainTabSlot1;
   String get mainTabSlot2 => _mainTabSlot2;
@@ -181,6 +184,7 @@ class SettingsProvider with ChangeNotifier {
     _notificationStartHour = _hourSetting(settingsBox, notificationStartHourKey, 7);
     _notificationEndHour = _hourSetting(settingsBox, notificationEndHourKey, 21);
     _refreshFrequencyHours = settingsBox.get(refreshFrequencyHoursKey, defaultValue: 0);
+    _notificationCheckFrequencyHours = settingsBox.get(notificationCheckFrequencyHoursKey, defaultValue: 1);
 
     // 4d. Zakładki główne (2 sloty)
     _mainTabSlot1 = settingsBox.get(mainTabSlot1Key, defaultValue: 'warsaw');
@@ -259,7 +263,7 @@ class SettingsProvider with ChangeNotifier {
     // 7. Powiadomienia
     _notificationsEnabled = settingsBox.get(notificationsKey, defaultValue: false);
     if (_notificationsEnabled) {
-      await BackgroundService().registerPeriodicTask();
+      await BackgroundService().registerPeriodicTask(frequencyHours: _notificationCheckFrequencyHours);
     }
 
     await _ensureNewSourcesRegistered();
@@ -317,7 +321,7 @@ class SettingsProvider with ChangeNotifier {
     _notificationsEnabled = enabled;
     await Hive.box(settingsBoxName).put(notificationsKey, enabled);
     if (enabled) {
-      await BackgroundService().registerPeriodicTask();
+      await BackgroundService().registerPeriodicTask(frequencyHours: _notificationCheckFrequencyHours);
     } else {
       await BackgroundService().cancelAllTasks();
     }
@@ -591,6 +595,16 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setRefreshFrequencyHours(int hours) async {
     _refreshFrequencyHours = hours;
     await Hive.box(settingsBoxName).put(refreshFrequencyHoursKey, hours);
+    notifyListeners();
+  }
+
+  /// Częstotliwość cykli Wartownika Sowy (1 / 3 / 24 godziny).
+  Future<void> setNotificationCheckFrequencyHours(int hours) async {
+    _notificationCheckFrequencyHours = hours;
+    await Hive.box(settingsBoxName).put(notificationCheckFrequencyHoursKey, hours);
+    if (_notificationsEnabled) {
+      await BackgroundService().registerPeriodicTask(frequencyHours: hours);
+    }
     notifyListeners();
   }
 

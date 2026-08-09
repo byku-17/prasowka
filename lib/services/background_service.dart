@@ -508,11 +508,12 @@ class BackgroundService {
     }
   }
 
-  Future<void> registerPeriodicTask() async {
+  Future<void> registerPeriodicTask({int frequencyHours = 1}) async {
+    await Workmanager().cancelAll();
     await Workmanager().registerPeriodicTask(
       "sowa-wartownik-task",
       "checkNewArticlesTask",
-      frequency: const Duration(hours: 1),
+      frequency: Duration(hours: frequencyHours),
       constraints: Constraints(
         networkType: NetworkType.connected,
         requiresBatteryNotLow: true,

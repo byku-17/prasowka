@@ -33,6 +33,12 @@ class NotificationSettingsPage extends StatelessWidget {
               subtitle: Text('${_formatHour(settings.notificationStartHour)} – ${_formatHour(settings.notificationEndHour)}'),
               onTap: () => _showHoursPicker(context, settings),
             ),
+            ListTile(
+              leading: const Icon(Icons.hourglass_empty_outlined),
+              title: const Text('Częstotliwość sprawdzania'),
+              subtitle: Text(_checkFrequencyLabel(settings.notificationCheckFrequencyHours)),
+              onTap: () => _showCheckFrequencyPicker(context, settings),
+            ),
           ],
           const Divider(),
           const SectionHeader('WIDOK SPORTOWY'),
@@ -50,6 +56,60 @@ class NotificationSettingsPage extends StatelessWidget {
   }
 
   String _formatHour(int hour) => '${hour.toString().padLeft(2, '0')}:00';
+
+  String _checkFrequencyLabel(int hours) {
+    switch (hours) {
+      case 3:
+        return 'Co 3 godziny';
+      case 24:
+        return 'Raz dziennie';
+      default:
+        return 'Co godzinę';
+    }
+  }
+
+  void _showCheckFrequencyPicker(BuildContext context, SettingsProvider settings) {
+    final options = <(int, String, String)>[
+      (1, 'Co godzinę', 'Sowa sprawdza nowości co godzinę'),
+      (3, 'Co 3 godziny', 'Sowa sprawdza nowości co 3 godziny'),
+      (24, 'Raz dziennie', 'Sowa sprawdza nowości raz dziennie'),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Częstotliwość sprawdzania',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final (hours, label, desc) in options)
+              ListTile(
+                leading: Icon(
+                  hours == settings.notificationCheckFrequencyHours
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: AppTheme.accentFor(context),
+                ),
+                title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(desc, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                onTap: () {
+                  settings.setNotificationCheckFrequencyHours(hours);
+                  Navigator.pop(ctx);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _showHoursPicker(BuildContext context, SettingsProvider settings) {
     var start = settings.notificationStartHour;
