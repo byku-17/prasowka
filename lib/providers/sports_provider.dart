@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/services/sports_service.dart';
 import 'package:prasowka/services/notification_history.dart';
+import 'package:prasowka/services/remote_config_service.dart';
 import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/utils/text_utils.dart';
 
@@ -418,9 +419,10 @@ class SportsProvider with ChangeNotifier {
     super.dispose();
   }
 
-  /// Filtruje tylko "topowe" ligi — bez Białorusi, itp.
+  /// Filtruje tylko "topowe" ligi — lista lig z Remote Config
+  /// (klucz: top_sports_competitions), ze statycznym fallbackiem.
   List<SportEvent> _filterTopLeagues(List<SportEvent> list) {
-    const topCompetitions = {
+    const defaultCompetitions = {
       // Piłka nożna
       'premier league', 'ekstraklasa', 'la liga', 'laliga', 'serie a', 'bundesliga',
       'ligue 1', 'champions league', 'europa league', 'liga mistrzów', 'liga europy',
@@ -438,6 +440,11 @@ class SportsProvider with ChangeNotifier {
       // Siatkówka
       'plusliga', 'plus liga',
     };
+
+    final config = RemoteConfigService().topSportsCompetitions.trim();
+    final topCompetitions = config.isEmpty
+        ? defaultCompetitions
+        : config.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toSet();
 
     return list.where((e) {
       if (e is MatchEvent) {

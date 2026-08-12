@@ -24,6 +24,7 @@ class RemoteConfigService {
         'thesportsdb_api_key': '',
         'newsapi_key': '',
         'newsapi_domains': '',
+        'top_sports_competitions': 'premier league,ekstraklasa,la liga,laliga,serie a,bundesliga,ligue 1,champions league,europa league,liga mistrzów,liga europy,eredivisie,liga portugal,primeira liga,super lig,superliga,nba,euroleague,euroliga,plk,nhl,shl,liiga,nfl,mlb,super bowl,atp,wta,wimbledon,roland garros,us open,australian open,formula 1,formula1,f1,plusliga,plus liga',
         'translation_enabled': true,
       });
 
@@ -64,6 +65,7 @@ class RemoteConfigService {
   String get theSportsDbKey => _get('thesportsdb_api_key');
   String get newsApiKey => _get('newsapi_key');
   String get newsApiDomains => _get('newsapi_domains');
+  String get topSportsCompetitions => _get('top_sports_competitions');
   bool get translationEnabled {
     if (_config == null) return true;
     try {
