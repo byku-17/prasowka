@@ -28,7 +28,7 @@ class NewsProvider with ChangeNotifier {
   final Set<String> _fetchFailedIds = {};
   final Set<String> _fetchingArticleIds = {};
   bool _isTranslating = false;
-  NewsCategory _selectedCategory = NewsCategory.defaultCategories.first;
+  final NewsCategory _selectedCategory = NewsCategory.defaultCategories.first;
   
   List<String>? _lastActiveSourceIds;
   List<String>? _lastKeywords;

@@ -349,19 +349,22 @@ class SettingsProvider with ChangeNotifier {
     debugPrint('Sowa Settings: Gotowe (V4.5 Clean)');
   }
 
-  /// Naprawia ustawienia nadpisane przez sync
+  /// Naprawia ustawienia nadpisane przez sync.
+  /// Wymusza wartości tylko dla BRAKUJĄCYCH/nieprawidłowych kluczy —
+  /// świadomy wybór użytkownika (np. wyłączony pasek sportowy)
+  /// nie jest nadpisywany.
   Future<void> _fixCorruptedSettings() async {
     final box = Hive.box(settingsBoxName);
 
-    // Zawsze wymuś poprawne wartości dla krytycznych kluczy
-    if (box.get(sportsBarKey) != true) {
+    // Napraw tylko brakujące/nieprawidłowe wartości — nie nadpisuj jawnego false
+    if (box.get(sportsBarKey) == null) {
       await box.put(sportsBarKey, true);
-      debugPrint('Settings: force-set showSportsBar = true');
+      debugPrint('Settings: fix brakującego showSportsBar = true');
     }
-    if (box.get(onlyFavoriteTeamsKey) != true) {
+    if (box.get(onlyFavoriteTeamsKey) == null) {
       await box.put(onlyFavoriteTeamsKey, true);
     }
-    if (box.get(onboardingKey) != true) {
+    if (box.get(onboardingKey) == null) {
       await box.put(onboardingKey, true);
     }
     final city = box.get(preferredCityKey);

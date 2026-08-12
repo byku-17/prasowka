@@ -231,11 +231,16 @@ class SyncService extends ChangeNotifier {
       final data = entry.value;
       final existing = box.get(entry.key);
       if (existing != null) {
-        existing.isSaved = data['isSaved'] ?? existing.isSaved;
-        existing.isLiked = data['isLiked'] ?? existing.isLiked;
-        existing.isDisliked = data['isDisliked'] ?? existing.isDisliked;
-        existing.tagIds = List<String>.from(data['tagIds'] ?? existing.tagIds);
-        if (data['isRead'] == true) existing.isRead = true;
+        // SYMETRYCZNY merge: flagi są "lepkie" (true po obu stronach wygrywa),
+        // a tagi są sumowane. Bez timestampów w schemacie jest to jedyny
+        // bezpieczny sposób, by żadna strona nie traciła stanu (odczytanie,
+        // zapisanie, polubienie) po podwójnej synchronizacji.
+        existing.isSaved = (data['isSaved'] == true) || existing.isSaved;
+        existing.isLiked = (data['isLiked'] == true) || existing.isLiked;
+        existing.isDisliked = (data['isDisliked'] == true) || existing.isDisliked;
+        existing.isRead = (data['isRead'] == true) || existing.isRead;
+        final remoteTags = List<String>.from(data['tagIds'] ?? const []);
+        existing.tagIds = {...existing.tagIds, ...remoteTags}.toList();
         await existing.save();
       } else {
         debugPrint('Sync: article ${entry.key} not in local cache, skipping');
