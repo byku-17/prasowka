@@ -106,11 +106,22 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
       });
 
       // 2. Ukryj reklamy i trackery
+      // Uwaga: nie używamy golych [class*="ad-"] bo to lapi tez np.
+      // "field--name-field-lead-formatted" ("le-ad-f") i ubija lead artykulu.
       var adSelectors = [
-        '[class*="ad-"]', '[class*="ad_"]', '[class*="ads"]',
-        '[id*="ad-"]', '[id*="ad_"]', '[id*="ads"]',
-        '[class*="banner"]', '[id*="banner"]',
+        '[class*="ad-slot"]', '[id*="ad-slot"]',
+        '[class*="ad-container"]', '[id*="ad-container"]',
+        '[class*="ad-wrapper"]', '[id*="ad-wrapper"]',
+        '[class*="ad-banner"]', '[id*="ad-banner"]',
         '[class*="advert"]', '[id*="advert"]',
+        '[class*="advertise"]', '[id*="advertise"]',
+        '[class*="ad-placeholder"]', '[id*="ad-placeholder"]',
+        '[class*="ad-sense"]', '[id*="ad-sense"]',
+        '[class*="adsense"]', '[id*="adsense"]',
+        '[class*="adsbygoogle"]', '[id*="adsbygoogle"]',
+        '[class*="google-ad"]', '[id*="google-ad"]',
+        '[class*="adposition"]', '[id*="adposition"]',
+        '[class*="banner"]', '[id*="banner"]',
         '[class*="commercial"]', '[id*="commercial"]',
         '[class*="sponsor"]', '[id*="sponsor"]',
         'iframe[src*="ad"]', 'iframe[src*="doubleclick"]',
