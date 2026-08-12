@@ -71,7 +71,9 @@ void callbackDispatcher() {
       final interest = UserInterestService();
       final rss = RssService();
       
-      await storage.init();
+      // Tylko box potrzebny w tle (notified_ids) — bez articles/news_cache,
+      // które są wspólne z izolatem UI (unikamy wyścigu na plikach Hive).
+      await storage.initForBackground();
       await interest.init();
       await NotificationHistory().init();
 

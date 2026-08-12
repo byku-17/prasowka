@@ -61,20 +61,36 @@ class EncryptionService {
     return List.generate(32, (i) => ((h >> (i % 4 * 8)) ^ (i * 0x37)) & 0xFF);
   }
 
-  /// Szyfruje string AES-256-CBC
+  static const String _ivDelimiter = ':';
+
+  /// Szyfruje string AES-256-CBC z losowym IV.
+  /// Format wyjściowy: "base64(iv):base64(ciphertext)" — IV nie jest współdzielone.
   Future<String> encryptText(String plainText, String userId, String password) async {
     final key = await _getOrCreateKey(userId, password);
-    final iv = await _getOrCreateIV(userId);
+    final iv = IV.fromSecureRandom(16);
     final encrypter = Encrypter(AES(key, mode: AESMode.cbc));
-    return encrypter.encrypt(plainText, iv: iv).base64;
+    final encrypted = encrypter.encrypt(plainText, iv: iv);
+    return '${base64Url.encode(iv.bytes)}$_ivDelimiter${encrypted.base64}';
   }
 
-  /// Deszyfruje string AES-256-CBC
+  /// Deszyfruje string AES-256-CBC.
+  /// Odczytywane z "base64(iv):base64(ciphertext)"; dla starego formatu
+  /// (bez wbudowanego IV) używa zapisanego statycznego IV — wsteczna kompatybilność.
   Future<String> decryptText(String encryptedText, String userId, String password) async {
     final key = await _getOrCreateKey(userId, password);
-    final iv = await _getOrCreateIV(userId);
+    final iv = await _extractIV(userId, encryptedText);
     final encrypter = Encrypter(AES(key, mode: AESMode.cbc));
     return encrypter.decrypt64(encryptedText, iv: iv);
+  }
+
+  Future<IV> _extractIV(String userId, String encryptedText) async {
+    final sepIdx = encryptedText.indexOf(_ivDelimiter);
+    if (sepIdx > 0) {
+      try {
+        return IV(base64Url.decode(encryptedText.substring(0, sepIdx)));
+      } catch (_) {}
+    }
+    return _getOrCreateIV(userId);
   }
 
   /// Szyfruje mapę → JSON string → base64

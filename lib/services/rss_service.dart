@@ -66,7 +66,7 @@ class RssService {
               final contentValue = item.content?.value;
               final realUrl = extractRealUrlFromContent(contentValue) ?? rawUrl;
               articles.add(Article(
-                id: item.guid ?? (rawUrl.isNotEmpty ? rawUrl : null) ?? DateTime.now().toIso8601String(),
+                id: '${source.id}_${item.guid ?? (rawUrl.isNotEmpty ? rawUrl : null) ?? DateTime.now().toIso8601String()}',
                 title: title,
                 description: cleanDesc.isNotEmpty ? cleanDesc : 'Artykuł ze źródła: ${source.name}',
                 content: contentValue ?? item.description ?? '',
@@ -85,7 +85,7 @@ class RssService {
               final contentValue = item.content;
               final realUrl = extractRealUrlFromContent(contentValue) ?? rawUrl;
               articles.add(Article(
-                id: item.id ?? (rawUrl.isNotEmpty ? rawUrl : null) ?? DateTime.now().toIso8601String(),
+                id: '${source.id}_${item.id ?? (rawUrl.isNotEmpty ? rawUrl : null) ?? DateTime.now().toIso8601String()}',
                 title: title,
                 description: cleanDesc.isNotEmpty ? cleanDesc : 'Artykuł ze źródła: ${source.name}',
                 content: contentValue ?? item.summary ?? '',

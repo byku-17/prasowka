@@ -24,6 +24,19 @@ class StorageService {
     }
   }
 
+  /// Inicjalizacja dla izolatu tła (Workmanager). Otwiera WYŁĄCZNIE box
+  /// 'notified_ids', który jest używany w tle. NIE otwiera boxów
+  /// współdzielonych z UI (articles, news_cache) — unika to pól
+  /// wyścigu między izolatami na tych samych plikach Hive.
+  Future<void> initForBackground() async {
+    try {
+      _registerAdapters();
+      await _openSafe(notifiedBoxName);
+    } catch (e) {
+      debugPrint('Sowa Storage: Krytyczny błąd inicjalizacji tła ($e)');
+    }
+  }
+
   void _registerAdapters() {
     if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(ArticleAdapter());
     if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(NewsSourceAdapter());
@@ -72,7 +85,7 @@ class StorageService {
         if (existing.isSaved) a.isSaved = true;
         if (existing.isLiked) a.isLiked = true;
         if (existing.isDisliked) a.isDisliked = true;
-        if (existing.fullContent != null && existing.fullContent!.trim().length >= 200) a.fullContent = existing.fullContent;
+        if (existing.fullContent != null && existing.fullContent!.trim().length >= 350) a.fullContent = existing.fullContent;
         if (existing.translatedTitle != null) a.translatedTitle = existing.translatedTitle;
         if (existing.translatedDescription != null) a.translatedDescription = existing.translatedDescription;
         if (existing.translatedFullContent != null) a.translatedFullContent = existing.translatedFullContent;
