@@ -23,6 +23,8 @@ class RemoteConfigService {
         'sportdb_api_key': '',
         'thesportsdb_api_key': '',
         'newsapi_key': '',
+        'newsapi_domains': '',
+        'translation_enabled': true,
       });
 
       try {
@@ -61,4 +63,13 @@ class RemoteConfigService {
   String get sportDbKey => _get('sportdb_api_key');
   String get theSportsDbKey => _get('thesportsdb_api_key');
   String get newsApiKey => _get('newsapi_key');
+  String get newsApiDomains => _get('newsapi_domains');
+  bool get translationEnabled {
+    if (_config == null) return true;
+    try {
+      return _config!.getBool('translation_enabled');
+    } catch (_) {
+      return true;
+    }
+  }
 }

@@ -7,7 +7,14 @@ import 'package:prasowka/services/remote_config_service.dart';
 class NewsApiService {
   static const _baseUrl = 'https://newsapi.org/v2';
 
+  /// Domyślne źródła (jeśli Remote Config nie daje własnej listy).
+  static const _defaultDomains = 'gazeta.pl,wiadomosci.onet.pl,tvn24.pl,radiozetka.pl,wyborcza.pl,interia.pl,wp.pl,wiadomosci.wp.pl';
+
   String? get _apiKey => RemoteConfigService().newsApiKey;
+  String get _domains {
+    final config = RemoteConfigService().newsApiDomains;
+    return config.isNotEmpty ? config : _defaultDomains;
+  }
 
   bool get isConfigured => _apiKey != null && _apiKey!.isNotEmpty;
 
@@ -16,7 +23,7 @@ class NewsApiService {
     try {
       final yesterday = DateTime.now().subtract(const Duration(days: 2));
       final from = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
-      final uri = Uri.parse('$_baseUrl/everything?domains=gazeta.pl,wiadomosci.onet.pl,tvn24.pl,radiozetka.pl,wyborcza.pl,interia.pl,wp.pl,wiadomosci.wp.pl&language=pl&from=$from&sortBy=publishedAt&pageSize=$pageSize&apiKey=$_apiKey');
+      final uri = Uri.parse('$_baseUrl/everything?domains=$_domains&language=pl&from=$from&sortBy=publishedAt&pageSize=$pageSize&apiKey=$_apiKey');
       final response = await http.get(uri).timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) {
         debugPrint('NewsAPI Error: ${response.statusCode}');

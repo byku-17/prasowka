@@ -1,5 +1,6 @@
 import 'package:translator/translator.dart';
 import 'package:flutter/foundation.dart';
+import 'package:prasowka/services/remote_config_service.dart';
 
 class TranslationService {
   final GoogleTranslator _translator = GoogleTranslator();
@@ -7,7 +8,11 @@ class TranslationService {
   /// Tłumaczy podany tekst na język polski (pl) z obsługą długich tekstów (chunking)
   Future<String?> translate(String text) async {
     if (text.isEmpty) return text;
-    
+    // Zdalny wyłącznik — pozwala pominąć tłumaczenie bez release'u
+    // (translator bywa blokowany przez Google; w razie problemów
+    // wystarczy ustawić translation_enabled=false w Remote Config).
+    if (!RemoteConfigService().translationEnabled) return null;
+
     try {
       // Jeśli tekst jest krótki, tłumaczymy go w całości
       if (text.length < 2000) {
