@@ -20,7 +20,9 @@ class ReaderService {
 
       final extracted = await compute(_extractMainContentCompute, decodedBody);
       if (extracted == null) return null;
-      return normalizeHtml(extracted);
+      // Usuń bloki-śmieci (przypisy, CTA, „zobacz także", zgody cookies itp.)
+      // przed finalną normalizacją odstępów.
+      return normalizeHtml(stripJunkBlocks(extracted));
     } catch (e) {
       debugPrint('ReaderService Error: $e');
       return null;
@@ -42,6 +44,161 @@ class ReaderService {
     s = s.replaceAll(RegExp(r'[ \t]+\n'), '\n');
     s = s.replaceAll(RegExp(r'\n{3,}'), '\n\n');
     return s;
+  }
+
+  /// Wzorce bloków-śmieci (przypisy, CTA, „zobacz także", newslettery,
+  /// zgody cookies, byline-y itp.), które nie są treścią artykułu.
+  static final List<RegExp> _junkBlockPatterns = [
+    // Powiązane / „czytaj dalej"
+    RegExp(r'^zobacz\s+(także|też|równie?ż|wiecej|więcej)\b'),
+    RegExp(r'^przeczytaj\s+(także|też|równie?ż|wiecej|więcej|dalej)\b'),
+    RegExp(r'^czytaj\s+(także|też|równie?ż|dalej)\b'),
+    RegExp(r'^podobne\s+artykuł[yi]'),
+    RegExp(r'^polecamy\b'),
+    RegExp(r'^może\s+cię\s+zainteresować\b'),
+    RegExp(r'^wiecej\s+na\s+ten\s+temat\b'),
+    RegExp(r'^więcej\s+na\s+ten\s+temat\b'),
+    RegExp(r'^redakcja\s+poleca\b'),
+    RegExp(r'^także\s+w\s+(temi?e|dziale)\b'),
+    // Byline / autor / źródło zdjęcia
+    RegExp(r'^źr[óo]dł[oa]:'),
+    RegExp(r'''^fot\.?[\s"':]'''),
+    RegExp(r'^\(?\s*(pap|reuters|afp)\b'),
+    RegExp(r'^autor(ka)?:'),
+    RegExp(r'^opracowanie:'),
+    RegExp(r'^redakcja:'),
+    RegExp(r'^tekst:'),
+    // Newslettery / obserwowanie
+    RegExp(r'newsl[ae]tter'),
+    RegExp(r'^zapisz\s+się\s+do'),
+    RegExp(r'^bądź\s+na\s+bieżąco\b'),
+    RegExp(r'^dołącz\s+do\s+nas\b'),
+    RegExp(r'^zaobserwuj\s+nas\b'),
+    RegExp(r'^polub\s+nas\b'),
+    RegExp(r'^śledź\s+nas\b'),
+    RegExp(r'^subskrybuj\b'),
+    // Społecznościowe / komentarze
+    RegExp(r'^udostępnij\b'),
+    RegExp(r'^podziel\s+się\b'),
+    RegExp(r'^skomentuj\b'),
+    RegExp(r'^prześlij\b'),
+    // Zgody cookies / RODO
+    RegExp(r'plik[ui]?\s+cooki'),
+    RegExp(r'^cookies\b'),
+    RegExp(r'^wyrażam\s+[zg]godę'),
+    RegExp(r'^zgoda\s+na\s+[zp]rzetwarzanie'),
+    RegExp(r'^polityk[ae]\s+prywatno'),
+    // Nagłówki sekcji przypisów
+    RegExp(r'^(przypisy|footnotes)\s*[\d:.]*$'),
+  ];
+
+  /// Usuwa z treści HTML bloki, które nie są treścią artykułu:
+  /// - akapity zaczynające się od „Zobacz/Zobacz także/Przeczytaj też/…",
+  /// - linie „Źródło:", „fot. …", „(PAP)", byline-y,
+  /// - CTA newslettera, zgody cookies, „udostępnij/podziel się",
+  /// - bloki zawierające wyłącznie link (np. listę powiązanych artykułów).
+  /// Obiekt blok jest usuwany tylko gdy jest krótki (do [_junkMaxChars])
+  /// lub pasuje do nagłówka sekcji przypisów — chroni to właściwe akapity,
+  /// które przelotnie zawierają słowa typu „komentarze"/„newsletter".
+  static const int _junkMaxChars = 240;
+
+  static String stripJunkBlocks(String html) {
+    if (html.trim().isEmpty) return html;
+    try {
+      final doc = html_parser.parse(html);
+      final candidates = doc.querySelectorAll('p, li, blockquote, h2, h3, div, section, aside');
+      final junkByDepth = <dom.Element, bool>{};
+      for (final el in candidates) {
+        // Pomiń elementy, które są już w usuniętym rodzicu.
+        var parent = el.parent;
+        var insideRemoved = false;
+        while (parent != null) {
+          if (junkByDepth[parent] == true) {
+            // Gdy rodzic jest śmieciem, sami jesteśmy objęci — pomiń.
+            insideRemoved = true;
+            break;
+          }
+          parent = parent.parent;
+        }
+        if (insideRemoved) continue;
+
+        final rawText = el.text.trim();
+        if (rawText.isEmpty) continue;
+        final text = rawText.toLowerCase();
+
+        // 1) Blok zawierający wyłącznie URL (np. stopka źródła).
+        if (_isOnlyUrl(text)) {
+          el.remove();
+          junkByDepth[el] = true;
+          continue;
+        }
+        // 2) Nagłówek sekcji przypisów — usuń zawsze.
+        if (_junkBlockPatterns.any((r) => r.hasMatch(text) && (text.length <= 40))) {
+          el.remove();
+          junkByDepth[el] = true;
+          continue;
+        }
+        // 3) Inne wzorce śmieci — tylko dla krótkich bloków.
+        if (text.length <= _junkMaxChars &&
+            _junkBlockPatterns.any((r) => r.hasMatch(text))) {
+          el.remove();
+          junkByDepth[el] = true;
+          continue;
+        }
+        // 4) Lista linków bez tekstu (np. „Zobacz także: [link] [link] [link]").
+        if (rawText.length <= _junkMaxChars &&
+            el.querySelectorAll('a[href]').isNotEmpty &&
+            el.querySelectorAll('p').isEmpty) {
+          final linksText = el
+              .querySelectorAll('a[href]')
+              .map((a) => a.text);
+          final nonLinkText = rawText.split(' ').length;
+          if (nonLinkText <= 8) {
+            el.remove();
+            junkByDepth[el] = true;
+          }
+        }
+      }
+      // Wyczyść teraz puste kontenery po usunięciu dzieci.
+      _removeEmptyContainers(doc);
+      return doc.body?.innerHtml ?? html;
+    } catch (_) {
+      return html;
+    }
+  }
+
+  static bool _isOnlyUrl(String text) {
+    final t = text.trim().toLowerCase();
+    if (t.isEmpty) return false;
+    return RegExp(r'^(https?://\S+|www\.\S+)$').hasMatch(t);
+  }
+
+  /// Usuwa kontenery (div/section), które po czyszczeniu nie mają już
+  /// żadnych bloków treści (ułatwia to dalszą normalizację).
+  static void _removeEmptyContainers(dom.Document doc) {
+    for (final el in doc.querySelectorAll('div, section, article')) {
+      final blockChildren = el.children.where((c) =>
+          c.localName != null &&
+          const {'script', 'style', 'img', 'figure'}.contains(c.localName) == false);
+      if (blockChildren.isEmpty && (el.text ?? '').trim().isEmpty) {
+        el.remove();
+      }
+    }
+  }
+
+  /// Usuwa z tekstu inline znaczniki przypisów, które zostały w treści:
+  /// „[1]", „[2]", liczniki w nawiasach i indeksy górne.
+  /// Używane głównie przez lektora TTS (czysta lektura bez śmieci).
+  static String stripInlineFootnoteMarkers(String text) {
+    if (text.isEmpty) return text;
+    var t = text;
+    // Indeksy górne/nawołania typu [1], [b], (i), †
+    t = t.replaceAll(RegExp(r'\[\s*\d+\s*\]'), '');
+    t = t.replaceAll(RegExp(r'\(?\s*[†#*]\s*\)?'), ' ').replaceAll(RegExp(r'\s{2,}'), ' ');
+    t = t.replaceAll(RegExp(r'\[\s*[\u0000-\u007F]{1,3}\s*\]'), '');
+    // Usuń zaległe spacje przed interpunkcją (np. „dalej [1]." → „dalej.").
+    t = t.replaceAllMapped(RegExp(r'\s+([.,!?;:…—-])'), (m) => m.group(1)!);
+    return t.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
   }
 
   /// Sprawdza, czy pierwszy akapit treści (HTML) powtarza podany opis/lead.
@@ -269,5 +426,6 @@ String _stripTtsJunk(String text) {
   t = t.replaceAll(RegExp(r'-{3,}'), '');
   t = t.replaceAll(RegExp(r'\s{2,}'), ' ');
   t = t.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+  t = ReaderService.stripInlineFootnoteMarkers(t);
   return t.trim();
 }

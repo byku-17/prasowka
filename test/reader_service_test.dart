@@ -57,4 +57,59 @@ void main() {
       expect(ReaderService.isLeadDuplicated(null, '<p>tresc</p>'), isFalse);
     });
   });
+
+  group('ReaderService.stripInlineFootnoteMarkers', () {
+    test('usuwa znaczniki [n]', () {
+      expect(
+        ReaderService.stripInlineFootnoteMarkers('Tekst [1] dalej [2].'),
+        'Tekst dalej.',
+      );
+    });
+
+    test('usuwa samotne znaczniki † i #', () {
+      expect(
+        ReaderService.stripInlineFootnoteMarkers('Wyniki † zostały potwierdzone.'),
+        'Wyniki zostały potwierdzone.',
+      );
+    });
+
+    test('zostawia zwykly tekst bez zmian', () {
+      expect(
+        ReaderService.stripInlineFootnoteMarkers('Zwykly, normalny tekst.'),
+        'Zwykly, normalny tekst.',
+      );
+    });
+  });
+
+  group('ReaderService.stripJunkBlocks', () {
+    test('usuwa blok Zobacz takze', () {
+      final out = ReaderService.stripJunkBlocks(
+        '<p>Wazny akapit tresci.</p><p>Zobacz także: kolejna wiadomosc</p>',
+      );
+      expect(out.contains('Wazny akapit tresci.'), isTrue);
+      expect(out.contains('Zobacz także'), isFalse);
+    });
+
+    test('usuwa linie Zrodlo i byline', () {
+      final out = ReaderService.stripJunkBlocks(
+        '<p>Tekst artykulu.</p><p>Źródło: przykład.pl</p><p>Autor: Jan Kowalski</p>',
+      );
+      expect(out.contains('Tekst artykulu.'), isTrue);
+      expect(out.contains('Źródło:'), isFalse);
+      expect(out.contains('Autor:'), isFalse);
+    });
+
+    test('usuwa blok z samym linkiem', () {
+      final out = ReaderService.stripJunkBlocks(
+        '<p><a href="https://example.com/1">Podobny artykul 1</a></p>',
+      );
+      expect(out.contains('Podobny artykul'), isFalse);
+    });
+
+    test('zostawia dlugi wazny akapit', () {
+      final longText = 'Zobacz już teraz, jak to wszystko działa w praktyce. ' * 10;
+      final out = ReaderService.stripJunkBlocks('<p>$longText</p>');
+      expect(out.contains('działa w praktyce'), isTrue);
+    });
+  });
 }
