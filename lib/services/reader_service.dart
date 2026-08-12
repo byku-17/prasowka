@@ -44,6 +44,21 @@ class ReaderService {
     return s;
   }
 
+  /// Sprawdza, czy pierwszy akapit treści (HTML) powtarza podany opis/lead.
+  /// Używane do uniknięcia zdublowanego pierwszego akapitu na ekranie
+  /// artykułu, gdy opis z RSS == początek wyekstrahowanej pełnej treści.
+  static bool isLeadDuplicated(String? description, String contentHtml) {
+    if (description == null || description.trim().isEmpty) return false;
+    final desc = _normalizedForCompare(description);
+    if (desc.isEmpty) return false;
+    final lead = _normalizedForCompare(contentHtml.replaceAll(RegExp(r'<[^>]*>'), ' '));
+    if (lead.isEmpty) return false;
+    return lead.startsWith(desc);
+  }
+
+  static String _normalizedForCompare(String s) =>
+      s.replaceAll(RegExp(r'\s+'), ' ').trim();
+
   Future<String> _resolveUrl(String url) async {
     if (!url.contains('news.google.com')) return url;
     // Google News redirect URLs nie mogą być automatycznie rozwiązywane

@@ -31,4 +31,30 @@ void main() {
       expect(ReaderService.normalizeHtml(''), '');
     });
   });
+
+  group('ReaderService.isLeadDuplicated', () {
+    test('opis = poczatek tresci -> true', () {
+      expect(
+        ReaderService.isLeadDuplicated(
+          'Pierwszy akapit o czyms bardzo waznym.',
+          '<p>Pierwszy akapit o czyms bardzo waznym. Drugi akapit.</p>',
+        ),
+        isTrue,
+      );
+    });
+
+    test('opis inny niz tresc -> false', () {
+      expect(
+        ReaderService.isLeadDuplicated(
+          'Zupelnie inny opis.',
+          '<p>Cos calkowicie odmiennego.</p>',
+        ),
+        isFalse,
+      );
+    });
+
+    test('null opis -> false', () {
+      expect(ReaderService.isLeadDuplicated(null, '<p>tresc</p>'), isFalse);
+    });
+  });
 }

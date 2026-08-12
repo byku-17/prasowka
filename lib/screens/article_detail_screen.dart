@@ -103,10 +103,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       }
     });
     // Android: onRangeStart co słowo. Dzięki temu pauza może wznowić
-    // dokładnie od bieżącego słowa, a nie od początku fragmentu.
+    // od końca ostatnio odtworzonego słowa, a nie od początku fragmentu.
+    // Używamy `end` (a nie `start`), żeby wznawianie NIE powtarzało
+    // ostatniego słowa przed pauzą.
     _tts.setProgressHandler((text, start, end, word) {
       if (_isSpeaking && text == _ttsCurrentText) {
-        _ttsChunkOffset = start;
+        _ttsChunkOffset = end > start ? end : start;
       }
     });
   }
@@ -611,12 +613,19 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     if (hasFullContent) {
       final chunks = _chunksFor(art);
       final visible = _revealedChunks.clamp(1, chunks.length);
+      final showLead = !ReaderService.isLeadDuplicated(
+        art.translatedDescription ?? art.description,
+        chunks.firstWhere((c) => c.isNotEmpty,
+            orElse: () => art.fullContent ?? ''),
+      );
       return Column(
         key: const ValueKey('progressive'),
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          description,
-          const SizedBox(height: 16),
+          if (showLead) ...[
+            description,
+            const SizedBox(height: 16),
+          ],
           for (int i = 0; i < visible; i++) ...[
             HtmlWidget(
               chunks[i],
