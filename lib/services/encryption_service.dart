@@ -3,16 +3,24 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:encrypt/encrypt.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:pointycastle/export.dart';
 
 class EncryptionService {
   static const _secureStorage = FlutterSecureStorage();
   static const _saltKey = 'encryption_salt';
   static const _ivKey = 'encryption_iv';
 
+  static const _pbkdf2Iterations = 100000;
+  static const _keyLengthBytes = 32;
+
   Future<Key> _getOrCreateKey(String userId, String password) async {
     final salt = await _getOrCreateSalt(userId);
-    final keyBytes = _deriveKey(password, salt);
-    return Key(keyBytes);
+    return Key(_deriveKey(password, salt));
+  }
+
+  Future<Key> _getOrCreateLegacyKey(String userId, String password) async {
+    final salt = await _getOrCreateSalt(userId);
+    return Key(_deriveLegacyKey(password, salt));
   }
 
   Future<Uint8List> _getOrCreateSalt(String userId) async {
@@ -41,6 +49,12 @@ class EncryptionService {
   }
 
   Uint8List _deriveKey(String password, Uint8List salt) {
+    final derivator = PBKDF2KeyDerivator(HMac(SHA256Digest(), 64))
+      ..init(Pbkdf2Parameters(salt, _pbkdf2Iterations, _keyLengthBytes));
+    return derivator.process(utf8.encode(password));
+  }
+
+  Uint8List _deriveLegacyKey(String password, Uint8List salt) {
     final passwordBytes = utf8.encode(password);
     final combined = Uint8List(passwordBytes.length + salt.length)
       ..setAll(0, passwordBytes)
@@ -77,8 +91,17 @@ class EncryptionService {
   /// Odczytywane z "base64(iv):base64(ciphertext)"; dla starego formatu
   /// (bez wbudowanego IV) używa zapisanego statycznego IV — wsteczna kompatybilność.
   Future<String> decryptText(String encryptedText, String userId, String password) async {
-    final key = await _getOrCreateKey(userId, password);
     final iv = await _extractIV(userId, encryptedText);
+    final newKey = await _getOrCreateKey(userId, password);
+    try {
+      return _decrypt(encryptedText, iv, newKey);
+    } catch (_) {
+      final legacyKey = await _getOrCreateLegacyKey(userId, password);
+      return _decrypt(encryptedText, iv, legacyKey);
+    }
+  }
+
+  String _decrypt(String encryptedText, IV iv, Key key) {
     final encrypter = Encrypter(AES(key, mode: AESMode.cbc));
     return encrypter.decrypt64(encryptedText, iv: iv);
   }
