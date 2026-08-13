@@ -6,18 +6,13 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <!-- Legacy źródła RSS, które nadal serwują po HTTP — wyjątek tylko dla nich -->
+    <!-- Legacy źródła RSS, które nadal serwują wyłącznie po HTTP — wyjątek tylko dla nich -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">gazeta.pl</domain>
-        <domain includeSubdomains="true">bbci.co.uk</domain>
         <domain includeSubdomains="true">gazetaprawna.pl</domain>
         <domain includeSubdomains="true">interia.pl</domain>
         <domain includeSubdomains="true">forsal.pl</domain>
         <domain includeSubdomains="true">benchmark.pl</domain>
         <domain includeSubdomains="true">tvp.pl</domain>
-        <domain includeSubdomains="true">feedburner.com</domain>
-        <domain includeSubdomains="true">nature.com</domain>
         <domain includeSubdomains="true">sciam.com</domain>
-        <domain includeSubdomains="true">tanuki.pl</domain>
     </domain-config>
 </network-security-config>
