@@ -19,8 +19,23 @@ class StorageService {
       await _openSafe(articlesBoxName);
       await _openSafe(cacheBoxName);
       await _openSafe(notifiedBoxName);
+      await _compactAll();
     } catch (e) {
       debugPrint('Sowa Storage: Krytyczny błąd inicjalizacji ($e)');
+    }
+  }
+
+  /// Kompaktuje otwarte boxy (czyści fragmentację po usuniętych wpisach).
+  /// `compact()` sam kończy bez pracy, gdy nie ma "tombstones".
+  Future<void> _compactAll() async {
+    for (final name in [articlesBoxName, cacheBoxName, notifiedBoxName]) {
+      try {
+        if (Hive.isBoxOpen(name)) {
+          await Hive.box(name).compact();
+        }
+      } catch (e) {
+        debugPrint('Sowa Storage: Problem z kompaktowaniem $name ($e)');
+      }
     }
   }
 

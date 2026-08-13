@@ -54,6 +54,7 @@ class NotificationHistory {
   Future<void> init() async {
     try {
       _box = await Hive.openBox<Map>(_boxName);
+      await _box!.compact();
     } catch (e) {
       debugPrint('Sowa Notyfikacje: Błąd inicjalizacji historii: $e');
     }

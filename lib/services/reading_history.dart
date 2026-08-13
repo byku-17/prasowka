@@ -60,6 +60,7 @@ class ReadingHistory {
 
   Future<void> init() async {
     _box = await Hive.openBox<Map>(_boxName);
+    await _box!.compact();
   }
 
   Future<void> add({
