@@ -36,7 +36,7 @@ class TagProvider with ChangeNotifier {
     final tag = UserTag(
       id: id,
       name: name,
-      colorValue: color?.value ?? 0xFFF5B942,
+      colorValue: color?.toARGB32() ?? 0xFFF5B942,
       iconCodePoint: icon?.codePoint ?? Icons.label.codePoint,
     );
     await box.put(id, tag.toMap());
@@ -52,7 +52,7 @@ class TagProvider with ChangeNotifier {
     final updated = UserTag(
       id: id,
       name: name ?? old.name,
-      colorValue: color?.value ?? old.colorValue,
+      colorValue: color?.toARGB32() ?? old.colorValue,
       iconCodePoint: icon?.codePoint ?? old.iconCodePoint,
     );
     await box.put(id, updated.toMap());

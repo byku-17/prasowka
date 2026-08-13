@@ -1,4 +1,5 @@
 import 'dart:collection';
+// ignore_for_file: avoid_print
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:image/image.dart' as img;
@@ -58,7 +59,7 @@ void main() {
   print('kept after bg removal: $keptCount');
 
   // 3. usuń izolowane drobiny (connected components < minSize px)
-  final minSize = 100;
+  const minSize = 100;
   final labels = List.generate(h, (_) => List<int>.filled(w, -1));
   var compId = 0;
   final compSizes = <int, int>{};

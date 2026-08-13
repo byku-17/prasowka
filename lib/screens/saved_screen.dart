@@ -183,7 +183,7 @@ class _SavedScreenState extends State<SavedScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bookmark_border, size: 64, color: Colors.grey),
+            const Icon(Icons.bookmark_border, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty

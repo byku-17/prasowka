@@ -6,7 +6,7 @@ class AppImageCacheManager {
   static CacheManager get instance => CacheManager(
     Config(
       _key,
-      stalePeriod: Duration(days: 7),
+      stalePeriod: const Duration(days: 7),
       maxNrOfCacheObjects: 500,
     ),
   );

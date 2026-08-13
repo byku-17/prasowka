@@ -1,4 +1,5 @@
 import 'dart:io';
+// ignore_for_file: avoid_print
 import 'package:image/image.dart' as img;
 
 void main() {

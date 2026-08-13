@@ -84,7 +84,7 @@ class CategorySettingsPage extends StatelessWidget {
             ReorderableListView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
                 settings.reorderTopicCategories(oldIndex, newIndex);
               },
               children: topicCategories.map((cat) {

@@ -71,12 +71,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: sync.lastSync != null ? 'Ostatni sync: ${_formatTime(sync.lastSync!)}' : 'Nigdy nie synchronizowano',
         section: 'Konto',
         onTap: () async {
+          final messenger = ScaffoldMessenger.of(context);
           await sync.pushAll();
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Dane wysłane do chmury')),
-            );
-          }
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Dane wysłane do chmury')),
+          );
         },
       ));
       items.add(_SettingsItem(
@@ -85,12 +84,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Przywróć dane z innego urządzenia',
         section: 'Konto',
         onTap: () async {
+          final messenger = ScaffoldMessenger.of(context);
           await sync.pullAll();
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Dane pobrane z chmury — uruchom ponownie')),
-            );
-          }
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Dane pobrane z chmury — uruchom ponownie')),
+          );
         },
       ));
       items.add(_SettingsItem(
@@ -242,11 +240,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
+              const Padding(
+                padding: EdgeInsets.all(16),
                 child: Text(
                   'Domyślna kolejność artykułów',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
               for (final (order, label, desc) in options)
@@ -288,11 +286,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
+              const Padding(
+                padding: EdgeInsets.all(16),
                 child: Text(
                   'Usuwanie starych artykułów',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
               for (final (days, label, desc) in options)
@@ -409,11 +407,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
+              const Padding(
+                padding: EdgeInsets.all(16),
                 child: Text(
                   'Częstotliwość odświeżania',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
               for (final (hours, label, desc) in options)

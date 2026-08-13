@@ -172,7 +172,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (entry.url == null) return;
 
     await NotificationHistory().markRead(entry.id);
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     final provider = context.read<NewsProvider>();
     final cachedArticle = provider.allLoadedArticles

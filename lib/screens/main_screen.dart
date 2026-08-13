@@ -78,7 +78,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _lastCityName = settings.preferredCity;
 
     _tabs = [
-      _TabDef(label: 'Dzisiaj', icon: Icons.today, id: 'dzisiaj'),
+      const _TabDef(label: 'Dzisiaj', icon: Icons.today, id: 'dzisiaj'),
       _TabDef(
         label: slot1Label,
         icon: slot1Cat?.icon ?? Icons.category,
@@ -89,8 +89,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         icon: slot2Cat?.icon ?? Icons.category,
         id: settings.mainTabSlot2,
       ),
-      _TabDef(label: 'Tematy', icon: Icons.category, id: 'tematy'),
-      _TabDef(label: 'Zapisane', icon: Icons.bookmark, id: 'zapisane'),
+      const _TabDef(label: 'Tematy', icon: Icons.category, id: 'tematy'),
+      const _TabDef(label: 'Zapisane', icon: Icons.bookmark, id: 'zapisane'),
     ];
 
     _screens = [

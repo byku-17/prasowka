@@ -302,10 +302,10 @@ class _LongPressDismissibleState extends State<LongPressDismissible> {
   @override
   Widget build(BuildContext context) {
     if (_isDismissing) {
-      return AnimatedSize(
-        duration: const Duration(milliseconds: 300),
+      return const AnimatedSize(
+        duration: Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-        child: const SizedBox.shrink(),
+        child: SizedBox.shrink(),
       );
     }
     return GestureDetector(

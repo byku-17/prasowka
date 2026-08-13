@@ -149,9 +149,6 @@ class ReaderService {
         if (rawText.length <= _junkMaxChars &&
             el.querySelectorAll('a[href]').isNotEmpty &&
             el.querySelectorAll('p').isEmpty) {
-          final linksText = el
-              .querySelectorAll('a[href]')
-              .map((a) => a.text);
           final nonLinkText = rawText.split(' ').length;
           if (nonLinkText <= 8) {
             el.remove();
@@ -180,7 +177,7 @@ class ReaderService {
       final blockChildren = el.children.where((c) =>
           c.localName != null &&
           const {'script', 'style', 'img', 'figure'}.contains(c.localName) == false);
-      if (blockChildren.isEmpty && (el.text ?? '').trim().isEmpty) {
+      if (blockChildren.isEmpty && el.text.trim().isEmpty) {
         el.remove();
       }
     }
@@ -381,7 +378,7 @@ void _removeCaptionElements(dom.Document document) {
   try {
     const junkWords = ['caption', 'credit', 'byline', 'creditline', 'photocaption', 'imagecaption', 'figcaption'];
     for (final el in document.querySelectorAll('figcaption, span, div, p, h1, h2, h3, h4, h5, h6, li')) {
-      final cls = ((el.attributes['class'] ?? '') + ' ' + (el.attributes['id'] ?? '')).toLowerCase();
+      final cls = '${el.attributes['class'] ?? ''} ${el.attributes['id'] ?? ''}'.toLowerCase();
       if (el.localName == 'figcaption' ||
           cls.split(RegExp(r'[\s_-]+')).any((w) => junkWords.contains(w))) {
         el.remove();
