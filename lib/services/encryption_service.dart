@@ -10,17 +10,27 @@ class EncryptionService {
   static const _saltKey = 'encryption_salt';
   static const _ivKey = 'encryption_iv';
 
-  static const _pbkdf2Iterations = 100000;
+  static const _pbkdf2Iterations = 30000;
   static const _keyLengthBytes = 32;
 
+  // Cache kluczy w pamięci (klucz: userId, wartość: Key)
+  final Map<String, Key> _keyCache = {};
+  final Map<String, Key> _legacyKeyCache = {};
+
   Future<Key> _getOrCreateKey(String userId, String password) async {
+    if (_keyCache.containsKey(userId)) return _keyCache[userId]!;
     final salt = await _getOrCreateSalt(userId);
-    return Key(_deriveKey(password, salt));
+    final key = Key(_deriveKey(password, salt));
+    _keyCache[userId] = key;
+    return key;
   }
 
   Future<Key> _getOrCreateLegacyKey(String userId, String password) async {
+    if (_legacyKeyCache.containsKey(userId)) return _legacyKeyCache[userId]!;
     final salt = await _getOrCreateSalt(userId);
-    return Key(_deriveLegacyKey(password, salt));
+    final key = Key(_deriveLegacyKey(password, salt));
+    _legacyKeyCache[userId] = key;
+    return key;
   }
 
   Future<Uint8List> _getOrCreateSalt(String userId) async {

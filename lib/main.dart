@@ -47,12 +47,16 @@ void main() async {
 
     try {
       await settings.init();
-      await news.init();
-      await tags.init();
-      await NotificationHistory().init();
-      await ReadingHistory().init();
-      await BackgroundService().init();
-      await sports.loadCacheFromHive();
+      
+      // Równoległa inicjalizacja niezależnych serwisów
+      await Future.wait([
+        news.init(),
+        tags.init(),
+        NotificationHistory().init(),
+        ReadingHistory().init(),
+        BackgroundService().init(),
+        sports.loadCacheFromHive(),
+      ]);
 
       if (settings.notificationsEnabled) {
         await BackgroundService().registerPeriodicTask();

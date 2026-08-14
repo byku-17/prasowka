@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:prasowka/models/article.dart';
@@ -19,14 +20,15 @@ class StorageService {
       await _openSafe(articlesBoxName);
       await _openSafe(cacheBoxName);
       await _openSafe(notifiedBoxName);
-      await _compactAll();
+      // Kompaktacja w tle — nie blokuj startu aplikacji.
+      unawaited(_compactAll());
     } catch (e) {
       debugPrint('Sowa Storage: Krytyczny błąd inicjalizacji ($e)');
     }
   }
 
   /// Kompaktuje otwarte boxy (czyści fragmentację po usuniętych wpisach).
-  /// `compact()` sam kończy bez pracy, gdy nie ma "tombstones".
+  /// Uruchamiana asynchronicznie, by nie opóźniać startu.
   Future<void> _compactAll() async {
     for (final name in [articlesBoxName, cacheBoxName, notifiedBoxName]) {
       try {
