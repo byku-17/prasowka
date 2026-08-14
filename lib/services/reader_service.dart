@@ -203,11 +203,37 @@ class ReaderService {
   /// artykułu, gdy opis z RSS == początek wyekstrahowanej pełnej treści.
   static bool isLeadDuplicated(String? description, String contentHtml) {
     if (description == null || description.trim().isEmpty) return false;
-    final desc = _normalizedForCompare(description);
+    final desc = _normalizedForCompare(textContent(description));
     if (desc.isEmpty) return false;
-    final lead = _normalizedForCompare(contentHtml.replaceAll(RegExp(r'<[^>]*>'), ' '));
+    final lead = _normalizedForCompare(textContent(contentHtml));
     if (lead.isEmpty) return false;
-    return lead.startsWith(desc);
+    // Proste dopasowanie przedrostka.
+    if (lead.startsWith(desc)) return true;
+
+    // RSS opisy bywają przycięte (końcówka „…" / ucięte zdanie) —
+    // porównaj bez końcówki.
+    final trimmedDesc = desc.replaceFirst(RegExp(r'[…\s]+$'), '');
+    if (trimmedDesc.isNotEmpty && lead.startsWith(trimmedDesc)) return true;
+
+    // Opis może się drobno różnić (cudzysłowy, kreski, wielkość liter).
+    // Dla dłuższych opisów wystarczy, by treść zaczynała się od ~70% słów.
+    final words = trimmedDesc.split(' ');
+    if (trimmedDesc.length >= 40 && words.length >= 6) {
+      final probe = words.take((words.length * 0.7).floor()).join(' ');
+      if (lead.startsWith(probe)) return true;
+    }
+    return false;
+  }
+
+  /// Zwraca czysty tekst podanego HTML — bez tagów i z odkodowanymi encjami
+  /// (np. `&nbsp;`, `&amp;`). Odporne na tekst bez tagów.
+  static String textContent(String htmlText) {
+    if (htmlText.isEmpty) return '';
+    try {
+      return html_parser.parseFragment(htmlText).text ?? '';
+    } catch (_) {
+      return htmlText.replaceAll(RegExp(r'<[^>]*>'), ' ');
+    }
   }
 
   static String _normalizedForCompare(String s) =>

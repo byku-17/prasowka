@@ -56,6 +56,56 @@ void main() {
     test('null opis -> false', () {
       expect(ReaderService.isLeadDuplicated(null, '<p>tresc</p>'), isFalse);
     });
+
+    test('encje HTML (nbsp) w tresci nie psuja wykrycia -> true', () {
+      expect(
+        ReaderService.isLeadDuplicated(
+          'Pierwszy akapit o czyms.',
+          '<p>Pierwszy akapit&nbsp;o czyms. Drugi akapit.</p>',
+        ),
+        isTrue,
+      );
+    });
+
+    test('opis z tagami HTML -> true', () {
+      expect(
+        ReaderService.isLeadDuplicated(
+          '<strong>Pierwszy</strong> akapit o czyms.',
+          '<p><strong>Pierwszy</strong> akapit o czyms. Dalej idzie tekst.</p>',
+        ),
+        isTrue,
+      );
+    });
+
+    test('opis przyciety wielokropkiem -> true', () {
+      expect(
+        ReaderService.isLeadDuplicated(
+          'Pierwszy akapit o czyms bardzo waznym…',
+          '<p>Pierwszy akapit o czyms bardzo waznym i jeszcze dalszy ciag.</p>',
+        ),
+        isTrue,
+      );
+    });
+
+    test('lead dalej niz oczekiwano (prog 70% slow) -> true', () {
+      expect(
+        ReaderService.isLeadDuplicated(
+          'Dlugiszy opis rozpoczynajacy artykul o bardzo waznym temacie polityki',
+          '<p>Dlugiszy opis rozpoczynajacy artykul o bardzo waznym temacie i cala reszta zdania dalej.</p>',
+        ),
+        isTrue,
+      );
+    });
+
+    test('poczatek tresci bez tekstu (figure) nie udaje opisu -> false', () {
+      expect(
+        ReaderService.isLeadDuplicated(
+          'Zupelnie inny opis.',
+          '<figure><img src="x.jpg"/></figure><p>Cos calkowicie odmiennego.</p>',
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('ReaderService.stripInlineFootnoteMarkers', () {

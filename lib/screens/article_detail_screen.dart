@@ -613,10 +613,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     if (hasFullContent) {
       final chunks = _chunksFor(art);
       final visible = _revealedChunks.clamp(1, chunks.length);
+      // Próbką porównania jest pierwszy chunk, który zawiera rzeczywisty tekst
+      // (początek treści może być np. <figure> albo pustym kontenerem).
+      final firstTextChunk = chunks.firstWhere(
+        (c) => ReaderService.textContent(c).trim().isNotEmpty,
+        orElse: () => art.fullContent ?? '',
+      );
       final showLead = !ReaderService.isLeadDuplicated(
         art.translatedDescription ?? art.description,
-        chunks.firstWhere((c) => c.isNotEmpty,
-            orElse: () => art.fullContent ?? ''),
+        firstTextChunk,
       );
       return Column(
         key: const ValueKey('progressive'),
