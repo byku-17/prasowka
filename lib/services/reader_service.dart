@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:prasowka/services/http_client.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:html/dom.dart' as dom;
 import 'package:flutter/foundation.dart';
@@ -8,14 +8,21 @@ class ReaderService {
   Future<String?> extractFullContent(String url) async {
     try {
       final resolvedUrl = await _resolveUrl(url);
-      final response = await http.get(Uri.parse(resolvedUrl)).timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200) return null;
+      final response = await HttpClient.instance.get(
+        Uri.parse(resolvedUrl),
+        timeout: const Duration(seconds: 20),
+        maxRetries: 3,
+      );
+      if (response?.statusCode != 200) {
+        debugPrint('ReaderService: HTTP ${response?.statusCode} for $url');
+        return null;
+      }
 
       String decodedBody;
       try {
-        decodedBody = utf8.decode(response.bodyBytes, allowMalformed: true);
+        decodedBody = utf8.decode(response!.bodyBytes, allowMalformed: true);
       } catch (_) {
-        decodedBody = latin1.decode(response.bodyBytes);
+        decodedBody = latin1.decode(response!.bodyBytes);
       }
 
       final extracted = await compute(_extractMainContentCompute, decodedBody);
@@ -24,7 +31,7 @@ class ReaderService {
       // przed finalną normalizacją odstępów.
       return normalizeHtml(stripJunkBlocks(extracted));
     } catch (e) {
-      debugPrint('ReaderService Error: $e');
+      debugPrint('ReaderService Error for $url: $e');
       return null;
     }
   }

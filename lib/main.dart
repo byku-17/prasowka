@@ -21,6 +21,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:prasowka/services/remote_config_service.dart';
 import 'package:prasowka/services/auth_service.dart';
 import 'package:prasowka/services/sync_service.dart';
+import 'package:prasowka/services/http_client.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,9 @@ void main() async {
     }
     await RemoteConfigService().init();
     await Hive.initFlutter();
+    
+    // Inicjalizuj shared HTTP client
+    HttpClient.instance.init();
 
     final settings = SettingsProvider();
     final news = NewsProvider();

@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:dart_rss/dart_rss.dart';
 import 'package:html/parser.dart';
 import 'package:intl/intl.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_source.dart';
+import 'package:prasowka/services/http_client.dart';
 import 'package:flutter/foundation.dart';
 
 class RssService {
@@ -36,21 +36,23 @@ class RssService {
     final url = source.rssUrl.trim();
     try {
       final uri = Uri.parse(url);
-      final response = await http.get(
+      final response = await HttpClient.instance.get(
         uri,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
           'Cache-Control': 'no-cache',
         },
-      ).timeout(const Duration(seconds: 10));
+        timeout: const Duration(seconds: 15),
+        maxRetries: 3,
+      );
 
-      if (response.statusCode == 200) {
+      if (response?.statusCode == 200) {
         String xml;
         try {
-          xml = utf8.decode(response.bodyBytes, allowMalformed: true);
+xml = utf8.decode(response!.bodyBytes, allowMalformed: true);
         } catch (_) {
-          xml = latin1.decode(response.bodyBytes);
+          xml = latin1.decode(response!.bodyBytes);
         }
         
         final trimmedXml = xml.trim();
@@ -213,16 +215,18 @@ class RssService {
     if (query.trim().isEmpty) return [];
     final url = 'https://news.google.com/rss/search?q=${Uri.encodeComponent(query)}&hl=pl&gl=PL&ceid=PL:pl';
     try {
-      final response = await http.get(
+      final response = await HttpClient.instance.get(
         Uri.parse(url),
         headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
         },
-      ).timeout(const Duration(seconds: 10));
+        timeout: const Duration(seconds: 15),
+        maxRetries: 3,
+      );
 
-      if (response.statusCode == 200) {
-        final xml = utf8.decode(response.bodyBytes, allowMalformed: true);
+      if (response?.statusCode == 200) {
+        final xml = utf8.decode(response!.bodyBytes, allowMalformed: true);
         final feed = RssFeed.parse(xml.trim());
         return feed.items.map((item) {
           final title = (item.title ?? 'Bez tytułu').trim();

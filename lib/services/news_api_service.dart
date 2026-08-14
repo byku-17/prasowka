@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:prasowka/services/http_client.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/services/remote_config_service.dart';
 
@@ -24,12 +24,16 @@ class NewsApiService {
       final yesterday = DateTime.now().subtract(const Duration(days: 2));
       final from = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
       final uri = Uri.parse('$_baseUrl/everything?domains=$_domains&language=pl&from=$from&sortBy=publishedAt&pageSize=$pageSize&apiKey=$_apiKey');
-      final response = await http.get(uri).timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200) {
-        debugPrint('NewsAPI Error: ${response.statusCode}');
+      final response = await HttpClient.instance.get(
+        uri,
+        timeout: const Duration(seconds: 20),
+        maxRetries: 3,
+      );
+      if (response?.statusCode != 200) {
+        debugPrint('NewsAPI Error: ${response?.statusCode}');
         return [];
       }
-      final data = json.decode(response.body);
+      final data = json.decode(response!.body);
       if (data['status'] != 'ok') {
         debugPrint('NewsAPI Error: ${data['message']}');
         return [];
