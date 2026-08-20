@@ -496,7 +496,7 @@ class NewsProvider with ChangeNotifier {
     if (article.isRead) return;
     article.isRead = true;
     _storageService.saveArticleState(article);
-    
+
     // Przesuń przeczytany artykuł na koniec każdej listy, w której
     // występuje — tak jak robi to _sortAndMixArticlesStatic przy
     // odświeżaniu.

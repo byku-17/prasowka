@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Niezwi¹zany artefakt Garmin Connect IQ (przypadkowo w root projektu)
+manifest.xml
