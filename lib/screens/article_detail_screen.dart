@@ -47,10 +47,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   final VelocityTracker _pointerVelocityTracker =
       VelocityTracker.withKind(PointerDeviceKind.touch);
 
-  final List<String> _contentChunks = [];
-  String? _chunksKey;
-  String _firstTextChunk = '';
-  int _revealedChunks = 0;
+  // Per-artykułowy cache treści — każdy artykuł w PageView ma własne
+  // chunksy, "firstTextChunk" i postęp odsłaniania (bez współdzielenia
+  // stanu między stronami).
+  final Map<String, _ArticleContentState> _contentCache = {};
+  static const int _contentCacheLimit = 20;
 
   void _openInBrowser(Article art) {
     Navigator.of(context).push(MaterialPageRoute(
@@ -294,9 +295,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       }
     }
 
-    if (_contentChunks.isNotEmpty && _revealedChunks < _contentChunks.length) {
+    final state = _contentCache[_currentArticle.id];
+    if (state != null && state.revealed < state.chunks.length) {
       if (pixels >= maxScroll - 150) {
-        setState(() => _revealedChunks++);
+        setState(() => state.revealed++);
       }
     }
   }
@@ -551,25 +553,26 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     return fc.trim().length >= 350;
   }
 
-  List<String> _chunksFor(Article art) {
+  _ArticleContentState _chunksFor(Article art) {
     final content = art.translatedFullContent ?? art.fullContent;
-    if (content == null) return const [];
+    if (content == null) return _ArticleContentState(key: '${art.id}|0', chunks: const [], firstTextChunk: '');
     final key = '${art.id}|${content.length}';
-    if (key != _chunksKey) {
-      _chunksKey = key;
-      _contentChunks
-        ..clear()
-        ..addAll(_splitContentIntoChunks(content));
-      _revealedChunks = math.min(1, _contentChunks.length);
-      // Próbką porównania jest pierwszy chunk z rzeczywistym tekstem
-      // (początek treści może być np. <figure> albo pustym kontenerem).
-      // Liczone raz przy budowie chunków, nie przy każdym rebuildzie.
-      _firstTextChunk = _contentChunks.firstWhere(
-        (c) => ReaderService.textContent(c).trim().isNotEmpty,
-        orElse: () => content,
-      );
+    final existing = _contentCache[art.id];
+    if (existing != null && existing.key == key) return existing;
+    final chunks = _splitContentIntoChunks(content);
+    // Próbką porównania jest pierwszy chunk z rzeczywistym tekstem
+    // (początek treści może być np. <figure> albo pustym kontenerem).
+    final firstTextChunk = chunks.firstWhere(
+      (c) => ReaderService.textContent(c).trim().isNotEmpty,
+      orElse: () => content,
+    );
+    final state = _ArticleContentState(key: key, chunks: chunks, firstTextChunk: firstTextChunk)
+      ..revealed = math.min(1, chunks.length);
+    _contentCache[art.id] = state;
+    if (_contentCache.length > _contentCacheLimit) {
+      _contentCache.remove(_contentCache.keys.first);
     }
-    return _contentChunks;
+    return state;
   }
 
   static List<String> _splitContentIntoChunks(String html, {int chunkCount = 5}) {
@@ -616,11 +619,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     );
 
     if (hasFullContent) {
-      final chunks = _chunksFor(art);
-      final visible = _revealedChunks.clamp(1, chunks.length);
+      final state = _chunksFor(art);
+      final chunks = state.chunks;
+      final visible = state.revealed.clamp(1, chunks.length);
       final showLead = !ReaderService.isLeadDuplicated(
         art.translatedDescription ?? art.description,
-        _firstTextChunk,
+        state.firstTextChunk,
       );
       return Column(
         key: const ValueKey('progressive'),
@@ -915,4 +919,21 @@ class _PulsingBrowserButtonState extends State<_PulsingBrowserButton>
       },
     );
   }
+}
+
+/// Cache treści pojedynczego artykułu (chunksy + próbka leadu + postęp
+/// odsłaniania). Trzymane per artykuł, nie współdzielone między stronami.
+class _ArticleContentState {
+  _ArticleContentState({
+    required this.key,
+    required this.chunks,
+    required this.firstTextChunk,
+  });
+
+  /// Klucz wersji treści (id + długość) — pozwala wykryć zmianę treści
+  /// (np. po tłumaczeniu) bez kosztownego porównywania stringów.
+  final String key;
+  final List<String> chunks;
+  final String firstTextChunk;
+  int revealed = 0;
 }
