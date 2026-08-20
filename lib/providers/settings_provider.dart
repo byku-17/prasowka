@@ -113,6 +113,7 @@ class SettingsProvider with ChangeNotifier {
   double _cityLatitude = 52.2297;
   double _cityLongitude = 21.0122;
   List<String> _selectedLeagueIds = [];
+  StreamSubscription? _connectivitySubscription;
 
   ThemeMode get themeMode => _themeMode;
   AppThemeVariant get themeVariant => _themeVariant;
@@ -336,7 +337,8 @@ class SettingsProvider with ChangeNotifier {
     await _ensureNewSourcesRegistered();
 
     // 8. Śledzenie połączenia (dla trybu „obrazki tylko na Wi-Fi")
-    Connectivity().onConnectivityChanged.listen((results) {
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
       _onWifi = results.any((r) => r == ConnectivityResult.wifi || r == ConnectivityResult.ethernet);
       notifyListeners();
     });

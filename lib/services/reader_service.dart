@@ -10,8 +10,8 @@ class ReaderService {
       final resolvedUrl = await _resolveUrl(url);
       final response = await HttpClient.instance.get(
         Uri.parse(resolvedUrl),
-        timeout: const Duration(seconds: 20),
-        maxRetries: 3,
+        timeout: const Duration(seconds: 15),
+        maxRetries: 2,
       );
       if (response?.statusCode != 200) {
         debugPrint('ReaderService: HTTP ${response?.statusCode} for $url');
@@ -25,11 +25,9 @@ class ReaderService {
         decodedBody = latin1.decode(response!.bodyBytes);
       }
 
-      final extracted = await compute(_extractMainContentCompute, decodedBody);
+      final extracted = await compute(_extractAndCleanCompute, decodedBody);
       if (extracted == null) return null;
-      // Usuń bloki-śmieci (przypisy, CTA, „zobacz także", zgody cookies itp.)
-      // przed finalną normalizacją odstępów.
-      return normalizeHtml(stripJunkBlocks(extracted));
+      return extracted;
     } catch (e) {
       debugPrint('ReaderService Error for $url: $e');
       return null;
@@ -311,6 +309,14 @@ String? _extractMainContentCompute(String htmlBody) {
   } catch (e) {
     return null;
   }
+}
+
+/// Pojedynczy isolate do pełnego przetworzenia HTML:
+/// ekstrakcja głównej treści → usunięcie bloków-śmieci → normalizacja.
+String? _extractAndCleanCompute(String htmlBody) {
+  final extracted = _extractMainContentCompute(htmlBody);
+  if (extracted == null) return null;
+  return ReaderService.normalizeHtml(ReaderService.stripJunkBlocks(extracted));
 }
 
 /// Wyciąga pole `articleBody` z danych JSON-LD (typ NewsArticle itp.).

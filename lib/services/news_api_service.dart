@@ -26,8 +26,8 @@ class NewsApiService {
       final uri = Uri.parse('$_baseUrl/everything?domains=$_domains&language=pl&from=$from&sortBy=publishedAt&pageSize=$pageSize&apiKey=$_apiKey');
       final response = await HttpClient.instance.get(
         uri,
-        timeout: const Duration(seconds: 20),
-        maxRetries: 3,
+        timeout: const Duration(seconds: 15),
+        maxRetries: 2,
       );
       if (response?.statusCode != 200) {
         debugPrint('NewsAPI Error: ${response?.statusCode}');

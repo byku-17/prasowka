@@ -30,9 +30,9 @@ class HttpClient {
   Future<http.Response?> get(
     Uri uri, {
     Map<String, String>? headers,
-    Duration timeout = const Duration(seconds: 15),
-    int maxRetries = 3,
-    Duration baseDelay = const Duration(milliseconds: 500),
+    Duration timeout = const Duration(seconds: 10),
+    int maxRetries = 2,
+    Duration baseDelay = const Duration(milliseconds: 300),
   }) async {
     _ensureInitialized();
     final client = _client!;
@@ -78,9 +78,9 @@ class HttpClient {
     Map<String, String>? headers,
     Object? body,
     Encoding? encoding,
-    Duration timeout = const Duration(seconds: 15),
-    int maxRetries = 3,
-    Duration baseDelay = const Duration(milliseconds: 500),
+    Duration timeout = const Duration(seconds: 10),
+    int maxRetries = 2,
+    Duration baseDelay = const Duration(milliseconds: 300),
   }) async {
     _ensureInitialized();
     final client = _client!;

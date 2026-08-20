@@ -37,7 +37,6 @@ class ArticleDetailScreen extends StatefulWidget {
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   late final Stopwatch _stopwatch;
-  Timer? _tickTimer;
   final ScrollController _scrollController = ScrollController();
   late int _currentIndex;
   late final PageController _pageController;
@@ -50,6 +49,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
   final List<String> _contentChunks = [];
   String? _chunksKey;
+  String _firstTextChunk = '';
   int _revealedChunks = 0;
 
   void _openInBrowser(Article art) {
@@ -68,9 +68,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     _pageController = PageController(initialPage: _currentIndex);
     _stopwatch = Stopwatch()..start();
     _scrollController.addListener(_scrollListener);
-    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
     _initTts();
     _recordHistory(widget.article);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -364,20 +361,23 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _pageController.dispose();
-    _tickTimer?.cancel();
     _stopwatch.stop();
     final elapsed = _stopwatch.elapsed.inSeconds;
-    _markReadIfEnough(elapsed);
+    // Pobierz referencję PRZED dispose — context.read po dispose jest
+    // bezpieczny (nie rejestruje zależności), ale notifyListeners może
+    // wywołać rebuild drzewa. Dlatego使用.safe pattern.
+    final provider = context.read<NewsProvider>();
+    _markReadIfEnough(elapsed, provider);
     super.dispose();
   }
 
-  void _markReadIfEnough(int seconds) {
+  void _markReadIfEnough(int seconds, NewsProvider provider) {
     final article = _currentArticle;
     if (seconds > article.readTimeSeconds) {
       article.readTimeSeconds = seconds;
     }
     if (seconds >= _kReadThresholdSeconds && !article.isRead) {
-      context.read<NewsProvider>().markArticleRead(article);
+      provider.markArticleRead(article);
     }
   }
 
@@ -386,12 +386,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_hasNavigation) {
-      return PageView(
+      return PageView.builder(
         controller: _pageController,
         physics: const _CalmPageScrollPhysics(),
+        itemCount: widget.articles!.length,
         onPageChanged: (index) {
           _stopwatch.stop();
-          _markReadIfEnough(_stopwatch.elapsed.inSeconds);
+          _markReadIfEnough(_stopwatch.elapsed.inSeconds, context.read<NewsProvider>());
           // Zmiana artykułu przerywa czytanie lektora (także po pauzie).
           _tts.stop();
           _ttsQueue.clear();
@@ -407,10 +408,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           _stopwatch.start();
           _recordHistory(_currentArticle);
         },
-        children: [
-          for (int i = 0; i < widget.articles!.length; i++)
-            _buildArticlePage(context, widget.articles![i]),
-        ],
+        itemBuilder: (context, i) => _buildArticlePage(context, widget.articles![i]),
       );
     }
     return _buildArticlePage(context, widget.article);
@@ -563,6 +561,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         ..clear()
         ..addAll(_splitContentIntoChunks(content));
       _revealedChunks = math.min(1, _contentChunks.length);
+      // Próbką porównania jest pierwszy chunk z rzeczywistym tekstem
+      // (początek treści może być np. <figure> albo pustym kontenerem).
+      // Liczone raz przy budowie chunków, nie przy każdym rebuildzie.
+      _firstTextChunk = _contentChunks.firstWhere(
+        (c) => ReaderService.textContent(c).trim().isNotEmpty,
+        orElse: () => content,
+      );
     }
     return _contentChunks;
   }
@@ -613,15 +618,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     if (hasFullContent) {
       final chunks = _chunksFor(art);
       final visible = _revealedChunks.clamp(1, chunks.length);
-      // Próbką porównania jest pierwszy chunk, który zawiera rzeczywisty tekst
-      // (początek treści może być np. <figure> albo pustym kontenerem).
-      final firstTextChunk = chunks.firstWhere(
-        (c) => ReaderService.textContent(c).trim().isNotEmpty,
-        orElse: () => art.fullContent ?? '',
-      );
       final showLead = !ReaderService.isLeadDuplicated(
         art.translatedDescription ?? art.description,
-        firstTextChunk,
+        _firstTextChunk,
       );
       return Column(
         key: const ValueKey('progressive'),

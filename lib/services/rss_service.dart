@@ -43,8 +43,8 @@ class RssService {
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
           'Cache-Control': 'no-cache',
         },
-        timeout: const Duration(seconds: 15),
-        maxRetries: 3,
+        timeout: const Duration(seconds: 10),
+        maxRetries: 1,
       );
 
       if (response?.statusCode == 200) {
@@ -197,7 +197,7 @@ xml = utf8.decode(response!.bodyBytes, allowMalformed: true);
   }
 
   DateTime _parseDate(String? dateValue) {
-    if (dateValue == null || dateValue.isEmpty) return DateTime.now();
+    if (dateValue == null || dateValue.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0);
     try {
       return DateTime.parse(dateValue);
     } catch (_) {
@@ -205,7 +205,9 @@ xml = utf8.decode(response!.bodyBytes, allowMalformed: true);
         final format = DateFormat("EEE, dd MMM yyyy HH:mm:ss Z", 'en_US');
         return format.parse(dateValue);
       } catch (_) {
-        return DateTime.now();
+        // Zamiast DateTime.now() (które promuje artykuł na górę listy),
+        // zwróć datę epoch — artykuł trafi na dół (starszy niż wszystkie).
+        return DateTime.fromMillisecondsSinceEpoch(0);
       }
     }
   }
@@ -221,8 +223,8 @@ xml = utf8.decode(response!.bodyBytes, allowMalformed: true);
           'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
         },
-        timeout: const Duration(seconds: 15),
-        maxRetries: 3,
+        timeout: const Duration(seconds: 10),
+        maxRetries: 1,
       );
 
       if (response?.statusCode == 200) {

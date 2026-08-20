@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:prasowka/services/http_client.dart';
 import 'package:flutter/foundation.dart';
 
 class CityCoordinates {
@@ -49,9 +49,12 @@ class WeatherService {
   Future<WeatherData?> fetchWeather(CityCoordinates city) async {
     try {
       final url = '$_weatherBase?latitude=${city.latitude}&longitude=${city.longitude}&current=temperature_2m,wind_speed_10m,relative_humidity_2m,weather_code';
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      final response = await HttpClient.instance.get(
+        Uri.parse(url),
+        timeout: const Duration(seconds: 10),
+      );
+      if (response?.statusCode == 200) {
+        final data = json.decode(response!.body);
         final current = data['current'];
         if (current == null) return null;
         return WeatherData(
@@ -61,7 +64,7 @@ class WeatherService {
           condition: _mapWeatherCode(current['weather_code']),
         );
       } else {
-        debugPrint('Sowa Weather: API Error ${response.statusCode}');
+        debugPrint('Sowa Weather: API Error ${response?.statusCode}');
       }
     } catch (e) {
       debugPrint('Sowa Weather: Exception during fetchWeather: $e');
@@ -72,9 +75,12 @@ class WeatherService {
   Future<AirQualityData?> fetchAirQuality(CityCoordinates city) async {
     try {
       final url = '$_airBase?latitude=${city.latitude}&longitude=${city.longitude}&current=pm2_5,pm10,nitrogen_dioxide,ozone';
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      final response = await HttpClient.instance.get(
+        Uri.parse(url),
+        timeout: const Duration(seconds: 10),
+      );
+      if (response?.statusCode == 200) {
+        final data = json.decode(response!.body);
         final current = data['current'];
         if (current == null) return null;
         final pm25 = (current['pm2_5'] ?? 0).toDouble();
@@ -86,7 +92,7 @@ class WeatherService {
           level: _aqiLevel(pm25),
         );
       } else {
-        debugPrint('Sowa AirQuality: API Error ${response.statusCode}');
+        debugPrint('Sowa AirQuality: API Error ${response?.statusCode}');
       }
     } catch (e) {
       debugPrint('Sowa AirQuality: Exception during fetchAirQuality: $e');

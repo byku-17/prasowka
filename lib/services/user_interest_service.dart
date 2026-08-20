@@ -3,7 +3,8 @@ import 'package:prasowka/models/article.dart';
 
 class UserInterestService {
   static const String interestsBoxName = 'user_interests';
-  
+  final Map<String, double> _scoreCache = {};
+
   Future<void> init() async {
     if (!Hive.isBoxOpen(interestsBoxName)) {
       await Hive.openBox<double>(interestsBoxName);
@@ -20,11 +21,11 @@ class UserInterestService {
       updates[tag] = currentScore + weight;
     }
     await box.putAll(updates);
-    article.cachedScore = null; // Unieważnij cache po zmianie zainteresowań
+    _invalidateCache(article);
   }
 
   double calculateScore(Article article) {
-    if (article.cachedScore != null) return article.cachedScore!;
+    if (_scoreCache.containsKey(article.id)) return _scoreCache[article.id]!;
     
     final box = Hive.box<double>(interestsBoxName);
     final tags = article.tags;
@@ -33,7 +34,18 @@ class UserInterestService {
     for (var tag in tags) {
       score += box.get(tag, defaultValue: 0.0) ?? 0.0;
     }
-    article.cachedScore = score;
+    _scoreCache[article.id] = score;
     return score;
+  }
+
+  void _invalidateCache(Article article) {
+    _scoreCache.remove(article.id);
+  }
+
+  /// Czyści cache score'ów dla WSZYSTKICH artykułów. Wymagane po każdej
+  /// zmianie zainteresowań — wagi tagów się zmieniły, więc wszystkie
+  /// zapamiętane score'y są nieaktualne.
+  void clearScoreCache() {
+    _scoreCache.clear();
   }
 }

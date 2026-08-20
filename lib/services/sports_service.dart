@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:prasowka/services/http_client.dart';
 import 'package:prasowka/models/sport_event.dart';
 import 'package:prasowka/models/sport_league.dart';
 import 'package:prasowka/utils/canonical_key.dart';
@@ -188,13 +188,14 @@ class SportsService {
     final List<SportEvent> result = [];
 
     try {
-      final response = await http.get(
+      final response = await HttpClient.instance.get(
         Uri.parse('https://api.sportdb.dev/api/flashscore/football/live'),
         headers: {'X-API-Key': _sportDbKey, 'Accept': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+        timeout: const Duration(seconds: 10),
+      );
 
-      if (response.statusCode == 200) {
-        final List matches = json.decode(response.body);
+      if (response?.statusCode == 200) {
+        final List matches = json.decode(response!.body);
 
         for (var m in matches) {
           try {
@@ -239,13 +240,14 @@ class SportsService {
 
     // Also fetch basketball
     try {
-      final response = await http.get(
+      final response = await HttpClient.instance.get(
         Uri.parse('https://api.sportdb.dev/api/flashscore/basketball/live'),
         headers: {'X-API-Key': _sportDbKey, 'Accept': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+        timeout: const Duration(seconds: 10),
+      );
 
-      if (response.statusCode == 200) {
-        final List matches = json.decode(response.body);
+      if (response?.statusCode == 200) {
+        final List matches = json.decode(response!.body);
         for (var m in matches) {
           try {
             final eventStage = (m['eventStage'] ?? '').toString();
@@ -273,13 +275,14 @@ class SportsService {
 
     // Also fetch tennis
     try {
-      final response = await http.get(
+      final response = await HttpClient.instance.get(
         Uri.parse('https://api.sportdb.dev/api/flashscore/tennis/live'),
         headers: {'X-API-Key': _sportDbKey, 'Accept': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+        timeout: const Duration(seconds: 10),
+      );
 
-      if (response.statusCode == 200) {
-        final List matches = json.decode(response.body);
+      if (response?.statusCode == 200) {
+        final List matches = json.decode(response!.body);
         for (var m in matches) {
           try {
             final eventStage = (m['eventStage'] ?? '').toString();
@@ -394,13 +397,17 @@ class SportsService {
     for (final dateStr in dates) {
       try {
         final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard?dates=$dateStr';
-        final response = await http.get(Uri.parse(url), headers: {
-          'User-Agent': _espnUserAgent,
-          'Accept': 'application/json',
-        }).timeout(const Duration(seconds: 10));
+        final response = await HttpClient.instance.get(
+          Uri.parse(url),
+          headers: {
+            'User-Agent': _espnUserAgent,
+            'Accept': 'application/json',
+          },
+          timeout: const Duration(seconds: 10),
+        );
 
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
+if (response?.statusCode == 200) {
+        final data = json.decode(response!.body);
           final List events = data['events'] ?? [];
 
           for (var e in events) {
@@ -446,13 +453,17 @@ class SportsService {
   Future<MatchStats?> _fetchEspnSummary(String sport, String league, String eventId) async {
     try {
       final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/summary?event=$eventId';
-      final response = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _espnUserAgent,
-        'Accept': 'application/json',
-      }).timeout(const Duration(seconds: 10));
+      final response = await HttpClient.instance.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent': _espnUserAgent,
+          'Accept': 'application/json',
+        },
+        timeout: const Duration(seconds: 10),
+      );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (response?.statusCode == 200) {
+        final data = json.decode(response!.body);
         final List<MatchStatRow> rows = [];
 
         // Format 1: data['statistics'] as List of {name, labels, values}
@@ -568,13 +579,17 @@ class SportsService {
       final now = DateTime.now();
       final todayStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
       final url = 'https://site.api.espn.com/apis/site/v2/sports/$sport/$league/scoreboard?dates=$todayStr';
-      final response = await http.get(Uri.parse(url), headers: {
-        'User-Agent': _espnUserAgent,
-        'Accept': 'application/json',
-      }).timeout(const Duration(seconds: 10));
+      final response = await HttpClient.instance.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent': _espnUserAgent,
+          'Accept': 'application/json',
+        },
+        timeout: const Duration(seconds: 10),
+      );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (response?.statusCode == 200) {
+        final data = json.decode(response!.body);
         final List events = data['events'] ?? [];
         final List<SportEvent> result = [];
 
@@ -638,12 +653,13 @@ class SportsService {
 
   Future<List<SportEvent>> _fetchF1(DateTime referenceNow) async {
     try {
-      final response = await http.get(
+      final response = await HttpClient.instance.get(
         Uri.parse('https://api.openf1.org/v1/sessions?year=${referenceNow.year}'),
-      ).timeout(const Duration(seconds: 10));
+        timeout: const Duration(seconds: 10),
+      );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (response?.statusCode == 200) {
+        final data = json.decode(response!.body);
         final List sessions = data is List ? data : [];
         final races = sessions.where((s) => s['session_type'] == 'Race').toList()
           ..sort((a, b) => DateTime.parse(a['date_start']).compareTo(DateTime.parse(b['date_start'])));
@@ -674,10 +690,13 @@ class SportsService {
       final dateStr = referenceNow.toIso8601String().split('T')[0];
       final sport = league.sportType == SportType.tennis ? 'Tennis' : 'Soccer';
       final url = 'https://www.thesportsdb.com/api/v1/json/$_theSportsDbKey/eventsday.php?d=$dateStr&s=$sport';
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final response = await HttpClient.instance.get(
+        Uri.parse(url),
+        timeout: const Duration(seconds: 10),
+      );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (response?.statusCode == 200) {
+        final data = json.decode(response!.body);
         final List events = data['events'] ?? [];
         final List<SportEvent> result = [];
 

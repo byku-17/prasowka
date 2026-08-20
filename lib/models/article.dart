@@ -63,7 +63,6 @@ class Article extends HiveObject {
   List<String> tagIds;
 
   List<String>? _cachedTags;
-  double? cachedScore;
 
   List<String> get tags {
     if (_cachedTags != null) return _cachedTags!;
@@ -101,7 +100,10 @@ class Article extends HiveObject {
   }) : tagIds = tagIds ?? [];
 
   int get estimatedReadingTime {
-    final words = (content.isNotEmpty ? content : description).split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    // Usuń tagi HTML przed liczeniem słów
+    final raw = content.isNotEmpty ? content : description;
+    final text = raw.replaceAll(RegExp(r'<[^>]*>'), ' ');
+    final words = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
     final minutes = (words / 200).ceil();
     return minutes > 0 ? minutes : 1;
   }

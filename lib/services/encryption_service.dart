@@ -10,18 +10,23 @@ class EncryptionService {
   static const _saltKey = 'encryption_salt';
   static const _ivKey = 'encryption_iv';
 
-  static const _pbkdf2Iterations = 30000;
+  // Liczba iteracji PBKDF2 dla NOWO szyfrowanych danych. Uwaga: zmiana tej
+  // wartości zmienia klucz dla istniejących danych — traktuj jak "na zawsze".
+  static const _pbkdf2Iterations = 100000;
+  // Historyczne liczby iteracji do odszyfrowania starszych danych (kolejność prób).
+  static const _fallbackPbkdf2Iterations = [30000];
   static const _keyLengthBytes = 32;
 
-  // Cache kluczy w pamięci (klucz: userId, wartość: Key)
+  // Cache kluczy w pamięci (klucz: "<iterations>|<userId>").
   final Map<String, Key> _keyCache = {};
   final Map<String, Key> _legacyKeyCache = {};
 
-  Future<Key> _getOrCreateKey(String userId, String password) async {
-    if (_keyCache.containsKey(userId)) return _keyCache[userId]!;
+  Future<Key> _getOrCreateKey(String userId, String password, {required int iterations}) async {
+    final cacheKey = '$iterations|$userId';
+    if (_keyCache.containsKey(cacheKey)) return _keyCache[cacheKey]!;
     final salt = await _getOrCreateSalt(userId);
-    final key = Key(_deriveKey(password, salt));
-    _keyCache[userId] = key;
+    final key = Key(_deriveKey(password, salt, iterations));
+    _keyCache[cacheKey] = key;
     return key;
   }
 
@@ -58,9 +63,9 @@ class EncryptionService {
     return Uint8List.fromList(List.generate(16, (_) => rng.nextInt(256)));
   }
 
-  Uint8List _deriveKey(String password, Uint8List salt) {
+  Uint8List _deriveKey(String password, Uint8List salt, int iterations) {
     final derivator = PBKDF2KeyDerivator(HMac(SHA256Digest(), 64))
-      ..init(Pbkdf2Parameters(salt, _pbkdf2Iterations, _keyLengthBytes));
+      ..init(Pbkdf2Parameters(salt, iterations, _keyLengthBytes));
     return derivator.process(utf8.encode(password));
   }
 
@@ -90,7 +95,7 @@ class EncryptionService {
   /// Szyfruje string AES-256-CBC z losowym IV.
   /// Format wyjściowy: "base64(iv):base64(ciphertext)" — IV nie jest współdzielone.
   Future<String> encryptText(String plainText, String userId, String password) async {
-    final key = await _getOrCreateKey(userId, password);
+    final key = await _getOrCreateKey(userId, password, iterations: _pbkdf2Iterations);
     final iv = IV.fromSecureRandom(16);
     final encrypter = Encrypter(AES(key, mode: AESMode.cbc));
     final encrypted = encrypter.encrypt(plainText, iv: iv);
@@ -102,13 +107,17 @@ class EncryptionService {
   /// (bez wbudowanego IV) używa zapisanego statycznego IV — wsteczna kompatybilność.
   Future<String> decryptText(String encryptedText, String userId, String password) async {
     final iv = await _extractIV(userId, encryptedText);
-    final newKey = await _getOrCreateKey(userId, password);
-    try {
-      return _decrypt(encryptedText, iv, newKey);
-    } catch (_) {
-      final legacyKey = await _getOrCreateLegacyKey(userId, password);
-      return _decrypt(encryptedText, iv, legacyKey);
+    // Próbuj kolejno wszystkie znane wersje klucza PBKDF2, potem legacy.
+    for (final iterations in <int>[_pbkdf2Iterations, ..._fallbackPbkdf2Iterations]) {
+      try {
+        final key = await _getOrCreateKey(userId, password, iterations: iterations);
+        return _decrypt(encryptedText, iv, key);
+      } catch (_) {
+        // zła liczba iteracji — spróbuj następnej wersji klucza
+      }
     }
+    final legacyKey = await _getOrCreateLegacyKey(userId, password);
+    return _decrypt(encryptedText, iv, legacyKey);
   }
 
   String _decrypt(String encryptedText, IV iv, Key key) {

@@ -139,22 +139,27 @@ Future<int> _handleRssNotifications(StorageService storage, UserInterestService 
 
   final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
 
-  for (var source in sources) {
+  // Fetch all sources in parallel
+  final results = await Future.wait(sources.map((source) async {
     try {
-      final articles = await rss.fetchArticles(source);
-      for (var article in articles) {
-        if (!storage.wasNotified(article.id)) {
-          final score = interest.calculateScore(article);
-          if (wantNew || (wantImportant && score >= 3.0)) {
-            await _showNotification(article);
-            await storage.markAsNotified(article.id);
-            count++;
-            if (startCount + count >= _maxNotificationsPerRun) return count;
-          }
-        }
-      }
+      return await rss.fetchArticles(source);
     } catch (e) {
       debugPrint('Sowa Wartownik: Błąd pobierania źródła ${source.name}: $e');
+      return <Article>[];
+    }
+  }));
+
+  for (var articles in results) {
+    for (var article in articles) {
+      if (!storage.wasNotified(article.id)) {
+        final score = interest.calculateScore(article);
+        if (wantNew || (wantImportant && score >= 3.0)) {
+          await _showNotification(article);
+          await storage.markAsNotified(article.id);
+          count++;
+          if (startCount + count >= _maxNotificationsPerRun) return count;
+        }
+      }
     }
   }
   return count;
@@ -176,16 +181,22 @@ Future<int> _handleDailySummary(StorageService storage, UserInterestService inte
 
   final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
   final scored = <Article>[];
-  for (var source in sources) {
+
+  // Fetch all sources in parallel
+  final results = await Future.wait(sources.map((source) async {
     try {
-      final articles = await rss.fetchArticles(source);
-      for (var article in articles) {
-        if (storage.wasNotified(article.id)) continue;
-        final score = interest.calculateScore(article);
-        if (score >= 3.0) scored.add(article);
-      }
+      return await rss.fetchArticles(source);
     } catch (e) {
       debugPrint('Sowa Wartownik: Błąd podsumowania źródła ${source.name}: $e');
+      return <Article>[];
+    }
+  }));
+
+  for (var articles in results) {
+    for (var article in articles) {
+      if (storage.wasNotified(article.id)) continue;
+      final score = interest.calculateScore(article);
+      if (score >= 3.0) scored.add(article);
     }
   }
   if (scored.isEmpty) {

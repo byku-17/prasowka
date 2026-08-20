@@ -186,6 +186,14 @@ class NewsProvider with ChangeNotifier {
         ? Hive.box('settings').get('articleSortOrder', defaultValue: 'unread') as String
         : 'unread';
 
+    // Pre-calculate scores for "popular" sort (needed in compute isolate)
+    final scoreMap = <String, double>{};
+    if (sortOrder == 'popular') {
+      for (var a in accumulated) {
+        scoreMap[a.id] = _interestService.calculateScore(a);
+      }
+    }
+
     List<Article> finalList;
     if (accumulated.length > 50) {
       final transferList = accumulated.map((a) => a.toTransferMap()).toList();
@@ -195,6 +203,7 @@ class NewsProvider with ChangeNotifier {
         'categoryId': categoryId,
         'shuffle': forceRefresh,
         'sortOrder': sortOrder,
+        'scores': scoreMap,
       });
       _articlesMap[categoryId] = mixed;
       finalList = mixed;
@@ -277,6 +286,7 @@ class NewsProvider with ChangeNotifier {
       if (_requestIds[categoryId] != requestId) return;
 
       await _sortAndSave(categoryId, accumulated, keywords, forceRefresh);
+      _pruneOldData();
 
       _loadingMap[categoryId] = false;
       _hasEverLoadedMap[categoryId] = true;
@@ -294,7 +304,7 @@ class NewsProvider with ChangeNotifier {
     if (filtered.isEmpty) return [];
     
     final List<MapEntry<Article, double>> scored = filtered.map((a) {
-      final base = a.cachedScore ?? _interestService.calculateScore(a);
+      final base = _interestService.calculateScore(a);
       final withImage = base > 0 && a.imageUrl != null ? base * 1.5 : base;
       return MapEntry(a, withImage);
     }).where((e) => e.value > 0).toList();
@@ -315,7 +325,7 @@ class NewsProvider with ChangeNotifier {
     }
     
     final List<MapEntry<Article, double>> scored = allArticles.map((a) {
-      final base = a.cachedScore ?? _interestService.calculateScore(a);
+      final base = _interestService.calculateScore(a);
       final withImage = base > 0 && a.imageUrl != null ? base * 1.5 : base;
       return MapEntry(a, withImage);
     }).where((e) => e.value > 0).toList();
@@ -355,9 +365,10 @@ class NewsProvider with ChangeNotifier {
     });
 
     if (sortOrder == 'popular') {
+      final scores = params['scores'] as Map<String, double>? ?? {};
       list.sort((a, b) {
-        final sa = a.cachedScore ?? 0.0;
-        final sb = b.cachedScore ?? 0.0;
+        final sa = scores[a.id] ?? 0.0;
+        final sb = scores[b.id] ?? 0.0;
         if (sa != sb) return sb.compareTo(sa);
         return b.publishedAt.compareTo(a.publishedAt);
       });
@@ -430,12 +441,12 @@ class NewsProvider with ChangeNotifier {
       }
     }
 
-    if (sortOrder != 'latest') {
-      final readArticles = list.where((a) => a.isRead).toList();
-      final unreadArticles = list.where((a) => !a.isRead).toList();
-      list.clear();
-      list.addAll([...unreadArticles, ...readArticles]);
-    }
+    // Przeczytane zawsze na koniec kolejki — niezależnie od sortowania,
+    // w tym „Najnowsze” (nie biorą udziału w sortowaniu po dacie).
+    final readArticles = list.where((a) => a.isRead).toList();
+    final unreadArticles = list.where((a) => !a.isRead).toList();
+    list.clear();
+    list.addAll([...unreadArticles, ...readArticles]);
 
     return list;
   }
@@ -478,7 +489,7 @@ class NewsProvider with ChangeNotifier {
     if (article.isRead) return;
     article.isRead = true;
     _storageService.saveArticleState(article);
-    article.cachedScore = null;
+    
     // Przesuń przeczytany artykuł na koniec każdej listy, w której
     // występuje — tak jak robi to _sortAndMixArticlesStatic przy
     // odświeżaniu.
@@ -507,7 +518,9 @@ class NewsProvider with ChangeNotifier {
   }
 
   void _clearCachedScores() {
-    for (var list in _articlesMap.values) { for (var a in list) { a.cachedScore = null; } }
+    // Po zmianie zainteresowań wszystkie score'y są nieaktualne
+    // (nie tylko zinterakcjonowanego artykułu).
+    _interestService.clearScoreCache();
   }
 
   Future<void> _saveArticleState(Article article) async {
@@ -609,6 +622,38 @@ class NewsProvider with ChangeNotifier {
 
   void _invalidateSavedCache() {
     _cachedSavedArticles = null;
+  }
+
+  /// Ogranicza zużycie pamięci — usuwa stare kategorie z _articlesMap
+  /// (zachowuje ostatnie 5) oraz czyści _fetchFailedIds/_requestIds.
+  void _pruneOldData() {
+    // Zachowaj ostatnie 5 kategorii + bieżącą
+    if (_articlesMap.length > 6) {
+      final keys = _articlesMap.keys.toList();
+      final current = _selectedCategory.id;
+      final toRemove = keys.where((k) => k != current).take(keys.length - 5).toList();
+      for (final k in toRemove) {
+        _articlesMap.remove(k);
+        _loadingMap.remove(k);
+        _errorMap.remove(k);
+        _hasEverLoadedMap.remove(k);
+        _lastFetchTimes.remove(k);
+        _requestIds.remove(k);
+      }
+    }
+    // Ogranicz _fetchFailedIds do ostatnich 200
+    if (_fetchFailedIds.length > 200) {
+      final toRemove = _fetchFailedIds.take(_fetchFailedIds.length - 200).toList();
+      _fetchFailedIds.removeAll(toRemove);
+    }
+    // Ogranicz _requestIds do ostatnich 50
+    if (_requestIds.length > 50) {
+      final keys = _requestIds.keys.toList();
+      final toRemove = keys.take(keys.length - 50).toList();
+      for (final k in toRemove) {
+        _requestIds.remove(k);
+      }
+    }
   }
 
   Future<void> toggleArticleTag(Article article, String tagId) async {
