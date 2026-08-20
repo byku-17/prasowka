@@ -4,6 +4,7 @@ import 'package:prasowka/models/article.dart';
 class UserInterestService {
   static const String interestsBoxName = 'user_interests';
   final Map<String, double> _scoreCache = {};
+  static const int _scoreCacheLimit = 500;
 
   Future<void> init() async {
     if (!Hive.isBoxOpen(interestsBoxName)) {
@@ -35,6 +36,11 @@ class UserInterestService {
       score += box.get(tag, defaultValue: 0.0) ?? 0.0;
     }
     _scoreCache[article.id] = score;
+    // Ogranicz wzrost cache'u — starsze wpisy wyrzucamy (LinkedHashMap
+    // zachowuje kolejność wstawiania).
+    if (_scoreCache.length > _scoreCacheLimit) {
+      _scoreCache.remove(_scoreCache.keys.first);
+    }
     return score;
   }
 
