@@ -215,7 +215,7 @@ class NewsProvider with ChangeNotifier {
       finalList = mixed;
     } else {
       _sortAndMixArticlesSync(accumulated, keywords ?? _lastKeywords, categoryId,
-          shuffle: forceRefresh, sortOrder: sortOrder);
+          shuffle: forceRefresh, sortOrder: sortOrder, scores: scoreMap);
       _articlesMap[categoryId] = accumulated;
       finalList = accumulated;
     }
@@ -458,13 +458,14 @@ class NewsProvider with ChangeNotifier {
   }
 
   void _sortAndMixArticlesSync(List<Article> list, List<String>? teams, String categoryId,
-      {bool shuffle = false, String sortOrder = 'unread'}) {
+      {bool shuffle = false, String sortOrder = 'unread', Map<String, double> scores = const {}}) {
     final result = _sortAndMixArticlesStatic({
       'list': list,
       'teams': teams,
       'categoryId': categoryId,
       'shuffle': shuffle,
       'sortOrder': sortOrder,
+      'scores': scores,
     });
     list.clear();
     list.addAll(result);
