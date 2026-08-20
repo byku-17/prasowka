@@ -158,7 +158,13 @@ class NewsProvider with ChangeNotifier {
     }
     if (days <= 0) return;
     final cutoff = DateTime.now().subtract(Duration(days: days));
-    list.removeWhere((a) => a.publishedAt.isBefore(cutoff));
+    list.removeWhere((a) {
+      // Daty-sentinel (epoch) = nieznana data publikacji (nieparsowalny format
+      // w RSS). Nie traktuj ich jako "ancient" — inaczej retencja kasowałaby
+      // artykuły z takich feedów.
+      if (a.publishedAt.millisecondsSinceEpoch <= 0) return false;
+      return a.publishedAt.isBefore(cutoff);
+    });
   }
 
   /// Usuwa z listy artykuły zawierające słowa wykluczające w tytule lub opisie.
