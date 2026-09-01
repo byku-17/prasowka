@@ -38,7 +38,12 @@ class _AuthScreenState extends State<AuthScreen> {
       error = await auth.signInWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
       if (error == null) {
         sync.setEncryptionPassword(_passwordCtrl.text);
-        sync.mergeFirstLogin();
+        final result = await sync.mergeFirstLogin();
+        if (mounted && result == MergeResult.pulled) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Przywrócono ustawienia z chmury')),
+          );
+        }
       }
     } else {
       error = await auth.registerWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
@@ -60,7 +65,12 @@ class _AuthScreenState extends State<AuthScreen> {
     if (error == null) {
       // Google sign-in: use UID as encryption key (no password available)
       sync.setEncryptionPassword(auth.user?.uid ?? 'fallback');
-      sync.mergeFirstLogin();
+      final result = await sync.mergeFirstLogin();
+      if (mounted && result == MergeResult.pulled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Przywrócono ustawienia z chmury')),
+        );
+      }
     }
     if (!mounted) return;
     setState(() { _loading = false; _error = error; });

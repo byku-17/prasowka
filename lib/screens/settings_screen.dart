@@ -87,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           final messenger = ScaffoldMessenger.of(context);
           await sync.pullAll();
           messenger.showSnackBar(
-            const SnackBar(content: Text('Dane pobrane z chmury — uruchom ponownie')),
+            const SnackBar(content: Text('Dane pobrane z chmury')),
           );
         },
       ));

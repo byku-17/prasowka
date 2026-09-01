@@ -5,6 +5,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:prasowka/services/auth_service.dart';
 import 'package:prasowka/services/encryption_service.dart';
 
+enum MergeResult { pulled, pushed, nothing, error }
+
 class SyncService extends ChangeNotifier {
   static const String scopeSettings = 'settings';
   static const String scopeTags = 'tags';
@@ -103,14 +105,21 @@ class SyncService extends ChangeNotifier {
 
   // ─── MERGE: push → pull (first login) ───
 
-  Future<void> mergeFirstLogin() async {
-    if (_uid == null) return;
+  Future<MergeResult> mergeFirstLogin() async {
+    if (_uid == null) return MergeResult.error;
     
-    final hasRemoteData = await _checkRemoteData();
-    if (hasRemoteData) {
-      await pullAll();
-    } else {
-      await pushAll();
+    try {
+      final hasRemoteData = await _checkRemoteData();
+      if (hasRemoteData) {
+        await pullAll();
+        return MergeResult.pulled;
+      } else {
+        await pushAll();
+        return MergeResult.pushed;
+      }
+    } catch (e) {
+      debugPrint('Sync mergeFirstLogin error: $e');
+      return MergeResult.error;
     }
   }
 
@@ -128,10 +137,37 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<void> _pullSettings() async {
-    // NIE nadpisujemy localnych ustawień z Firestore
-    // Ustawienia są zawsze local-first
-    debugPrint('Sync: _pullSettings skipped (local-first mode)');
-    return;
+    final doc = await _userDoc('settings').doc('main').get();
+    if (!doc.exists) {
+      debugPrint('Sync: _pullSettings — brak zdalnych ustawień');
+      return;
+    }
+    final remote = doc.data();
+    if (remote == null || remote.isEmpty) return;
+
+    final box = Hive.box('settings');
+    int imported = 0;
+
+    // Na nowym urządzeniu (onboarding nieukończony) — zastąp wszystkie
+    // ustawienia zdalnymi. Na istniejącym — uzupełnij tylko brakujące klucze.
+    final isNewDevice = box.get('onboardingCompleted', defaultValue: false) == false;
+
+    if (isNewDevice) {
+      // Pełna migracja: zastąp ustawienia zdalnymi
+      for (final entry in remote.entries) {
+        await box.put(entry.key, entry.value);
+        imported++;
+      }
+    } else {
+      // Uzupełnij tylko brakujące klucze (nie nadpisuj lokalnych zmian)
+      for (final entry in remote.entries) {
+        if (!box.containsKey(entry.key)) {
+          await box.put(entry.key, entry.value);
+          imported++;
+        }
+      }
+    }
+    debugPrint('Sync: _pullSettings — zaimportowano $imported kluczy z ${remote.length} (nowe_urzadzenie=$isNewDevice)');
   }
 
   // ─── TAGS (encrypted) ───
