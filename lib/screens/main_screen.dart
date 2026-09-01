@@ -234,11 +234,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         await SystemNavigator.pop();
       },
       child: Scaffold(
-        body: PageView(
+        body: PageView.builder(
           controller: _pageController,
           onPageChanged: _onPageChanged,
           physics: const ClampingScrollPhysics(),
-          children: _screens,
+          itemCount: _screens.length,
+          itemBuilder: (context, index) => _screens[index],
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _openSearch,

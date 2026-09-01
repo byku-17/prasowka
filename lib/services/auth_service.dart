@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -5,12 +6,19 @@ import 'package:google_sign_in/google_sign_in.dart';
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _google = GoogleSignIn();
+  late final StreamSubscription<User?> _authSub;
 
   User? get user => _auth.currentUser;
   bool get isLoggedIn => user != null;
 
   AuthService() {
-    _auth.authStateChanges().listen((_) => notifyListeners());
+    _authSub = _auth.authStateChanges().listen((_) => notifyListeners());
+  }
+
+  @override
+  void dispose() {
+    _authSub.cancel();
+    super.dispose();
   }
 
   Future<String?> signInWithEmail(String email, String password) async {

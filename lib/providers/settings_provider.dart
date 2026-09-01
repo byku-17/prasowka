@@ -839,4 +839,10 @@ class SettingsProvider with ChangeNotifier {
         .where((c) => !excluded.contains(c.id) && _activeCategoryIds.contains(c.id))
         .toList();
   }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
 }

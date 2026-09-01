@@ -36,11 +36,12 @@ void main() async {
     if (kDebugMode) {
       try { await dotenv.load(fileName: ".env"); } catch (_) {}
     }
-    await RemoteConfigService().init();
-    await Hive.initFlutter();
-    
-    // Inicjalizuj shared HTTP client
-    HttpClient.instance.init();
+    // Równoległa inicjalizacja niezależnych serwisów startowych
+    await Future.wait([
+      RemoteConfigService().init(),
+      Hive.initFlutter(),
+      Future.sync(() => HttpClient.instance.init()),
+    ]);
 
     final settings = SettingsProvider();
     final news = NewsProvider();
@@ -53,6 +54,7 @@ void main() async {
       await settings.init();
       
       // Równoległa inicjalizacja niezależnych serwisów
+      news.attachSettings(settings);
       await Future.wait([
         news.init(),
         tags.init(),

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:prasowka/models/article.dart';
 import 'package:prasowka/models/news_category.dart';
 import 'package:prasowka/models/news_source.dart';
+import 'package:prasowka/providers/settings_provider.dart';
 import 'package:prasowka/services/rss_service.dart';
 import 'package:prasowka/services/storage_service.dart';
 import 'package:prasowka/services/reader_service.dart';
@@ -9,7 +10,6 @@ import 'package:prasowka/services/user_interest_service.dart';
 import 'package:prasowka/services/translation_service.dart';
 import 'package:prasowka/services/news_api_service.dart';
 import 'package:prasowka/services/connectivity_service.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
 class NewsProvider with ChangeNotifier {
   final RssService _rssService = RssService();
@@ -18,6 +18,9 @@ class NewsProvider with ChangeNotifier {
   final UserInterestService _interestService = UserInterestService();
   final TranslationService _translationService = TranslationService();
   final NewsApiService _newsApiService = NewsApiService();
+
+  SettingsProvider? _settings;
+  void attachSettings(SettingsProvider settings) => _settings = settings;
 
   final Map<String, List<Article>> _articlesMap = {};
   final Map<String, bool> _loadingMap = {};
@@ -153,10 +156,7 @@ class NewsProvider with ChangeNotifier {
 
   /// Usuwa z listy artykuły starsze niż ustawiony okres retencji (0 = nigdy).
   void _applyRetention(List<Article> list) {
-    int days = 0;
-    if (Hive.isBoxOpen('settings')) {
-      days = Hive.box('settings').get('articleRetentionDays', defaultValue: 0) as int;
-    }
+    final days = _settings?.articleRetentionDays ?? 0;
     if (days <= 0) return;
     final cutoff = DateTime.now().subtract(Duration(days: days));
     list.removeWhere((a) {
@@ -170,8 +170,7 @@ class NewsProvider with ChangeNotifier {
 
   /// Usuwa z listy artykuły zawierające słowa wykluczające w tytule lub opisie.
   void _applyExcludedWords(List<Article> list) {
-    if (!Hive.isBoxOpen('settings')) return;
-    final words = List<String>.from(Hive.box('settings').get('excludedWords', defaultValue: <String>[]));
+    final words = _settings?.excludedWords ?? [];
     if (words.isEmpty) return;
     final lower = words.map((w) => w.toLowerCase()).toList();
     list.removeWhere((a) {
@@ -189,9 +188,7 @@ class NewsProvider with ChangeNotifier {
     _lastFetchTimes[categoryId] = DateTime.now();
     _articlesMap[categoryId] = accumulated;
 
-    final sortOrder = Hive.isBoxOpen('settings')
-        ? Hive.box('settings').get('articleSortOrder', defaultValue: 'unread') as String
-        : 'unread';
+    final sortOrder = _settings?.articleSortOrder ?? 'unread';
 
     // Pre-calculate scores for "popular" sort (needed in compute isolate)
     final scoreMap = <String, double>{};
@@ -257,8 +254,7 @@ class NewsProvider with ChangeNotifier {
       _hasEverLoadedMap[categoryId] = true;
     }
 
-    final wifiOnly = Hive.isBoxOpen('settings') &&
-        Hive.box('settings').get('wifiOnlyRefresh', defaultValue: false) == true;
+    final wifiOnly = _settings?.wifiOnlyRefresh ?? false;
     if (wifiOnly && !(await ConnectivityService().isOnWifi())) {
       _loadingMap[categoryId] = false;
       _errorMap[categoryId] = 'Odświeżanie wymaga połączenia z Wi-Fi. Pokażę zapisane artykuły.';
