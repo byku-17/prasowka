@@ -125,20 +125,4 @@ class SportsRequestQueue {
     debugPrint('SportsQueue: $source zwracam pustą listę (default)');
     return <SportEvent>[];
   }
-
-  void resetAllCooldowns() {
-    _sourceStates.clear();
-  }
-
-  Map<String, dynamic> getDiagnostics() {
-    return {
-      'running': _running,
-      'waiting': _waiters.length,
-      'sources': _sourceStates.map((k, v) => MapEntry(k, {
-        'failures': v.failureCount,
-        'cooldownUntil': v.cooldownUntil?.toIso8601String(),
-        'isOnCooldown': v.isOnCooldown,
-      })),
-    };
-  }
 }

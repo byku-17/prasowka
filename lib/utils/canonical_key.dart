@@ -1,4 +1,5 @@
 import 'package:prasowka/models/sport_event.dart';
+import 'package:prasowka/utils/text_utils.dart';
 
 /// Canonical key for deduplicating matches across sources (SportDB, ESPN, TSDB).
 ///
@@ -27,14 +28,7 @@ class CanonicalKey {
   /// - usuwa "the ", "afc ", "cf "
   /// - scala białe znaki
   static String _normalizeTeam(String name) {
-    var s = name.toLowerCase().trim();
-
-    // Polskie znaki → łacińskie
-    const polish = 'ąćęłńóśźż';
-    const latin = 'acelnoszz';
-    for (int i = 0; i < polish.length; i++) {
-      s = s.replaceAll(polish[i], latin[i]);
-    }
+    var s = TextUtils.stripPolish(name).trim();
 
     // Usuń prefiksy/sufiksy klubowe
     const suffixes = [
@@ -59,13 +53,7 @@ class CanonicalKey {
   /// - scala warianty ("la liga" / "laliga" / "laliga Santander")
   /// - usuwa sponsorów
   static String _normalizeCompetition(String name) {
-    var s = name.toLowerCase().trim();
-
-    const polish = 'ąćęłńóśźż';
-    const latin = 'acelnoszz';
-    for (int i = 0; i < polish.length; i++) {
-      s = s.replaceAll(polish[i], latin[i]);
-    }
+    var s = TextUtils.stripPolish(name).trim();
 
     // Usuń sponsorów i副冠名
     s = s.replaceAll('santander', '').replaceAll('bank pekao sa', '')
@@ -126,10 +114,5 @@ class CanonicalKey {
     return '${date.year.toString().padLeft(4, '0')}'
         '${date.month.toString().padLeft(2, '0')}'
         '${date.day.toString().padLeft(2, '0')}';
-  }
-
-  /// Porównuje dwa MatchEvent pod kątem canonical key.
-  static bool isSameMatch(MatchEvent a, MatchEvent b) {
-    return generate(a) == generate(b);
   }
 }

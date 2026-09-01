@@ -1,12 +1,19 @@
 class TextUtils {
+  static const _polish = 'ąćęłńóśźż';
+  static const _latin = 'acelnoszz';
+
+  /// Zamienia polskie znaki na łacińskie (lowercase).
+  static String stripPolish(String text) {
+    var str = text.toLowerCase();
+    for (int i = 0; i < _polish.length; i++) {
+      str = str.replaceAll(_polish[i], _latin[i]);
+    }
+    return str;
+  }
+
   /// Normalizuje tekst do porównywania (polskie znaki → łacińskie, usuwa dodatki klubowe)
   static String normalize(String text) {
-    var str = text.toLowerCase();
-    const polish = 'ąćęłńóśźż';
-    const latin = 'acelnoszz';
-    for (int i = 0; i < polish.length; i++) {
-      str = str.replaceAll(polish[i], latin[i]);
-    }
+    var str = stripPolish(text);
     str = str.replaceAll('fc ', '').replaceAll(' ks ', '').replaceAll(' gks ', '').replaceAll(' pko bp ', '');
     return str.trim();
   }
