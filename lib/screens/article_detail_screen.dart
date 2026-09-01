@@ -296,9 +296,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
 
     final state = _contentCache[_currentArticle.id];
-    if (state != null && state.revealed < state.chunks.length) {
+    if (state != null && state.revealed.value < state.chunks.length) {
       if (pixels >= maxScroll - 150) {
-        setState(() => state.revealed++);
+        state.revealed.value++;
       }
     }
   }
@@ -363,6 +363,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _pageController.dispose();
+    for (final state in _contentCache.values) {
+      state.dispose();
+    }
+    _contentCache.clear();
     _stopwatch.stop();
     final elapsed = _stopwatch.elapsed.inSeconds;
     // Pobierz referencję PRZED dispose — context.read po dispose jest
@@ -566,11 +570,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       (c) => ReaderService.textContent(c).trim().isNotEmpty,
       orElse: () => content,
     );
-    final state = _ArticleContentState(key: key, chunks: chunks, firstTextChunk: firstTextChunk)
-      ..revealed = math.min(1, chunks.length);
+    final state = _ArticleContentState(key: key, chunks: chunks, firstTextChunk: firstTextChunk);
+    state.revealed.value = math.min(1, chunks.length);
     _contentCache[art.id] = state;
     if (_contentCache.length > _contentCacheLimit) {
-      _contentCache.remove(_contentCache.keys.first);
+      final removed = _contentCache.remove(_contentCache.keys.first);
+      removed?.dispose();
     }
     return state;
   }
@@ -645,42 +650,47 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         );
       }
 
-      final visible = state.revealed.clamp(1, chunks.length);
       final showLead = !ReaderService.isLeadDuplicated(
         art.translatedDescription ?? art.description,
         state.firstTextChunk,
       );
-      return Column(
-        key: const ValueKey('progressive'),
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (showLead) ...[
-            description,
-            const SizedBox(height: 16),
-          ],
-          for (int i = 0; i < visible; i++) ...[
-            HtmlWidget(
-              chunks[i],
-              textStyle: textStyle,
-              onTapUrl: (url) async { await _launchUrl(context, url); return true; },
-            ),
-            if (i < visible - 1) const SizedBox(height: 12),
-          ],
-          if (visible < chunks.length) ...[
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                const SizedBox(width: 8),
-                Text(
-                  'Sowa doładowuje treść...',
-                  style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13),
+      return ValueListenableBuilder<int>(
+        valueListenable: state.revealed,
+        builder: (context, revealedValue, _) {
+          final visible = revealedValue.clamp(1, chunks.length);
+          return Column(
+            key: const ValueKey('progressive'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (showLead) ...[
+                description,
+                const SizedBox(height: 16),
+              ],
+              for (int i = 0; i < visible; i++) ...[
+                HtmlWidget(
+                  chunks[i],
+                  textStyle: textStyle,
+                  onTapUrl: (url) async { await _launchUrl(context, url); return true; },
+                ),
+                if (i < visible - 1) const SizedBox(height: 12),
+              ],
+              if (visible < chunks.length) ...[
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Sowa doładowuje treść...',
+                      style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
-        ],
+            ],
+          );
+        },
       );
     }
 
@@ -952,12 +962,14 @@ class _ArticleContentState {
     required this.key,
     required this.chunks,
     required this.firstTextChunk,
-  });
+  }) : revealed = ValueNotifier<int>(0);
 
   /// Klucz wersji treści (id + długość) — pozwala wykryć zmianę treści
   /// (np. po tłumaczeniu) bez kosztownego porównywania stringów.
   final String key;
   final List<String> chunks;
   final String firstTextChunk;
-  int revealed = 0;
+  final ValueNotifier<int> revealed;
+
+  void dispose() => revealed.dispose();
 }

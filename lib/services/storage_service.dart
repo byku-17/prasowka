@@ -61,20 +61,21 @@ class StorageService {
   }
 
   Future<void> _openSafe(String name) async {
-    try {
-      if (!Hive.isBoxOpen(name)) {
-        await Hive.openBox(name);
-      }
-    } catch (e) {
-      debugPrint('Sowa Storage: Problem z boxem $name ($e). Próba naprawy...');
+    const maxRetries = 3;
+    for (var attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        await Hive.deleteBoxFromDisk(name);
-        await Hive.openBox(name);
-        debugPrint('Sowa Storage: Box $name został usunięty i odtworzony.');
-      } catch (e2) {
-        debugPrint('Sowa Storage: Nie udało się odzyskać boxa $name ($e2)');
+        if (!Hive.isBoxOpen(name)) {
+          await Hive.openBox(name);
+        }
+        return;
+      } catch (e) {
+        debugPrint('Sowa Storage: Problem z boxem $name (próba ${attempt + 1}/$maxRetries): $e');
+        if (attempt < maxRetries - 1) {
+          await Future.delayed(Duration(milliseconds: 200 * (attempt + 1)));
+        }
       }
     }
+    debugPrint('Sowa Storage: Nie udało się otworzyć boxa $name po $maxRetries próbach');
   }
 
   bool wasNotified(String id) {
@@ -114,6 +115,12 @@ class StorageService {
     final List<Article> combinedList = uniqueArticles.values.toList();
     combinedList.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
     final limitedList = combinedList.take(200).toList();
+    // Truncate fullContent do ~10K znaków — pełna treść jest ładowana
+    // leniwie via fetchFullArticleContent. Oszczędza ~8MB przy 200 artykułach.
+    for (var a in limitedList) {
+      a.fullContent = _truncateContent(a.fullContent);
+      a.translatedFullContent = _truncateContent(a.translatedFullContent);
+    }
     await box.put(categoryId, limitedList);
   }
 
@@ -125,6 +132,13 @@ class StorageService {
       return List<Article>.from(cached);
     }
     return [];
+  }
+
+  static const int _maxContentLength = 10000;
+
+  String? _truncateContent(String? content) {
+    if (content == null || content.length <= _maxContentLength) return content;
+    return content.substring(0, _maxContentLength);
   }
 
   Future<void> clearAllCache() async {

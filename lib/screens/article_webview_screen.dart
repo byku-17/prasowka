@@ -210,6 +210,14 @@ class _ArticleWebViewScreenState extends State<ArticleWebViewScreen> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
+        onNavigationRequest: (request) {
+          final scheme = Uri.parse(request.url).scheme.toLowerCase();
+          if (scheme != 'http' && scheme != 'https') {
+            debugPrint('WebView: blocked navigation to ${request.url}');
+            return NavigationDecision.prevent;
+          }
+          return NavigationDecision.navigate;
+        },
         onPageStarted: (_) {
           if (mounted) setState(() => _isLoading = true);
         },

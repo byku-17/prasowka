@@ -103,6 +103,7 @@ class NewsProvider with ChangeNotifier {
       if (categoryId == 'all') sources = baseSources.take(30).toList();
     }
 
+    _interestService.preloadInterests();
     return sources;
   }
 
@@ -273,6 +274,7 @@ class NewsProvider with ChangeNotifier {
       if (categoryId == 'api_news') {
         final articles = await _newsApiService.fetchArticles();
         if (_requestIds[categoryId] != requestId) return;
+        _interestService.preloadInterests();
         for (var article in articles) {
           _restoreArticleState(article);
           _interestService.calculateScore(article);
@@ -330,6 +332,7 @@ class NewsProvider with ChangeNotifier {
       return;
     }
     
+    _interestService.preloadInterests();
     final List<MapEntry<Article, double>> scored = allArticles.map((a) {
       final base = _interestService.calculateScore(a);
       final withImage = base > 0 && a.imageUrl != null ? base * 1.5 : base;

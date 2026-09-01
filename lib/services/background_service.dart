@@ -137,6 +137,7 @@ Future<int> _handleRssNotifications(StorageService storage, UserInterestService 
   final wantImportant = alertTypes.contains('important');
   if (!wantNew && !wantImportant) return 0;
 
+  interest.preloadInterests();
   final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
 
   // Fetch all sources in parallel
@@ -182,6 +183,7 @@ Future<int> _handleDailySummary(StorageService storage, UserInterestService inte
   final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
   final scored = <Article>[];
 
+  interest.preloadInterests();
   // Fetch all sources in parallel
   final results = await Future.wait(sources.map((source) async {
     try {

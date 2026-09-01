@@ -68,7 +68,8 @@ void main() async {
       }
 
       if (auth.isLoggedIn) {
-        sync.setEncryptionPassword(auth.user?.uid ?? '');
+        // Encryption password is set only during email sign-in (auth_screen).
+        // Google sign-in users sync unencrypted until they set a PIN.
         sync.mergeFirstLogin();
       }
     } catch (e, stack) {

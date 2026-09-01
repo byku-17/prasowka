@@ -50,13 +50,24 @@ class NotificationHistory {
   static const int _maxEntries = 100;
 
   Box<Map>? _box;
+  int _unreadCount = 0;
 
   Future<void> init() async {
     try {
       _box = await Hive.openBox<Map>(_boxName);
       await _box!.compact();
+      _recountUnread();
     } catch (e) {
       debugPrint('Sowa Notyfikacje: Błąd inicjalizacji historii: $e');
+    }
+  }
+
+  void _recountUnread() {
+    if (_box == null || !_box!.isOpen) { _unreadCount = 0; return; }
+    _unreadCount = 0;
+    for (var key in _box!.keys) {
+      final map = _box!.get(key);
+      if (map != null && map['isRead'] != true) _unreadCount++;
     }
   }
 
@@ -70,11 +81,13 @@ class NotificationHistory {
   Future<void> add(NotificationEntry entry) async {
     try {
       await box.put(entry.id, entry.toMap());
+      if (!entry.isRead) _unreadCount++;
       // Ogranicz historię do _maxEntries — usuwaj NAJSTARSZE wpisy
       if (box.length > _maxEntries) {
         final entries = all; // sortowane po timestamp malejąco
         final toDelete = entries.sublist(_maxEntries); // najstarsze do usunięcia
         for (var e in toDelete) {
+          if (!e.isRead) _unreadCount = (_unreadCount - 1).clamp(0, _maxEntries);
           await box.delete(e.id);
         }
       }
@@ -91,7 +104,7 @@ class NotificationHistory {
     return entries;
   }
 
-  int get unreadCount => all.where((e) => !e.isRead).length;
+  int get unreadCount => _unreadCount;
 
   void _ensureBoxOpen() {
     try {
@@ -108,6 +121,7 @@ class NotificationHistory {
         await _box!.close();
       }
       _box = await Hive.openBox<Map>(_boxName);
+      _recountUnread();
     } catch (e) {
       debugPrint('Sowa Notyfikacje: Błąd odświeżania boxa: $e');
     }
@@ -122,14 +136,16 @@ class NotificationHistory {
         await _box!.put(key, map);
       }
     }
+    _unreadCount = 0;
   }
 
   Future<void> markRead(String id) async {
     if (_box == null || !_box!.isOpen) return;
     final map = _box!.get(id);
-    if (map != null) {
+    if (map != null && map['isRead'] == false) {
       map['isRead'] = true;
       await _box!.put(id, map);
+      _unreadCount = (_unreadCount - 1).clamp(0, _maxEntries);
     }
   }
 
@@ -140,6 +156,7 @@ class NotificationHistory {
       if (map != null && map['url'] == url && map['isRead'] == false) {
         map['isRead'] = true;
         await _box!.put(key, map);
+        _unreadCount = (_unreadCount - 1).clamp(0, _maxEntries);
       }
     }
   }
@@ -147,19 +164,25 @@ class NotificationHistory {
   Future<void> markUnread(String id) async {
     if (_box == null || !_box!.isOpen) return;
     final map = _box!.get(id);
-    if (map != null) {
+    if (map != null && map['isRead'] == true) {
       map['isRead'] = false;
       await _box!.put(id, map);
+      _unreadCount++;
     }
   }
 
   Future<void> delete(String id) async {
     if (_box == null || !_box!.isOpen) return;
+    final map = _box!.get(id);
+    if (map != null && map['isRead'] != true) {
+      _unreadCount = (_unreadCount - 1).clamp(0, _maxEntries);
+    }
     await _box!.delete(id);
   }
 
   Future<void> clear() async {
     if (_box == null || !_box!.isOpen) return;
     await _box!.clear();
+    _unreadCount = 0;
   }
 }

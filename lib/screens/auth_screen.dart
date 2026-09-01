@@ -63,8 +63,8 @@ class _AuthScreenState extends State<AuthScreen> {
     final sync = context.read<SyncService>();
     final error = await auth.signInWithGoogle();
     if (error == null) {
-      // Google sign-in: use UID as encryption key (no password available)
-      sync.setEncryptionPassword(auth.user?.uid ?? 'fallback');
+      // Google sign-in: no encryption password — sync unencrypted.
+      // User can set a PIN in Settings to enable encrypted sync.
       final result = await sync.mergeFirstLogin();
       if (mounted && result == MergeResult.pulled) {
         ScaffoldMessenger.of(context).showSnackBar(
