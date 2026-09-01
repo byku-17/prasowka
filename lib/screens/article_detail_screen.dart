@@ -621,6 +621,30 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     if (hasFullContent) {
       final state = _chunksFor(art);
       final chunks = state.chunks;
+
+      // Wykryj przypadek, gdy ekstrakcja dała technicznie niepustą treść,
+      // ale bez czytelnego tekstu (portal zmienił układ, CSS/JS w treści itp.).
+      if (chunks.isEmpty || (chunks.length == 1 && ReaderService.textContent(chunks.first).trim().length < 80)) {
+        return Column(
+          key: const ValueKey('extraction-failed'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            description,
+            const SizedBox(height: 24),
+            Text(
+              'Sowa nie mogła wyciągnąć pełnej treści artykułu.',
+              style: TextStyle(fontStyle: FontStyle.italic, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            ),
+            const SizedBox(height: 12),
+            _PulsingBrowserButton(
+              article: art,
+              pulse: true,
+              onPressed: () => _openInBrowser(art),
+            ),
+          ],
+        );
+      }
+
       final visible = state.revealed.clamp(1, chunks.length);
       final showLead = !ReaderService.isLeadDuplicated(
         art.translatedDescription ?? art.description,
