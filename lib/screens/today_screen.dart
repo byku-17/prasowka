@@ -164,8 +164,7 @@ class _TodayScreenState extends State<TodayScreen> {
           final articles = data.articles.where((a) => !_dismissedArticleIds.contains(a.url)).toList();
           final isLoading = data.isLoading;
           final hasEverLoaded = data.hasEverLoaded;
-          final provider = context.read<NewsProvider>();
-          final recommendedIds = provider.getRecommendedFrom(articles).map((a) => a.id).toSet();
+          final recommendedIds = data.recommended.map((a) => a.id).toSet();
 
           // Shimmer
           if (articles.isEmpty && (isLoading || !hasEverLoaded)) {

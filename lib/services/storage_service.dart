@@ -122,14 +122,23 @@ class StorageService {
       a.translatedFullContent = _truncateContent(a.translatedFullContent);
     }
     await box.put(categoryId, limitedList);
+    _categoryCacheMemory[categoryId] = limitedList;
   }
 
+  /// In-memory cache per categoryId — unika deserializacji 200 artykułów
+  /// z Hive przy każdym odczycie.
+  final Map<String, List<Article>> _categoryCacheMemory = {};
+
   List<Article> getCategoryCache(String categoryId) {
+    final memCached = _categoryCacheMemory[categoryId];
+    if (memCached != null) return memCached;
     if (!Hive.isBoxOpen(cacheBoxName)) return [];
     final box = Hive.box(cacheBoxName);
     final cached = box.get(categoryId);
     if (cached != null) {
-      return List<Article>.from(cached);
+      final list = List<Article>.from(cached);
+      _categoryCacheMemory[categoryId] = list;
+      return list;
     }
     return [];
   }
@@ -142,6 +151,7 @@ class StorageService {
   }
 
   Future<void> clearAllCache() async {
+    _categoryCacheMemory.clear();
     if (Hive.isBoxOpen(cacheBoxName)) {
       await Hive.box(cacheBoxName).clear();
     }

@@ -923,8 +923,20 @@ class _PulsingBrowserButtonState extends State<_PulsingBrowserButton>
       duration: const Duration(milliseconds: 900),
       lowerBound: 0.0,
       upperBound: 1.0,
-    )..repeat(reverse: true);
+    );
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    if (widget.pulse) _controller.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(_PulsingBrowserButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.pulse && !_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    } else if (!widget.pulse && _controller.isAnimating) {
+      _controller.stop();
+      _controller.value = 0.0;
+    }
   }
 
   @override

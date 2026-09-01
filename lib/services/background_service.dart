@@ -103,8 +103,21 @@ void callbackDispatcher() {
         }
       }
 
-      notifiedCount += await _handleRssNotifications(storage, interest, rss, notifiedCount);
-      notifiedCount += await _handleDailySummary(storage, interest, rss, notifiedCount);
+      // Pobierz artykuły raz — współdzielone między RSS notifications i daily summary
+      interest.preloadInterests();
+      final topSources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
+      final rssResults = await Future.wait(topSources.map((source) async {
+        try {
+          return await rss.fetchArticles(source);
+        } catch (e) {
+          debugPrint('Sowa Wartownik: Błąd pobierania źródła ${source.name}: $e');
+          return <Article>[];
+        }
+      }));
+      final allRssArticles = rssResults.expand((a) => a).toList();
+
+      notifiedCount += await _handleRssNotifications(storage, interest, allRssArticles, notifiedCount);
+      notifiedCount += await _handleDailySummary(storage, interest, allRssArticles, notifiedCount);
 
       List<SportEvent> sportEvents = [];
       try {
@@ -128,7 +141,7 @@ void callbackDispatcher() {
   });
 }
 
-Future<int> _handleRssNotifications(StorageService storage, UserInterestService interest, RssService rss, int startCount) async {
+Future<int> _handleRssNotifications(StorageService storage, UserInterestService interest, List<Article> articles, int startCount) async {
   int count = 0;
   if (!Hive.isBoxOpen('settings')) return 0;
   final settingsBox = Hive.box('settings');
@@ -137,29 +150,14 @@ Future<int> _handleRssNotifications(StorageService storage, UserInterestService 
   final wantImportant = alertTypes.contains('important');
   if (!wantNew && !wantImportant) return 0;
 
-  interest.preloadInterests();
-  final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
-
-  // Fetch all sources in parallel
-  final results = await Future.wait(sources.map((source) async {
-    try {
-      return await rss.fetchArticles(source);
-    } catch (e) {
-      debugPrint('Sowa Wartownik: Błąd pobierania źródła ${source.name}: $e');
-      return <Article>[];
-    }
-  }));
-
-  for (var articles in results) {
-    for (var article in articles) {
-      if (!storage.wasNotified(article.id)) {
-        final score = interest.calculateScore(article);
-        if (wantNew || (wantImportant && score >= 3.0)) {
-          await _showNotification(article);
-          await storage.markAsNotified(article.id);
-          count++;
-          if (startCount + count >= _maxNotificationsPerRun) return count;
-        }
+  for (var article in articles) {
+    if (!storage.wasNotified(article.id)) {
+      final score = interest.calculateScore(article);
+      if (wantNew || (wantImportant && score >= 3.0)) {
+        await _showNotification(article);
+        await storage.markAsNotified(article.id);
+        count++;
+        if (startCount + count >= _maxNotificationsPerRun) return count;
       }
     }
   }
@@ -167,7 +165,7 @@ Future<int> _handleRssNotifications(StorageService storage, UserInterestService 
 }
 
 /// Podsumowanie dnia — wysyła raz dziennie przegląd najważniejszych tematów.
-Future<int> _handleDailySummary(StorageService storage, UserInterestService interest, RssService rss, int startCount) async {
+Future<int> _handleDailySummary(StorageService storage, UserInterestService interest, List<Article> articles, int startCount) async {
   if (!Hive.isBoxOpen('settings')) return 0;
   final settingsBox = Hive.box('settings');
   final alertTypes = List<String>.from(settingsBox.get('alertTypes', defaultValue: <String>['important']));
@@ -180,26 +178,11 @@ Future<int> _handleDailySummary(StorageService storage, UserInterestService inte
   final summaryKey = 'summary_sent_${_todayKey()}';
   if (countBox.get(summaryKey, defaultValue: false) == true) return 0;
 
-  final sources = NewsSource.defaultSources.where((s) => NewsSource.topSourceIds.contains(s.id)).toList();
   final scored = <Article>[];
-
-  interest.preloadInterests();
-  // Fetch all sources in parallel
-  final results = await Future.wait(sources.map((source) async {
-    try {
-      return await rss.fetchArticles(source);
-    } catch (e) {
-      debugPrint('Sowa Wartownik: Błąd podsumowania źródła ${source.name}: $e');
-      return <Article>[];
-    }
-  }));
-
-  for (var articles in results) {
-    for (var article in articles) {
-      if (storage.wasNotified(article.id)) continue;
-      final score = interest.calculateScore(article);
-      if (score >= 3.0) scored.add(article);
-    }
+  for (var article in articles) {
+    if (storage.wasNotified(article.id)) continue;
+    final score = interest.calculateScore(article);
+    if (score >= 3.0) scored.add(article);
   }
   if (scored.isEmpty) {
     await countBox.put(summaryKey, true);
