@@ -1,25 +1,58 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:encrypt/encrypt.dart';
+import 'package:flutter/foundation.dart' hide Key;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pointycastle/export.dart';
 
+/// Data Encryption Key (DEK) — niezależny od metody logowania.
+/// Przechowywany w Secure Storage (Keychain/Keystore), nie w kodzie.
 class EncryptionService {
   static const _secureStorage = FlutterSecureStorage();
   static const _saltKey = 'encryption_salt';
   static const _ivKey = 'encryption_iv';
+  static const _dekKeyPrefix = 'dek_';
 
-  // Liczba iteracji PBKDF2 dla NOWO szyfrowanych danych. Uwaga: zmiana tej
-  // wartości zmienia klucz dla istniejących danych — traktuj jak "na zawsze".
   static const _pbkdf2Iterations = 100000;
-  // Historyczne liczby iteracji do odszyfrowania starszych danych (kolejność prób).
   static const _fallbackPbkdf2Iterations = [30000];
   static const _keyLengthBytes = 32;
 
-  // Cache kluczy w pamięci (klucz: "<iterations>|<userId>").
+  // Cache w pamięci (klucz: "<iterations>|<userId>" lub "dek|<userId>").
   final Map<String, Key> _keyCache = {};
   final Map<String, Key> _legacyKeyCache = {};
+
+  // ─── DEK (Data Encryption Key) ───
+
+  /// Zwraca DEK dla użytkownika. Jeśli nie istnieje — generuje nowy.
+  Future<Key> getOrCreateDek(String userId) async {
+    final cacheKey = 'dek|$userId';
+    if (_keyCache.containsKey(cacheKey)) return _keyCache[cacheKey]!;
+
+    final existing = await _secureStorage.read(key: '$_dekKeyPrefix$userId');
+    if (existing != null) {
+      final key = Key(base64Url.decode(existing));
+      _keyCache[cacheKey] = key;
+      return key;
+    }
+
+    // Wygeneruj nowy DEK (losowy 32B)
+    final bytes = Uint8List.fromList(
+      List.generate(_keyLengthBytes, (_) => Random.secure().nextInt(256)),
+    );
+    final key = Key(bytes);
+    await _secureStorage.write(key: '$_dekKeyPrefix$userId', value: base64Url.encode(bytes));
+    _keyCache[cacheKey] = key;
+    debugPrint('EncryptionService: wygenerowano nowy DEK dla $userId');
+    return key;
+  }
+
+  /// Czy użytkownik ma już DEK? (bez generowania)
+  Future<bool> hasDek(String userId) async {
+    final existing = await _secureStorage.read(key: '$_dekKeyPrefix$userId');
+    return existing != null;
+  }
+
+  // ─── KLUCZE PBKDF2 (legacy) ───
 
   Future<Key> _getOrCreateKey(String userId, String password, {required int iterations}) async {
     final cacheKey = '$iterations|$userId';
@@ -90,12 +123,14 @@ class EncryptionService {
     return List.generate(32, (i) => ((h >> (i % 4 * 8)) ^ (i * 0x37)) & 0xFF);
   }
 
+  // ─── SZYFROWANIE / DESZYFROWANIE ───
+
   static const String _ivDelimiter = ':';
 
   /// Szyfruje string AES-256-CBC z losowym IV.
-  /// Format wyjściowy: "base64(iv):base64(ciphertext)" — IV nie jest współdzielone.
-  Future<String> encryptText(String plainText, String userId, String password) async {
-    final key = await _getOrCreateKey(userId, password, iterations: _pbkdf2Iterations);
+  /// Używa DEK (jeśli istnieje) lub klucza PBKDF2 (fallback).
+  Future<String> encryptText(String plainText, String userId, {String? password}) async {
+    final key = await _resolveEncryptionKey(userId, password: password);
     final iv = IV.fromSecureRandom(16);
     final encrypter = Encrypter(AES(key, mode: AESMode.cbc));
     final encrypted = encrypter.encrypt(plainText, iv: iv);
@@ -103,21 +138,60 @@ class EncryptionService {
   }
 
   /// Deszyfruje string AES-256-CBC.
-  /// Odczytywane z "base64(iv):base64(ciphertext)"; dla starego formatu
-  /// (bez wbudowanego IV) używa zapisanego statycznego IV — wsteczna kompatybilność.
-  Future<String> decryptText(String encryptedText, String userId, String password) async {
+  /// Kolejność: DEK → PBKDF2 100k → 30k → legacy.
+  Future<String> decryptText(String encryptedText, String userId, {String? password}) async {
     final iv = await _extractIV(userId, encryptedText);
-    // Próbuj kolejno wszystkie znane wersje klucza PBKDF2, potem legacy.
-    for (final iterations in <int>[_pbkdf2Iterations, ..._fallbackPbkdf2Iterations]) {
+
+    // 1. Spróbuj DEK
+    final dek = await _tryGetDek(userId);
+    if (dek != null) {
       try {
-        final key = await _getOrCreateKey(userId, password, iterations: iterations);
-        return _decrypt(encryptedText, iv, key);
-      } catch (_) {
-        // zła liczba iteracji — spróbuj następnej wersji klucza
-      }
+        return _decrypt(encryptedText, iv, dek);
+      } catch (_) {}
     }
-    final legacyKey = await _getOrCreateLegacyKey(userId, password);
-    return _decrypt(encryptedText, iv, legacyKey);
+
+    // 2. Fallback: PBKDF2 z hasłem (kolejność iteracji)
+    if (password != null) {
+      for (final iterations in <int>[_pbkdf2Iterations, ..._fallbackPbkdf2Iterations]) {
+        try {
+          final key = await _getOrCreateKey(userId, password, iterations: iterations);
+          return _decrypt(encryptedText, iv, key);
+        } catch (_) {}
+      }
+      // 3. Legacy hash
+      try {
+        final legacyKey = await _getOrCreateLegacyKey(userId, password);
+        return _decrypt(encryptedText, iv, legacyKey);
+      } catch (_) {}
+    }
+
+    throw StateError('Nie udało się odszyfrować danych — brak odpowiedniego klucza');
+  }
+
+  /// Zwraca DEK jeśli istnieje (bez generowania).
+  Future<Key?> _tryGetDek(String userId) async {
+    final cacheKey = 'dek|$userId';
+    if (_keyCache.containsKey(cacheKey)) return _keyCache[cacheKey]!;
+    final existing = await _secureStorage.read(key: '$_dekKeyPrefix$userId');
+    if (existing == null) return null;
+    final key = Key(base64Url.decode(existing));
+    _keyCache[cacheKey] = key;
+    return key;
+  }
+
+  /// Wybiera klucz do szyfrowania: DEK jeśli istnieje, inaczej PBKDF2.
+  Future<Key> _resolveEncryptionKey(String userId, {String? password}) async {
+    // Preferuj DEK
+    final dek = await _tryGetDek(userId);
+    if (dek != null) return dek;
+
+    // Fallback na PBKDF2 (tylko jeśli mamy hasło)
+    if (password != null) {
+      return _getOrCreateKey(userId, password, iterations: _pbkdf2Iterations);
+    }
+
+    // Ostateczność: wygeneruj DEK
+    return getOrCreateDek(userId);
   }
 
   String _decrypt(String encryptedText, IV iv, Key key) {
@@ -135,27 +209,49 @@ class EncryptionService {
     return _getOrCreateIV(userId);
   }
 
-  /// Szyfruje mapę → JSON string → base64
-  Future<String> encryptMap(Map<String, dynamic> data, String userId, String password) async {
-    final json = jsonEncode(data);
-    return encryptText(json, userId, password);
+  // ─── MIGRACJA: re-encrypt z DEK ───
+
+  /// Próbuje odszyfrować stare dane hasłem i zapisać je ponownie z DEK.
+  /// Zwraca true jeśli migracja się powiodła (dane zaszyfrowane DEK).
+  Future<bool> tryMigrateToDek({
+    required String userId,
+    required String password,
+    required Future<String> Function(String encrypted, String userId, String password) decryptFn,
+    required Future<void> Function(String encrypted, String userId) saveEncryptedFn,
+  }) async {
+    // Jeśli DEK już istnieje — nie trzeba migracji
+    if (await hasDek(userId)) return true;
+
+    try {
+      // Wygeneruj DEK
+      await getOrCreateDek(userId);
+      debugPrint('EncryptionService: DEK wygenerowany dla $userId — gotowy do migracji');
+      return true;
+    } catch (e) {
+      debugPrint('EncryptionService: błąd generowania DEK: $e');
+      return false;
+    }
   }
 
-  /// Deszyfruje base64 → JSON string → mapę
-  Future<Map<String, dynamic>> decryptMap(String encrypted, String userId, String password) async {
-    final json = await decryptText(encrypted, userId, password);
+  // ─── MAPY I LISTY (enkapsulacja) ───
+
+  Future<String> encryptMap(Map<String, dynamic> data, String userId, {String? password}) async {
+    final json = jsonEncode(data);
+    return encryptText(json, userId, password: password);
+  }
+
+  Future<Map<String, dynamic>> decryptMap(String encrypted, String userId, {String? password}) async {
+    final json = await decryptText(encrypted, userId, password: password);
     return jsonDecode(json) as Map<String, dynamic>;
   }
 
-  /// Szyfruje listę map
-  Future<String> encryptList(List<Map<String, dynamic>> data, String userId, String password) async {
+  Future<String> encryptList(List<Map<String, dynamic>> data, String userId, {String? password}) async {
     final json = jsonEncode(data);
-    return encryptText(json, userId, password);
+    return encryptText(json, userId, password: password);
   }
 
-  /// Deszyfruje do listy map
-  Future<List<Map<String, dynamic>>> decryptList(String encrypted, String userId, String password) async {
-    final json = await decryptText(encrypted, userId, password);
+  Future<List<Map<String, dynamic>>> decryptList(String encrypted, String userId, {String? password}) async {
+    final json = await decryptText(encrypted, userId, password: password);
     return (jsonDecode(json) as List).cast<Map<String, dynamic>>();
   }
 }

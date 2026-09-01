@@ -109,6 +109,9 @@ class SyncService extends ChangeNotifier {
     if (_uid == null) return MergeResult.error;
     
     try {
+      // Upewnij się, że DEK istnieje (generuje nowy jeśli trzeba)
+      await _encryption.getOrCreateDek(_uid!);
+
       final hasRemoteData = await _checkRemoteData();
       if (hasRemoteData) {
         await pullAll();
@@ -179,7 +182,7 @@ class SyncService extends ChangeNotifier {
       data[key.toString()] = box.get(key);
     }
     if (_encryptionPassword != null && data.isNotEmpty) {
-      final encrypted = await _encryption.encryptMap(data, _uid!, _encryptionPassword!);
+      final encrypted = await _encryption.encryptMap(data, _uid!, password: _encryptionPassword);
       await _userDoc('tags_encrypted').doc('data').set({'payload': encrypted});
     } else if (data.isNotEmpty) {
       final batch = _db.batch();
@@ -195,7 +198,7 @@ class SyncService extends ChangeNotifier {
     if (_encryptionPassword != null) {
       final doc = await _userDoc('tags_encrypted').doc('data').get();
       if (!doc.exists) return;
-      final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
+      final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, password: _encryptionPassword);
       for (final entry in decrypted.entries) {
         if (!box.containsKey(entry.key)) {
           await box.put(entry.key, entry.value);
@@ -237,7 +240,7 @@ class SyncService extends ChangeNotifier {
       };
     }
     if (_encryptionPassword != null && data.isNotEmpty) {
-      final encrypted = await _encryption.encryptMap(data, _uid!, _encryptionPassword!);
+      final encrypted = await _encryption.encryptMap(data, _uid!, password: _encryptionPassword);
       await _userDoc('articles_encrypted').doc('data').set({'payload': encrypted});
     } else if (data.isNotEmpty) {
       final batch = _db.batch();
@@ -255,7 +258,7 @@ class SyncService extends ChangeNotifier {
     if (_encryptionPassword != null) {
       final doc = await _userDoc('articles_encrypted').doc('data').get();
       if (!doc.exists) return;
-      dataMap = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
+      dataMap = await _encryption.decryptMap(doc.data()!['payload'], _uid!, password: _encryptionPassword);
     } else {
       final snapshot = await _userDoc('articles').get();
       for (final doc in snapshot.docs) {
@@ -290,7 +293,7 @@ class SyncService extends ChangeNotifier {
     final box = Hive.box('user_interests');
     final data = Map<String, dynamic>.from(box.toMap());
     if (_encryptionPassword != null && data.isNotEmpty) {
-      final encrypted = await _encryption.encryptMap(data, _uid!, _encryptionPassword!);
+      final encrypted = await _encryption.encryptMap(data, _uid!, password: _encryptionPassword);
       await _userDoc('interests_encrypted').doc('data').set({'payload': encrypted});
     } else if (data.isNotEmpty) {
       await _userDoc('interests').doc('scores').set(data, SetOptions(merge: true));
@@ -302,7 +305,7 @@ class SyncService extends ChangeNotifier {
     if (_encryptionPassword != null) {
       final doc = await _userDoc('interests_encrypted').doc('data').get();
       if (!doc.exists) return;
-      final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
+      final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, password: _encryptionPassword);
       for (final entry in decrypted.entries) {
         if (entry.value is num && !box.containsKey(entry.key)) {
           await box.put(entry.key, (entry.value as num).toDouble());
@@ -391,7 +394,7 @@ class SyncService extends ChangeNotifier {
       }
     }
     if (_encryptionPassword != null && data.isNotEmpty) {
-      final encrypted = await _encryption.encryptMap(data, _uid!, _encryptionPassword!);
+      final encrypted = await _encryption.encryptMap(data, _uid!, password: _encryptionPassword);
       await _userDoc('reading_history_encrypted').doc('data').set({'payload': encrypted});
     } else if (data.isNotEmpty) {
       final batch = _db.batch();
@@ -407,7 +410,7 @@ class SyncService extends ChangeNotifier {
     if (_encryptionPassword != null) {
       final doc = await _userDoc('reading_history_encrypted').doc('data').get();
       if (!doc.exists) return;
-      final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, _encryptionPassword!);
+      final decrypted = await _encryption.decryptMap(doc.data()!['payload'], _uid!, password: _encryptionPassword);
       for (final entry in decrypted.entries) {
         if (!box.containsKey(entry.key)) {
           await box.put(entry.key, entry.value);
