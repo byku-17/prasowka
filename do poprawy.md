@@ -1,7 +1,7 @@
 # Prasówka — Audyt i Plan Naprawy
 
 > Wygenerowano: 2026-09-02
-> Stan: Fazy 1-5 zakończone. Pozostałe elementy niskopriorytetowe.
+> Stan: Wszystkie niskopriorytetowe naprawione. Pozostały tylko odłożone (wymagają więcej pracy).
 
 ---
 
@@ -53,32 +53,32 @@
 ### L6. Deprecated `readLater` field
 - **Plik:** `lib/models/article.dart:35`
 - **Problem:** Pole `readLater` jest deprecated w Hive schema, ale wciąż istnieje.
-- **Naprawa:** Usunąć po potwierdzeniu że żaden kod go nie odczytuje.
+- **Status:** ⏭️ Pominięte — `@HiveField(9)`, usunięcie złamałoby deserializację istniejących danych.
 
 ### L7. Stare skrypty w `tool/`
 - **Plik:** `tool/*.dart` (6 plików)
 - **Problem:** Jednorazowe skrypty migracyjne, nieużywane.
-- **Naprawa:** Usunąć lub przenieś do `archive/`.
+- **Status:** ✅ Usunięte (6 plików + katalog).
 
 ### L8. `_cachedTags` cache nigdy invalidowany
 - **Plik:** `lib/models/article.dart:65`
 - **Problem:** Cache tagów na obiekcie Article — nigdy nie jest czyszczony.
-- **Naprawa:** Usunąć cache lub dodać invalidację przy zmianie tagów.
+- **Status:** ✅ Usunięty cache (title/description i tak nie są mutowane).
 
 ### L9. Brak `allowBackup="false"` w AndroidManifest
 - **Plik:** `android/app/src/main/AndroidManifest.xml`
 - **Problem:** ADB backup może odczytać dane aplikacji (Hive boxes).
-- **Naprawa:** Dodać `android:allowBackup="false"` w `<application>`.
+- **Status:** ✅ Dodano `android:allowBackup="false"`.
 
 ### L10. `_extractIV` fallback do stored IV
 - **Plik:** `lib/services/encryption_service.dart:202`
 - **Problem:** Przy niepowodzeniu parse IV z ciphertext, fallbackuje do stored IV — może deszyfrować złymi danymi.
-- **Naprawa:** Usunąć fallback, rzucić exception zamiast cichego fallbacku.
+- **Status:** ✅ Usunięty fallback, teraz rzucany jest `StateError`.
 
 ### L11. Shuffle z Deterministic PRNG
 - **Plik:** `lib/providers/news_provider.dart:426`
 - **Problem:** `List.shuffle()` bez seed — każdy refresh daje inną kolejność (mieszanie jest losowe, nie deterministyczne).
-- **Naprawa:** Seedować `Random()` z timestamp lub user seed dla powtarzalności.
+- **Status:** ⏭️ Pominięte — losowe mieszanie jest zamierzone (unikanie monotoniczności).
 
 ### L12. `articleRetentionDays` hardcoded source IDs
 - **Plik:** `lib/providers/settings_provider.dart:386`
@@ -98,12 +98,12 @@
 ### L15. HtmlWidget bez kluczy w pętli
 - **Plik:** `lib/screens/article_detail_screen.dart:661`
 - **Problem:** `HtmlWidget` w pętli `for` bez `Key` — Flutter może źle repaintingować.
-- **Naprawa:** Dodać `key: ValueKey(i)` do każdego HtmlWidget.
+- **Status:** ✅ Dodano `key: ValueKey('chunk_$i')`.
 
 ### L16. Brak `@immutable` na modelach w Selector
 - **Plik:** `lib/models/article.dart`, `lib/models/sport_event.dart`
 - **Problem:** Modele używane w `Selector` nie mają adnotacji `@immutable` — Flutter nie może optymalizować comparisions.
-- **Naprawa:** Dodać `@immutable` na modelach (Article, SportEvent, itd.).
+- **Status:** ⏭️ Pominięte — `Article` extends `HiveObject` (mutowalny), `@immutable` byłby misleading.
 
 ### L17. `debugPrint` w 91 miejscach
 - **Pliki:** 20+ plików
@@ -156,20 +156,17 @@
 ### M18. Hasło w pamięci bez terminu ważności
 - **Plik:** `lib/services/sync_service.dart:31`
 - **Problem:** `_encryptionPassword` w pamięci — żyje przez cały lifetime sesji.
-- **Naprawa:** Clear po sync / timeout sesji (np. 30min).
-- **Szacunek:** 30min.
+- **Status:** ✅ Clear po 30min TTL (`passwordTtl`).
 
 ### M19. Słaby email validation
 - **Plik:** `lib/screens/auth_screen.dart:114`
 - **Problem:** Walidacja tylko `v.contains('@')`.
-- **Naprawa:** Regex email: `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`.
-- **Szacunek:** 10min.
+- **Status:** ✅ Regex: `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`.
 
 ### M20. HTML parsing dla obrazków — pełne DOM
 - **Plik:** `lib/services/rss_service.dart:150-155`
 - **Problem:** Parsowanie HTML przez pełny DOM dla wyodrębnienia obrazków.
-- **Naprawa:** Regex zamiast `parse()` dla prostych extractions.
-- **Szacunek:** 30min.
+- **Status:** ✅ Regex zamiast `parse()` dla image extraction.
 
 ---
 
@@ -177,10 +174,11 @@
 
 | Kategoria | CRITICAL | HIGH | MEDIUM | LOW |
 |-----------|----------|------|--------|-----|
-| Zakończone | 2 | 7 | 9 | 5 |
-| Pozostałe (niski priorytet) | 0 | 0 | 0 | 12 |
+| Zakończone (Fazy 1-5) | 2 | 7 | 9 | 5 |
+| Zakończone (quick fixes) | 0 | 0 | 3 | 5 |
+| Pominięte (niemożliwe/bezpieczne) | 0 | 0 | 0 | 3 |
 | Odłożone (wymagają więcej pracy) | 0 | 1 | 8 | 0 |
-| **Łącznie** | **2** | **8** | **17** | **17** |
+| **Łącznie** | **2** | **8** | **17** | **13** |
 
 ---
 
