@@ -10,7 +10,6 @@ import 'package:pointycastle/export.dart';
 class EncryptionService {
   static const _secureStorage = FlutterSecureStorage();
   static const _saltKey = 'encryption_salt';
-  static const _ivKey = 'encryption_iv';
   static const _dekKeyPrefix = 'dek_';
 
   static const _pbkdf2Iterations = 100000;
@@ -81,15 +80,6 @@ class EncryptionService {
     return salt;
   }
 
-  Future<IV> _getOrCreateIV(String userId) async {
-    final existing = await _secureStorage.read(key: '${_ivKey}_$userId');
-    if (existing != null) {
-      return IV(base64Url.decode(existing));
-    }
-    final iv = IV.fromSecureRandom(16);
-    await _secureStorage.write(key: '${_ivKey}_$userId', value: base64Url.encode(iv.bytes));
-    return iv;
-  }
 
   Uint8List _generateSalt() {
     final rng = Random.secure();
@@ -206,7 +196,7 @@ class EncryptionService {
         return IV(base64Url.decode(encryptedText.substring(0, sepIdx)));
       } catch (_) {}
     }
-    return _getOrCreateIV(userId);
+    throw StateError('Nie udało się wyodrębnić IV z zaszyfrowanego tekstu');
   }
 
   // ─── MIGRACJA: re-encrypt z DEK ───

@@ -147,11 +147,9 @@ xml = utf8.decode(response!.bodyBytes, allowMalformed: true);
 
     final htmlContent = item.content?.value ?? item.description ?? '';
     if (htmlContent.contains('<img')) {
-      try {
-        final doc = parse(htmlContent);
-        final src = doc.querySelector('img')?.attributes['src'];
-        if (src != null && _isValidImageUrl(src)) return src;
-      } catch (_) {}
+      final srcMatch = RegExp(r"""<img[^>]+src=["']([^"']+)["']""", caseSensitive: false).firstMatch(htmlContent);
+      final src = srcMatch?.group(1);
+      if (src != null && _isValidImageUrl(src)) return src;
     }
     return null;
   }
@@ -164,11 +162,9 @@ xml = utf8.decode(response!.bodyBytes, allowMalformed: true);
     } catch (_) {}
     final source = item.content ?? item.summary ?? '';
     if (source.contains('<img')) {
-      try {
-        final document = parse(source);
-        final src = document.querySelector('img')?.attributes['src'];
-        if (src != null && _isValidImageUrl(src)) return src;
-      } catch (_) {}
+      final srcMatch = RegExp(r"""<img[^>]+src=["']([^"']+)["']""", caseSensitive: false).firstMatch(source);
+      final src = srcMatch?.group(1);
+      if (src != null && _isValidImageUrl(src)) return src;
     }
     return null;
   }

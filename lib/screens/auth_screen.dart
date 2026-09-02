@@ -112,7 +112,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Podaj email';
-                    if (!v.contains('@')) return 'Nieprawidłowy email';
+                    if (!RegExp(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$').hasMatch(v)) return 'Nieprawidłowy email';
                     return null;
                   },
                 ),

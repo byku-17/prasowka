@@ -669,6 +669,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               for (int i = 0; i < visible; i++) ...[
                 HtmlWidget(
                   chunks[i],
+                  key: ValueKey('chunk_$i'),
                   textStyle: textStyle,
                   onTapUrl: (url) async { await _launchUrl(context, url); return true; },
                 ),

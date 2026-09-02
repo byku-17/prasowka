@@ -62,19 +62,15 @@ class Article extends HiveObject {
   @HiveField(18)
   List<String> tagIds;
 
-  List<String>? _cachedTags;
-
   List<String> get tags {
-    if (_cachedTags != null) return _cachedTags!;
     final text = '$title $description'.toLowerCase();
-    final stopWords = {
+    const stopWords = {
       'i', 'w', 'na', 'z', 'do', 'o', 'za', 'oraz', 'ze', 'po', 'przy', 'dla', 'nie', 'tak', 'co', 'jak', 'że', 'się', 'the', 'a', 'an', 'of', 'in', 'to', 'for', 'with'
     };
-    _cachedTags = text.split(RegExp(r'[^a-ząćęłńóśźż]+'))
+    return text.split(RegExp(r'[^a-ząćęłńóśźż]+'))
         .where((w) => w.length > 3 && !stopWords.contains(w))
         .toSet()
         .toList();
-    return _cachedTags!;
   }
 
   Article({

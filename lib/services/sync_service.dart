@@ -34,6 +34,25 @@ class SyncService extends ChangeNotifier {
 
   void setEncryptionPassword(String password) {
     _encryptionPassword = password;
+    _passwordSetAt = DateTime.now();
+  }
+
+  /// Hasło jest usuwane z pamięci po [passwordTtl] od ustawienia.
+  static const Duration passwordTtl = Duration(minutes: 30);
+  DateTime? _passwordSetAt;
+
+  void _clearPasswordIfExpired() {
+    if (_encryptionPassword != null &&
+        _passwordSetAt != null &&
+        DateTime.now().difference(_passwordSetAt!) > passwordTtl) {
+      _encryptionPassword = null;
+      _passwordSetAt = null;
+    }
+  }
+
+  void clearPassword() {
+    _encryptionPassword = null;
+    _passwordSetAt = null;
   }
 
   String? get _uid => _auth.user?.uid;
@@ -53,6 +72,7 @@ class SyncService extends ChangeNotifier {
 
   Future<void> pushAll() async {
     if (_uid == null) return;
+    _clearPasswordIfExpired();
     notifyListeners();
 
     try {
@@ -80,6 +100,7 @@ class SyncService extends ChangeNotifier {
 
   Future<void> pullAll() async {
     if (_uid == null) return;
+    _clearPasswordIfExpired();
     notifyListeners();
 
     try {
